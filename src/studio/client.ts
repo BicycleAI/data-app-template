@@ -7,7 +7,7 @@
  */
 
 import { context } from './context.js'
-import { BdaError, type QueryOptions, type QueryResult } from './types.js'
+import { type AppSummary, BdaError, type QueryOptions, type QueryResult } from './types.js'
 
 type ErrorEnvelope = { error?: { code?: unknown; message?: unknown; status?: unknown } }
 
@@ -145,5 +145,96 @@ export function toObjects(result: QueryResult): Record<string, unknown>[] {
       object[column.name] = row[index]
     })
     return object
+  })
+}
+
+const HOST_SUMMARY = 'studio:sandbox:summary'
+const HOST_SUMMARY_RESULT = 'studio:sandbox:summary-result'
+
+type HostSummaryReply = {
+  type?: string
+  requestId?: string
+  ok?: boolean
+  summary?: AppSummary | null
+  error?: { code?: string; message?: string; status?: number }
+}
+
+/**
+ * The app's published AI summary, or `null` when no agent has written one.
+ *
+ * `null` is the normal case, not a failure: most apps have never had the summary
+ * tools run against them, and a card that showed an error for that would be wrong
+ * on almost every app. Callers render the summary when it is there and nothing
+ * when it is not.
+ *
+ * `checkStale` makes the service re-derive the facts to compare digests, which
+ * costs it another pass over the app's queries. Worth it for a card a reader will
+ * act on; pass `false` if you only need the text.
+ */
+export async function fetchSummary(
+  checkStale = true,
+  signal?: AbortSignal,
+): Promise<AppSummary | null> {
+  if (window.parent !== window) return summaryViaHost(checkStale, signal)
+
+  const { apiBase, appId, token } = context()
+  const response = await fetch(
+    `${apiBase}/data-apps/${encodeURIComponent(appId)}/summary?stale=${checkStale ? 'true' : 'false'}`,
+    {
+      headers: { authorization: `Bearer ${token}` },
+      ...(signal === undefined ? {} : { signal }),
+    },
+  )
+
+  // 204 is "no summary", which is not an error and must not be parsed as JSON.
+  if (response.status === 204) return null
+  if (!response.ok) throw await toError(response)
+  return (await response.json()) as AppSummary
+}
+
+function summaryViaHost(checkStale: boolean, signal?: AbortSignal): Promise<AppSummary | null> {
+  const requestId = `s${(nextRequestId += 1)}`
+
+  return new Promise<AppSummary | null>((resolve, reject) => {
+    const settle = (run: () => void) => {
+      window.removeEventListener('message', onMessage)
+      window.clearTimeout(timer)
+      signal?.removeEventListener('abort', onAbort)
+      run()
+    }
+
+    const onMessage = (event: MessageEvent<HostSummaryReply>) => {
+      const reply = event.data
+      if (reply?.type !== HOST_SUMMARY_RESULT || reply.requestId !== requestId) return
+      if (reply.ok === true) {
+        settle(() => resolve(reply.summary ?? null))
+        return
+      }
+      const error = reply.error ?? {}
+      settle(() =>
+        reject(
+          new BdaError(
+            error.code ?? 'request_failed',
+            error.message ?? 'The host could not read the summary.',
+            error.status ?? 0,
+          ),
+        ),
+      )
+    }
+
+    const onAbort = () =>
+      settle(() => reject(new BdaError('aborted', 'The summary request was cancelled.', 0)))
+
+    const timer = window.setTimeout(
+      () =>
+        settle(() =>
+          reject(new BdaError('host_timeout', 'The host did not answer the summary request.', 0)),
+        ),
+      HOST_TIMEOUT_MS,
+    )
+
+    window.addEventListener('message', onMessage)
+    signal?.addEventListener('abort', onAbort)
+    window.parent.postMessage({ type: HOST_SUMMARY, requestId, checkStale }, '*')
   })
 }

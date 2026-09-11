@@ -56,6 +56,31 @@ export type QueryResult = {
   }
 }
 
+/**
+ * The AI summary an agent published against this app, as the service returns it.
+ *
+ * Written by Claude, Codex or whatever else drives the studio's MCP tools — never
+ * by the app, which has no way to generate prose and no credential to store it.
+ */
+export type AppSummary = {
+  readonly headline: string
+  readonly bullets: readonly string[]
+  readonly range: { readonly from: string; readonly to: string }
+  readonly generatedAt: string
+  readonly generatedBy: string
+  /** How the agent named itself, e.g. `claude-opus-5`. Empty when it did not say. */
+  readonly writer: string
+  readonly factsDigest: string
+  /**
+   * Whether the data has moved since the prose was written.
+   *
+   * Three-valued on purpose. `null` means nobody can tell — the summary was
+   * published without a facts digest — and showing that as "current" would be a
+   * claim the service never made.
+   */
+  readonly stale: boolean | null
+}
+
 export type QueryOptions = {
   readonly parameters?: Readonly<Record<string, Scalar>>
   readonly filters?: readonly Filter[]
