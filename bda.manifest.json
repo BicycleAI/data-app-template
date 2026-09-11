@@ -1,0 +1,7 @@
+{
+  "appId": "",
+  "entry": "app.js",
+  "styles": ["app.css"],
+  "title": "Untitled data app",
+  "queries": []
+}

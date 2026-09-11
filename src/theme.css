@@ -1,0 +1,425 @@
+/*
+ * The theme, as CSS variables.
+ *
+ * Every colour, font and spacing step an app uses comes from here. That is the
+ * whole point: a host can retheme a generated app by overriding these
+ * properties, and an app that hard-codes a hex breaks that.
+ *
+ * Two palettes, and **which one is used is the viewer's choice, not yours**.
+ * `studio/theme.ts` reads `prefers-color-scheme` and stamps `data-theme` on
+ * `<html>`, so a data app is light on a light desktop and dark on a dark one,
+ * and follows along if the viewer switches with the page open. Define both and
+ * you are done. Only pin one — `pinTheme('dark')` in `main.tsx` — if the
+ * person who asked for the app asked for a specific theme.
+ *
+ * A soft infographic palette: white cards on a near-white page, hairline
+ * borders, coral as the lead accent with teal and blue behind it. The
+ * categorical ramp is ordered so the first three carry most charts on their
+ * own and stay distinguishable in both themes.
+ *
+ * Retheming means changing the values below, in both blocks. It does not mean
+ * adding rules elsewhere or editing the components.
+ */
+
+:root {
+  /* Native scrollbars, form controls and the canvas behind the page. */
+  color-scheme: light;
+
+  /* Surfaces, back to front. */
+  --bda-surface-background: #fbfbfc;
+  --bda-surface-raised: #ffffff;
+  --bda-surface-overlay: #f4f5f7;
+
+  --bda-text-primary: #1f2024;
+  --bda-text-secondary: #8b8f98;
+
+  --bda-border: #ececef;
+  /* A hairline for chart axes and gridlines, lighter than a card border. */
+  --bda-grid: #f1f2f4;
+
+  /* Coral leads. Teal and blue are the supporting accents. */
+  --bda-accent: #f4676c;
+  --bda-accent-soft: #fdecec;
+  --bda-accent-muted: #f8c4c6;
+
+  --bda-positive: #45c4b0;
+  --bda-negative: #f4676c;
+
+  /* Categorical series, in draw order. */
+  --bda-chart-1: #f4676c;
+  --bda-chart-2: #45c4b0;
+  --bda-chart-3: #4b9fd5;
+  --bda-chart-4: #f5a97b;
+  --bda-chart-5: #8fd9c4;
+  --bda-chart-6: #b48ae0;
+
+  --bda-font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --bda-font-size: 14px;
+  --bda-radius: 12px;
+  --bda-radius-pill: 999px;
+  --bda-space-1: 4px;
+  --bda-space-2: 8px;
+  --bda-space-3: 12px;
+  --bda-space-4: 16px;
+  --bda-space-5: 24px;
+  /* Cards sit on the page with light, diffuse depth rather than a hard edge. */
+  --bda-shadow: 0 1px 2px rgb(16 24 40 / 4%), 0 1px 3px rgb(16 24 40 / 3%);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bda-surface-background: #15202b;
+  --bda-surface-raised: #212b36;
+  --bda-surface-overlay: #2b3844;
+
+  --bda-text-primary: #f4f4f4;
+  --bda-text-secondary: #b7bcc9;
+
+  --bda-border: #3b444d;
+  --bda-grid: #2b3844;
+
+  --bda-accent: #f8797f;
+  --bda-accent-soft: #3a2529;
+  --bda-accent-muted: #8c4448;
+
+  --bda-positive: #45c4b0;
+  --bda-negative: #f8797f;
+
+  --bda-chart-1: #f8797f;
+  --bda-chart-2: #4fd3bd;
+  --bda-chart-3: #5fb0e3;
+  --bda-chart-4: #f7b98f;
+  --bda-chart-5: #9fe3d0;
+  --bda-chart-6: #c29bec;
+
+  --bda-shadow: none;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bda-surface-background);
+  color: var(--bda-text-primary);
+  font-family: var(--bda-font-family);
+  font-size: var(--bda-font-size);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  padding: var(--bda-space-5);
+}
+
+/* Shared primitives the sample uses. An app may replace these entirely. */
+
+.bda-card {
+  background: var(--bda-surface-raised);
+  border: 1px solid var(--bda-border);
+  border-radius: var(--bda-radius);
+  box-shadow: var(--bda-shadow);
+  padding: var(--bda-space-4) var(--bda-space-5);
+}
+
+.bda-title {
+  margin: 0 0 var(--bda-space-2);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* A section heading inside a card: quieter than the page title. */
+.bda-heading {
+  margin: 0 0 var(--bda-space-3);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.bda-subtle {
+  color: var(--bda-text-secondary);
+}
+
+/* A headline figure. Colour it with an accent to group related numbers. */
+.bda-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bda-metric__value {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bda-accent);
+}
+
+.bda-metric__label {
+  color: var(--bda-text-secondary);
+  font-size: 13px;
+}
+
+/* A filter control. `aria-pressed="true"` marks the active one. */
+.bda-pill {
+  appearance: none;
+  border: 1px solid var(--bda-border);
+  background: var(--bda-surface-raised);
+  color: var(--bda-text-secondary);
+  border-radius: var(--bda-radius-pill);
+  padding: 5px 14px;
+  font: inherit;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+
+.bda-pill:hover {
+  border-color: var(--bda-accent-muted);
+}
+
+.bda-pill[aria-pressed='true'] {
+  background: var(--bda-accent-soft);
+  border-color: var(--bda-accent-muted);
+  color: var(--bda-accent);
+  font-weight: 500;
+}
+
+/*
+ * A row of filters, for the top of an app.
+ *
+ * A `fieldset` with its own chrome removed, so the group has a name a screen
+ * reader announces — put a `.bda-visually-hidden` `legend` inside it.
+ */
+.bda-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--bda-space-2);
+  flex-wrap: wrap;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* Wider gaps, for a row holding several control groups rather than several
+ * controls. */
+.bda-controls--spread {
+  gap: var(--bda-space-4);
+}
+
+/* A visible label beside a control group. Decorative: the `legend` is what is
+ * announced, so mark this `aria-hidden`. */
+.bda-controls__label {
+  color: var(--bda-text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/*
+ * A single-select, for more choices than fit as pills.
+ *
+ * A real `<select>`, not a styled listbox, and that is the point. The app runs
+ * in a frame of whatever size the host page gave it, and a popup rendered in
+ * the document gets clipped by that viewport near its bottom edge — a native
+ * one is painted by the browser outside the page and never is. Keyboard
+ * behaviour, typeahead and screen-reader semantics come with it.
+ */
+.bda-select {
+  appearance: none;
+  border: 1px solid var(--bda-border);
+  background-color: var(--bda-surface-raised);
+  color: var(--bda-text-primary);
+  border-radius: var(--bda-radius-pill);
+  padding: 5px 32px 5px 14px;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 120ms;
+  /*
+   * The chevron, inline. `img-src` allows `data:` and nothing else, so an
+   * external icon would not load; this needs no request either way.
+   *
+   * The stroke is a fixed mid-grey rather than a token because neither `var()`
+   * nor `currentColor` resolves inside a background image. It is decorative —
+   * the control reads as a select without it — and this grey sits between the
+   * two themes' secondary text colours, so it holds on both surfaces.
+   */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%239aa0aa' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px;
+}
+
+.bda-select:hover {
+  border-color: var(--bda-accent-muted);
+}
+
+/* The dropdown list itself is painted by the browser, which reads
+ * `color-scheme` from `:root` — so the options follow the theme too. */
+.bda-select option {
+  color: var(--bda-text-primary);
+  background: var(--bda-surface-raised);
+}
+
+/*
+ * A checkbox and its label as one target.
+ *
+ * `accent-color` themes the native control, which keeps its focus ring, its
+ * hit area and its indeterminate state. Do not rebuild it out of divs.
+ */
+.bda-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bda-space-2);
+  color: var(--bda-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.bda-checkbox input[type='checkbox'] {
+  accent-color: var(--bda-accent);
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.bda-checkbox:has(input:checked) {
+  color: var(--bda-text-primary);
+}
+
+.bda-checkbox:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A set of checkboxes — a multi-select. Also a `fieldset`; add
+ * `--inline` for a row instead of a column. */
+.bda-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bda-space-2);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.bda-checkboxes--inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--bda-space-3);
+}
+
+.bda-state {
+  padding: var(--bda-space-4);
+  color: var(--bda-text-secondary);
+}
+
+.bda-state--error {
+  color: var(--bda-negative);
+}
+
+.bda-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bda-table th,
+.bda-table td {
+  padding: var(--bda-space-2) var(--bda-space-3);
+  border-bottom: 1px solid var(--bda-grid);
+  text-align: left;
+}
+
+.bda-table th {
+  color: var(--bda-text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bda-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.bda-table th[aria-sort='ascending']::after {
+  content: ' ↑';
+  color: var(--bda-accent);
+}
+
+.bda-table th[aria-sort='descending']::after {
+  content: ' ↓';
+  color: var(--bda-accent);
+}
+
+.bda-table td.bda-numeric,
+.bda-table th.bda-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A refetch in progress should not make the table jump or flash. */
+.bda-table--stale {
+  opacity: 0.6;
+  transition: opacity 120ms ease-in;
+}
+
+/*
+ * Observable Plot output.
+ *
+ * Plot renders its own SVG with inline styles for marks, but takes its text
+ * colour and font from the container — so these two rules are what make a
+ * chart match the rest of the app instead of defaulting to black Helvetica.
+ */
+.bda-chart {
+  color: var(--bda-text-secondary);
+  font-family: var(--bda-font-family);
+}
+
+.bda-chart svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* --- the sample app's own layout; replace along with App.tsx --- */
+
+.sample-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--bda-space-4);
+  margin-bottom: var(--bda-space-5);
+}
+
+/* Announced, never shown. For a `legend` or a label the layout has no room
+ * for. `clip-path` rather than `display: none`, which would remove it from the
+ * accessibility tree along with everything else. */
+.bda-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sample-metrics {
+  display: flex;
+  gap: var(--bda-space-5);
+  margin-bottom: var(--bda-space-5);
+}
+
+.sample-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--bda-space-4);
+  margin-bottom: var(--bda-space-4);
+}
