@@ -172,19 +172,30 @@ export function App() {
     }
   }, [days])
 
+  // A conversion rate that never leaves a three-point band needs a tight axis,
+  // and a tight axis rules out an area fill: shading from a baseline the chart
+  // does not actually show turns a 0.4-point wobble into a mountain. Line only,
+  // and the card says where the axis starts.
+  const trendFloor =
+    days === undefined ? 0 : Math.min(...days.map((row) => row.rate)) - 0.4
+  const trendCeiling =
+    days === undefined ? 0 : Math.max(...days.map((row) => row.rate)) + 0.4
+
   const trend = useMemo(
     () =>
       days && {
-        marginLeft: 44,
-        y: { label: null, tickFormat: (value: number) => `${value.toFixed(0)}%`, grid: true },
+        marginLeft: 48,
+        y: {
+          label: null,
+          domain: [trendFloor, trendCeiling],
+          tickFormat: (value: number) => `${value.toFixed(1)}%`,
+          grid: true,
+        },
         x: { label: null },
         marks: [
-          Plot.areaY(days, {
-            x: 'day',
-            y: 'rate',
-            fill: 'var(--bda-chart-1)',
-            fillOpacity: 0.1,
-            curve: 'monotone-x',
+          Plot.ruleY([days.reduce((sum, row) => sum + row.rate, 0) / days.length], {
+            stroke: 'var(--bda-text-secondary)',
+            strokeDasharray: '3,4',
           }),
           Plot.lineY(days, {
             x: 'day',
@@ -196,29 +207,34 @@ export function App() {
           }),
         ],
       },
-    [days],
+    [days, trendFloor, trendCeiling],
   )
 
   // Both breakdowns are baselined below the worst value, which is why each
   // chart carries a note saying so.
   const ranked = (rows: Slice[], colour: string) => {
     const floor = Math.min(...rows.map((row) => row.rate)) - 0.4
+    const ordered = [...rows].sort((a, b) => b.rate - a.rate)
     return {
-      marginLeft: 116,
-      height: 30 * rows.length + 40,
+      marginLeft: 122,
       x: {
         label: null,
         domain: [floor, Math.max(...rows.map((row) => row.rate)) + 0.1],
         tickFormat: (value: number) => `${value.toFixed(1)}%`,
       },
-      y: { label: null },
+      // Ordering comes from the data, not from Plot's sort: the bars are drawn
+      // as x1..x2 spans, and there is no single `x` for sort to order them by.
+      y: { label: null, domain: ordered.map((row) => row.name) },
       marks: [
-        Plot.barX(rows, {
-          x: 'rate',
+        Plot.barX(ordered, {
+          // x1 is the axis floor. A plain `x` would start every bar at zero,
+          // far outside a domain that begins at 75% — and chart SVGs are
+          // overflow:visible, so those bars paint across the rest of the page.
+          x1: floor,
+          x2: 'rate',
           y: 'name',
           fill: colour,
           rx: 3,
-          sort: { y: 'x', reverse: true },
           tip: true,
         }),
       ],
@@ -318,7 +334,10 @@ export function App() {
         <div className="bda-card__head">
           <div>
             <h2 className="bda-heading">Payment success rate over time</h2>
-            <p className="bda-note">Daily successful checkouts ÷ checkout attempts · {scope.toLowerCase()}</p>
+            <p className="bda-note">
+              Daily successful checkouts ÷ checkout attempts · {scope.toLowerCase()}. The axis starts at{' '}
+              {trend === undefined ? '—' : percent(trendFloor)}, not at zero; the dashed line is the period average.
+            </p>
           </div>
           <select
             className="bda-select"
