@@ -5,6 +5,14 @@
  * the data call rather than applied to the rows afterwards, metrics and charts
  * derived from whatever came back, and Observable Plot for the drawing.
  *
+ * **Each widget waits for its own query.** The layout — header, controls,
+ * cards, headings — renders on the first paint and never unmounts; a card
+ * whose rows have not arrived shows a skeleton the size of what is coming.
+ * That matters more here than in an ordinary page, because an app runs inside
+ * a frame inside the viewer: gate the whole app on `if (data === undefined)`
+ * and the reader gets a third consecutive blank screen, after the viewer's own
+ * load and the frame's. Never early-return a `Loading…` from the top of `App`.
+ *
  * The three controls are also the three shapes worth knowing, and which one to
  * reach for is a question about the options, not about taste:
  *
@@ -21,14 +29,15 @@
  * wires to the `in` filter operator rather than to a parameter. See
  * README-FOR-AGENTS.md.
  *
- * The only stand-in is `queryStandIn` below, which fakes the data call because
- * a template cannot know which queries your app will declare. Everything else
- * is the real pattern.
+ * The only stand-in is `usePretendQuery` below, which fakes the data call
+ * because a template cannot know which queries your app will declare.
+ * Everything else is the real pattern.
  */
 
 import * as Plot from '@observablehq/plot'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Chart } from './components/Chart.js'
+import { SkeletonChart, SkeletonMetric } from './components/Skeleton.js'
 import { context } from './studio/context.js'
 
 type Row = { month: Date; revenue: number; cups: number }
@@ -49,29 +58,7 @@ const REGION_SHARE: Record<Region, number> = {
   Central: 0.12,
 }
 
-/**
- * DELETE THIS, and use `useAppQuery` instead.
- *
- * It exists only so the sample's controls do something. Your app declares its
- * queries in `bda.manifest.json` and calls:
- *
- *   const monthly = useAppQuery('revenue_by_month', {
- *     parameters: { year, region },
- *   })
- *
- *   if (monthly.error !== null) {
- *     return <div className="bda-state bda-state--error">{monthly.error.message}</div>
- *   }
- *   // Narrow on `data`, not `isPending` — with more than one query the flags
- *   // do not convince TypeScript that `data` is present.
- *   if (monthly.data === undefined) return <div className="bda-state">Loading…</div>
- *   const rows = toObjects(monthly.data)
- *
- * Note where the filter goes: into `parameters`, so the service narrows the
- * data. Never filter the returned rows in the component — the service is what
- * knows how much data there is.
- */
-function queryStandIn(year: Year, region: Region): Row[] {
+function sampleRows(year: Year, region: Region): Row[] {
   // Offsets from the start of 2025, so each year is a genuinely different
   // slice rather than the same twelve numbers with a different label.
   const offsets =
@@ -86,6 +73,46 @@ function queryStandIn(year: Year, region: Region): Row[] {
     revenue: Math.round((120_000 + Math.sin(offset / 1.7) * 45_000 + offset * 6_800) * share),
     cups: Math.round((38_000 + Math.cos(offset / 2.1) * 9_000 + offset * 900) * share),
   }))
+}
+
+/**
+ * DELETE THIS, and use `useAppQuery` instead.
+ *
+ * It exists only so the sample's controls do something, and so the skeletons
+ * below are actually exercised — a stand-in that returned instantly would let
+ * a loading bug ship unnoticed. The latency is deliberate and roughly what a
+ * real semantic query costs.
+ *
+ * Your app declares its queries in `bda.manifest.json` and calls:
+ *
+ *   const monthly = useAppQuery('revenue_by_month', {
+ *     parameters: { year, region },
+ *   })
+ *
+ * The return shape below is the part that matters: `useAppQuery` gives you the
+ * same `{ data, error }`, so swapping it in changes the call and nothing else.
+ *
+ * Note where the filter goes: into `parameters`, so the service narrows the
+ * data. Never filter the returned rows in the component — the service is what
+ * knows how much data there is.
+ */
+function usePretendQuery(year: Year, region: Region): { data: Row[] | undefined; error: Error | null } {
+  const [data, setData] = useState<Row[]>()
+
+  useEffect(() => {
+    let cancelled = false
+    // Hold the previous rows rather than blanking on every filter change —
+    // `useAppQuery` does this for you with `placeholderData: keepPreviousData`.
+    const timer = setTimeout(() => {
+      if (!cancelled) setData(sampleRows(year, region))
+    }, 900)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [year, region])
+
+  return { data, error: null }
 }
 
 const MIX = [
@@ -109,59 +136,64 @@ export function App() {
 
   // The filters are inputs to the data call, which is why everything below
   // recomputes when they change.
-  const rows = useMemo(() => queryStandIn(year, region), [year, region])
+  const { data: rows, error } = usePretendQuery(year, region)
+  const pending = rows === undefined
 
-  const revenue = rows.reduce((sum, row) => sum + row.revenue, 0)
-  const cups = rows.reduce((sum, row) => sum + row.cups, 0)
-  const meanRevenue = rows.length === 0 ? 0 : revenue / rows.length
+  const revenue = rows?.reduce((sum, row) => sum + row.revenue, 0) ?? 0
+  const cups = rows?.reduce((sum, row) => sum + row.cups, 0) ?? 0
+  const meanRevenue = rows === undefined || rows.length === 0 ? 0 : revenue / rows.length
 
   // Plot options are memoised on the data, so a chart is rebuilt when the
-  // rows change and not on every render.
+  // rows change and not on every render. `undefined` while the query is in
+  // flight, which is the signal each card uses to show its skeleton.
   const revenueByMonth = useMemo(
-    () => ({
-      y: { label: null, tickFormat: (value: number) => `${Math.round(value / 1_000)}K` },
-      x: { label: null, type: 'band' as const, tickFormat: '%b %y' },
-      marks: [
-        Plot.barY(rows, { x: 'month', y: 'revenue', fill: 'var(--bda-chart-1)', rx: 3, tip: true }),
-        // The checkbox adds a mark; it does not re-request anything.
-        ...(average
-          ? [
-              Plot.ruleY([meanRevenue], {
-                stroke: 'var(--bda-text-secondary)',
-                strokeDasharray: '3,4',
-              }),
-            ]
-          : []),
-      ],
-    }),
+    () =>
+      rows && {
+        y: { label: null, tickFormat: (value: number) => `${Math.round(value / 1_000)}K` },
+        x: { label: null, type: 'band' as const, tickFormat: '%b %y' },
+        marks: [
+          Plot.barY(rows, { x: 'month', y: 'revenue', fill: 'var(--bda-chart-1)', rx: 3, tip: true }),
+          // The checkbox adds a mark; it does not re-request anything.
+          ...(average
+            ? [
+                Plot.ruleY([meanRevenue], {
+                  stroke: 'var(--bda-text-secondary)',
+                  strokeDasharray: '3,4',
+                }),
+              ]
+            : []),
+        ],
+      },
     [rows, average, meanRevenue],
   )
 
   const cupsTrend = useMemo(
-    () => ({
-      y: { label: null, tickFormat: (value: number) => `${Math.round(value / 1_000)}K` },
-      x: { label: null },
-      marks: [
-        Plot.areaY(rows, {
-          x: 'month',
-          y: 'cups',
-          fill: 'var(--bda-chart-2)',
-          fillOpacity: 0.16,
-          curve: 'catmull-rom',
-        }),
-        Plot.lineY(rows, {
-          x: 'month',
-          y: 'cups',
-          stroke: 'var(--bda-chart-2)',
-          strokeWidth: 2,
-          curve: 'catmull-rom',
-          tip: true,
-        }),
-      ],
-    }),
+    () =>
+      rows && {
+        y: { label: null, tickFormat: (value: number) => `${Math.round(value / 1_000)}K` },
+        x: { label: null },
+        marks: [
+          Plot.areaY(rows, {
+            x: 'month',
+            y: 'cups',
+            fill: 'var(--bda-chart-2)',
+            fillOpacity: 0.16,
+            curve: 'catmull-rom',
+          }),
+          Plot.lineY(rows, {
+            x: 'month',
+            y: 'cups',
+            stroke: 'var(--bda-chart-2)',
+            strokeWidth: 2,
+            curve: 'catmull-rom',
+            tip: true,
+          }),
+        ],
+      },
     [rows],
   )
 
+  // Static data, so this one never has a pending state to show.
   const mix = useMemo(
     () => ({
       marginLeft: 92,
@@ -180,6 +212,12 @@ export function App() {
     }),
     [],
   )
+
+  // An error replaces the widgets, because there is nothing to fill them with.
+  // A *failure* is worth taking the layout down for; a slow query is not.
+  if (error !== null) {
+    return <div className="bda-state bda-state--error">{error.message}</div>
+  }
 
   return (
     <main>
@@ -232,20 +270,38 @@ export function App() {
         </div>
       </header>
 
-      <section className="sample-metrics">
-        <Metric value={compactMoney(revenue)} label="Revenue" />
-        <Metric value={`${Math.round(cups / 1_000)}K`} label="Cups sold" tone={2} />
-        <Metric value={`${rows.length}`} label="Months" tone={3} />
+      {/* `aria-busy` on the region is what a screen reader announces; the
+          skeleton blocks themselves are `aria-hidden`. */}
+      <section className="sample-metrics" aria-busy={pending}>
+        {pending ? (
+          <>
+            <SkeletonMetric />
+            <SkeletonMetric />
+            <SkeletonMetric />
+          </>
+        ) : (
+          <>
+            <Metric value={compactMoney(revenue)} label="Revenue" />
+            <Metric value={`${Math.round(cups / 1_000)}K`} label="Cups sold" tone={2} />
+            <Metric value={`${rows.length}`} label="Months" tone={3} />
+          </>
+        )}
       </section>
 
       <section className="sample-grid">
-        <div className="bda-card">
+        {/* The heading is outside the conditional on purpose: the reader can
+            see what is coming while it loads. */}
+        <div className="bda-card" aria-busy={revenueByMonth === undefined}>
           <h2 className="bda-heading">Monthly revenue</h2>
-          <Chart options={revenueByMonth} title="Revenue by month" />
+          {revenueByMonth === undefined ? (
+            <SkeletonChart />
+          ) : (
+            <Chart options={revenueByMonth} title="Revenue by month" />
+          )}
         </div>
-        <div className="bda-card">
+        <div className="bda-card" aria-busy={cupsTrend === undefined}>
           <h2 className="bda-heading">Cups sold trend</h2>
-          <Chart options={cupsTrend} title="Cups sold by month" />
+          {cupsTrend === undefined ? <SkeletonChart /> : <Chart options={cupsTrend} title="Cups sold by month" />}
         </div>
       </section>
 

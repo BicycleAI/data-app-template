@@ -322,6 +322,90 @@ body {
   color: var(--bda-negative);
 }
 
+/* Skeletons
+ *
+ * A widget renders its card immediately and puts one of these where its data
+ * will go, so the page never blanks while a query is in flight. See
+ * components/Skeleton.tsx.
+ *
+ * The shimmer is a gradient swept across the block rather than an opacity
+ * pulse: a pulse on several blocks at once reads as flashing, which is both
+ * uglier and a worse idea for anyone sensitive to it. Under
+ * `prefers-reduced-motion` it stops moving entirely and stays a flat fill,
+ * which still communicates "not content yet".
+ */
+
+.bda-skeleton {
+  display: block;
+  width: 100%;
+  height: 13px;
+  border-radius: calc(var(--bda-radius) / 3);
+  background-color: var(--bda-grid);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--bda-surface-overlay) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: bda-skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes bda-skeleton-sweep {
+  from {
+    background-position: -120% 0;
+  }
+  to {
+    background-position: 220% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bda-skeleton {
+    background-image: none;
+    animation: none;
+  }
+}
+
+.bda-skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bda-space-2);
+}
+
+.bda-skeleton-stack--metric {
+  gap: var(--bda-space-1);
+}
+
+/* Matches `.bda-chart`'s block behaviour, so swapping in the real chart moves
+ * nothing around it. */
+.bda-skeleton--chart {
+  height: 260px;
+  border-radius: calc(var(--bda-radius) / 2);
+}
+
+.bda-skeleton-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.bda-skeleton-table__row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  align-items: center;
+  gap: var(--bda-space-3);
+  /* The same vertical rhythm as a real `.bda-table` cell, so the header and
+   * rows land where the skeleton said they would. */
+  padding: var(--bda-space-2) var(--bda-space-3);
+  border-bottom: 1px solid var(--bda-grid);
+}
+
+.bda-skeleton-table__row:last-child {
+  border-bottom: 0;
+}
+
 .bda-table {
   width: 100%;
   border-collapse: collapse;

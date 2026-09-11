@@ -164,19 +164,47 @@ WHERE order_date >= :from AND order_date < :to
 ```tsx
 import { useAppQuery } from './studio/hooks.js'
 import { toObjects } from './studio/client.js'
+import { SkeletonChart } from './components/Skeleton.js'
 
 const query = useAppQuery('revenue_by_region', {
   parameters: { since: '2026-01-01' },
 })
 
-if (query.isPending) return <div className="bda-state">Loading…</div>
 if (query.error) return <div className="bda-state bda-state--error">{query.error.message}</div>
 
-const rows = toObjects(query.data)
+const rows = query.data === undefined ? undefined : toObjects(query.data)
 ```
 
+**Never early-return a `Loading…` from the top of a component that owns the
+layout.** Your app runs in a frame inside the viewer, so a blank while a query
+is in flight is the *third* empty screen the reader has sat through — the
+viewer loads, then the frame, then you. Render the layout on the first paint
+and let each widget fill itself in:
+
+```tsx
+<div className="bda-card" aria-busy={rows === undefined}>
+  <h2 className="bda-heading">Revenue by region</h2>
+  {rows === undefined ? <SkeletonChart /> : <Chart options={optionsFor(rows)} />}
+</div>
+```
+
+The heading sits outside the conditional deliberately: the reader can see what
+is coming while it loads. Size the skeleton to the content it stands in for —
+pass `<SkeletonChart height={...}>` the same height as the `<Chart>` — or the
+page jumps when the rows land. `Skeleton`, `SkeletonText`, `SkeletonChart`,
+`SkeletonMetric` and `SkeletonTable` are in `components/Skeleton.tsx`.
+
+Put `aria-busy` on the region, not on the blocks: the skeletons are
+`aria-hidden`, so a screen reader hears one "busy" instead of a pile of
+anonymous boxes.
+
+An **error** is different from a pending query — it replaces the widget, or the
+app, because there is nothing to fill the layout with. Taking the page down for
+a failure is right; taking it down for a slow query is not.
+
 **Narrow on `data`, not on `isPending`.** With more than one query, testing
-the flags does not convince TypeScript that either `data` is present:
+the flags does not convince TypeScript that either `data` is present. Keep the
+two queries independent so the faster card is not held back by the slower one:
 
 ```tsx
 const totals = useAppQuery('plan_totals', { parameters: { region } })
@@ -184,8 +212,10 @@ const monthly = useAppQuery('net_mrr_by_month', { parameters: { region } })
 
 const failure = totals.error ?? monthly.error
 if (failure !== null) return <div className="bda-state bda-state--error">{failure.message}</div>
-if (totals.data === undefined || monthly.data === undefined) return <div className="bda-state">Loading…</div>
-// both are QueryResult from here on
+
+// Each card checks its own query. Do NOT gate both on
+// `totals.data === undefined || monthly.data === undefined` — that makes every
+// card as slow as the slowest one.
 ```
 
 Filtering and sorting are just options — changing them refetches, and the
@@ -450,6 +480,7 @@ correct teardown:
 import * as Plot from '@observablehq/plot'
 import { useMemo } from 'react'
 import { Chart } from './components/Chart.js'
+import { SkeletonChart } from './components/Skeleton.js'
 import { toObjects } from './studio/client.js'
 import { useAppQuery } from './studio/hooks.js'
 
@@ -469,12 +500,11 @@ export function App() {
   }, [query.data])
 
   if (query.error !== null) return <div className="bda-state bda-state--error">{query.error.message}</div>
-  if (options === undefined) return <div className="bda-state">Loading…</div>
 
   return (
-    <div className="bda-card">
+    <div className="bda-card" aria-busy={options === undefined}>
       <h2 className="bda-heading">Monthly revenue</h2>
-      <Chart options={options} title="Revenue by month" />
+      {options === undefined ? <SkeletonChart /> : <Chart options={options} title="Revenue by month" />}
     </div>
   )
 }
@@ -482,6 +512,9 @@ export function App() {
 
 Points that matter:
 
+- **The card and its heading render immediately.** Only the chart area waits.
+  `useMemo` returning `undefined` while the query is in flight is the signal —
+  there is no separate `isPending` branch to keep in sync.
 - **Memoise the options.** Rebuilding them every render redraws the chart on
   every render.
 - **Colour marks with `var(--bda-chart-N)`** for a fixed colour, or set
