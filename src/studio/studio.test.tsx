@@ -13,10 +13,10 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataTable } from '../components/DataTable.js'
-import { runQuery, toObjects } from './client.js'
+import { fetchSummary, runQuery, toObjects } from './client.js'
 import { initContext } from './context.js'
 import { createQueryClient, stableKey } from './hooks.js'
-import type { QueryResult } from './types.js'
+import type { AppSummary, QueryResult } from './types.js'
 
 const RESULT: QueryResult = {
   columns: [
@@ -217,5 +217,55 @@ describe('the sample table', () => {
       </QueryClientProvider>,
     )
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Not declared.'))
+  })
+})
+
+describe('the summary', () => {
+  const PUBLISHED: AppSummary = {
+    headline: 'NetBanking is the only method below 75%',
+    bullets: ['NetBanking converted at 73.0% against 75.9% overall'],
+    range: { from: '2026-06-17', to: '2026-07-17' },
+    generatedAt: '2026-07-17T11:42:00Z',
+    generatedBy: 'u-alice',
+    writer: 'claude-opus-5',
+    factsDigest: 'abc123',
+    stale: false,
+  }
+
+  it('reads 204 as "no summary", not as a failure', async () => {
+    vi.stubGlobal('fetch', async () => new Response(null, { status: 204 }))
+    // A card that treated this as an error would show one on almost every app.
+    await expect(fetchSummary()).resolves.toBeNull()
+  })
+
+  it('sends the view token and asks for a staleness check by default', async () => {
+    const seen: string[] = []
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      seen.push(String(url))
+      expect((init.headers as Record<string, string>).authorization).toBe('Bearer bdav_test')
+      return new Response(JSON.stringify(PUBLISHED), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    const summary = await fetchSummary()
+    expect(summary?.headline).toBe(PUBLISHED.headline)
+    expect(seen[0]).toContain(`/api/data-apps/app_${'a'.repeat(32)}/summary?stale=true`)
+
+    await fetchSummary(false)
+    expect(seen[1]).toContain('stale=false')
+  })
+
+  it('turns a refusal into a code an app can branch on', async () => {
+    vi.stubGlobal(
+      'fetch',
+      async () =>
+        new Response(JSON.stringify({ error: { code: 'forbidden', message: 'Not yours.' } }), {
+          status: 403,
+          headers: { 'content-type': 'application/json' },
+        }),
+    )
+    await expect(fetchSummary()).rejects.toMatchObject({ code: 'forbidden', status: 403 })
   })
 })

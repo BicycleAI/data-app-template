@@ -69,15 +69,15 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --bda-surface-background: #15202b;
-  --bda-surface-raised: #212b36;
-  --bda-surface-overlay: #2b3844;
+  --bda-surface-background: #0a0e14;
+  --bda-surface-raised: #111820;
+  --bda-surface-overlay: #1a2430;
 
-  --bda-text-primary: #f4f4f4;
-  --bda-text-secondary: #b7bcc9;
+  --bda-text-primary: #f4f6f8;
+  --bda-text-secondary: #8d98a7;
 
-  --bda-border: #3b444d;
-  --bda-grid: #2b3844;
+  --bda-border: #1e2833;
+  --bda-grid: #1a2430;
 
   --bda-accent: #f8797f;
   --bda-accent-soft: #3a2529;
@@ -87,8 +87,8 @@
   --bda-negative: #f8797f;
 
   --bda-chart-1: #f8797f;
-  --bda-chart-2: #4fd3bd;
-  --bda-chart-3: #5fb0e3;
+  --bda-chart-2: #34d399;
+  --bda-chart-3: #38bdf8;
   --bda-chart-4: #f7b98f;
   --bda-chart-5: #9fe3d0;
   --bda-chart-6: #c29bec;
@@ -506,4 +506,200 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--bda-space-4);
   margin-bottom: var(--bda-space-4);
+}
+
+
+/* --- status, provenance and ranked rows --------------------------------- */
+
+/*
+ * A badge annotates the number beside it: what kind of figure it is, or how it
+ * moved. Tone is the reader's shortcut, so it has to mean something — `good`
+ * and `bad` are for direction, `info` for a neutral label. A badge with no tone
+ * is a label, not a judgement, and most badges should be exactly that.
+ */
+.bda-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bda-space-1);
+  padding: 2px 8px;
+  border-radius: var(--bda-radius-pill);
+  background: var(--bda-surface-overlay);
+  color: var(--bda-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.bda-badge--good {
+  background: color-mix(in srgb, var(--bda-positive) 14%, transparent);
+  color: var(--bda-positive);
+}
+
+.bda-badge--bad {
+  background: color-mix(in srgb, var(--bda-negative) 14%, transparent);
+  color: var(--bda-negative);
+}
+
+.bda-badge--info {
+  background: color-mix(in srgb, var(--bda-chart-3) 14%, transparent);
+  color: var(--bda-chart-3);
+}
+
+/* A live indicator earns its dot only if something actually refreshes. */
+.bda-live__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+  flex: none;
+}
+
+.bda-metric__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bda-space-3);
+}
+
+.bda-metric__hint {
+  display: block;
+  margin-top: var(--bda-space-1);
+  color: var(--bda-text-secondary);
+  font-size: 12px;
+}
+
+.bda-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--bda-space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--bda-space-3);
+}
+
+.bda-note {
+  margin: var(--bda-space-1) 0 0;
+  color: var(--bda-text-secondary);
+  font-size: 12px;
+  max-width: 80ch;
+}
+
+/*
+ * The AI summary an agent published for this app.
+ *
+ * Deliberately not styled as a chart card: it is prose somebody generated, and
+ * the provenance row underneath is part of the content, not decoration. A
+ * reader who cannot see who wrote it, over what window, and whether the numbers
+ * have moved since has no way to decide how much to trust it.
+ */
+.bda-summary {
+  border: 1px solid var(--bda-border);
+  border-radius: var(--bda-radius);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bda-chart-3) 6%, var(--bda-surface-raised)),
+    var(--bda-surface-raised)
+  );
+  padding: var(--bda-space-4) var(--bda-space-5);
+}
+
+.bda-summary__headline {
+  margin: var(--bda-space-2) 0 var(--bda-space-3);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.bda-summary__bullets {
+  margin: 0;
+  padding-left: 1.1em;
+  display: grid;
+  gap: var(--bda-space-2);
+}
+
+.bda-summary__bullets li {
+  color: var(--bda-text-primary);
+  line-height: 1.5;
+}
+
+.bda-summary__bullets li::marker {
+  color: var(--bda-chart-3);
+}
+
+.bda-summary__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--bda-space-3);
+  flex-wrap: wrap;
+  margin-top: var(--bda-space-4);
+  padding-top: var(--bda-space-3);
+  border-top: 1px solid var(--bda-border);
+  color: var(--bda-text-secondary);
+  font-size: 12px;
+}
+
+/* A ranked row's share of the metric, as a track behind the number. */
+.bda-bar-track {
+  display: block;
+  min-width: 56px;
+  height: 6px;
+  border-radius: var(--bda-radius-pill);
+  background: var(--bda-grid);
+  overflow: hidden;
+}
+
+.bda-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--bda-radius-pill);
+  background: var(--bda-chart-3);
+}
+
+/* A row the reader should look at twice. Tinted, never only coloured text. */
+.bda-table tbody tr.bda-row--flagged {
+  background: color-mix(in srgb, var(--bda-negative) 7%, transparent);
+}
+
+.bda-table tbody tr.bda-row--flagged td:first-child {
+  box-shadow: inset 2px 0 0 var(--bda-negative);
+}
+
+.bda-neg {
+  color: var(--bda-negative);
+}
+
+.bda-pos {
+  color: var(--bda-positive);
+}
+
+/* --- the sample dashboard's layout; replace along with App.tsx --- */
+
+.sample-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--bda-space-4);
+  margin-bottom: var(--bda-space-4);
+}
+
+.sample-kpis .bda-card {
+  padding: var(--bda-space-4);
+}
+
+.sample-band {
+  margin-bottom: var(--bda-space-4);
+}
+
+.sample-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bda-space-4);
+  flex-wrap: wrap;
+  margin-top: var(--bda-space-5);
+  padding-top: var(--bda-space-4);
+  border-top: 1px solid var(--bda-border);
+  color: var(--bda-text-secondary);
+  font-size: 12px;
 }

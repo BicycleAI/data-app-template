@@ -9,9 +9,9 @@
  */
 
 import { keepPreviousData, QueryClient, type UseQueryResult, useQuery } from '@tanstack/react-query'
-import { runQuery } from './client.js'
+import { fetchSummary, runQuery } from './client.js'
 import { context } from './context.js'
-import type { BdaError, QueryOptions, QueryResult } from './types.js'
+import type { AppSummary, BdaError, QueryOptions, QueryResult } from './types.js'
 
 /**
  * A stable string for any option value.
@@ -73,5 +73,31 @@ export function createQueryClient(): QueryClient {
         refetchOnReconnect: true,
       },
     },
+  })
+}
+
+/**
+ * The AI summary an agent published for this app.
+ *
+ * `data` is `null` — not `undefined` — when no summary exists, so a caller can
+ * tell "still loading" from "there is nothing to show" and render the card only
+ * in the second case.
+ *
+ * Longer `staleTime` than a query on purpose: a summary changes when a person
+ * runs the studio's summary tools, not when the data moves, so refetching it on
+ * the cadence of a chart would be pure noise.
+ */
+export function useAppSummary(
+  options: { checkStale?: boolean; enabled?: boolean } = {},
+): UseQueryResult<AppSummary | null, BdaError> {
+  const { appId } = context()
+  const { checkStale = true, enabled = true } = options
+
+  return useQuery<AppSummary | null, BdaError>({
+    queryKey: ['bda', appId, 'summary', checkStale],
+    queryFn: ({ signal }) => fetchSummary(checkStale, signal),
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: (attempt, error) => (error.status < 500 ? false : attempt < 2),
   })
 }

@@ -235,6 +235,45 @@ const query = useAppQuery('revenue_by_region', {
 Filter operators: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in` (pass `values`),
 `contains` (strings).
 
+## The AI summary
+
+An app can show prose an agent wrote about it. The app does not generate that
+prose and holds no credential to store it — you do, over MCP, with the studio's
+`summary_*` tools:
+
+1. `summary_facts(app_id, range_from, range_to)` runs **this app's declared
+   queries** and returns totals, first-to-last change, and the best and worst
+   slice of each dimension, ending with a `digest`.
+2. Write a headline and up to 6 bullets from those numbers.
+3. `summary_publish(app_id, headline, bullets, range_from, range_to, writer,
+   facts_digest)` — pass the digest back.
+
+The app just reads it:
+
+```tsx
+import { useAppSummary } from './studio/hooks.js'
+import { SummaryCard } from './components/SummaryCard.js'
+
+const summary = useAppSummary()
+
+<SummaryCard summary={summary.error !== null ? null : summary.data} />
+```
+
+`data` is `null` — not `undefined` — when no agent has written one, so you can
+tell "still loading" from "there is nothing here". **Render nothing in that
+case.** Most apps have no summary, and a card explaining its own absence is
+noise on every one of them; `SummaryCard` already does this.
+
+The digest is why `stale` exists. The service re-derives the facts on read and
+compares: `true` means the data moved since the prose was written, `false` means
+it did not, and `null` means nobody can tell because the summary was published
+without a digest. Show the three states as three states — rendering `null` as
+"current" claims something the service never said.
+
+Write the bullets from the figures `summary_facts` returned and nothing else. A
+summary that describes a number the app does not show is worse than no summary,
+because a reader has no way to check it.
+
 ## Filters and controls
 
 Which control to use is a question about the options, not about taste. Count
