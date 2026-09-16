@@ -2,12 +2,18 @@
 
 This file is for agents changing this repository. If you are designing a data app for a user, stop: load `skills/ask-show-ship/SKILL.md` and use the `design_*` tools on the bicycle-studio MCP instead.
 
+## Two ways to build a data app
+
+**Compose from a spec (default).** `kit compose spec.json` → `bundle.zip`. No per-app code. The runtime is built once; each app is that bundle with `window.__DATA_APP_SPEC = {...}` prepended. Use this for most apps.
+
+**Hand-build from `template/` (escape hatch).** For apps that need something the recipes cannot express. Rules and invariants for hand-building are in `template/README-FOR-AGENTS.md`.
+
 ## What this repo is
 
 Recipes + templates + a data-driven runtime + the composer that turns a DataAppSpec into a published Bicycle data app. Two paths exist:
 
 - **compose** (default): `kit compose spec.json` → `bundle.zip`. No per-app code. The runtime is built once; each app is that bundle with `window.__DATA_APP_SPEC = {...}` prepended.
-- **hand-build** (escape hatch): `template/` is the original boilerplate for an engineer writing React by hand.
+- **hand-build** (escape hatch): `template/` is the original boilerplate for an engineer writing React by hand. See `template/README-FOR-AGENTS.md` for rules.
 
 **This repository owns how an app is created; the service owns who may create it and where it is stored.** The service (`bicycle-studio-api`) reads this kit's JSON — schema, recipes, templates, datasets — and renders it. It holds no knowledge of what a recipe, a family or a query is. Adding a family or changing a query must therefore be a change *here* and a kit release, never a code change there.
 
