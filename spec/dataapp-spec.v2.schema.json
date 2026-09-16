@@ -176,7 +176,8 @@
         "min_bookers": { "type": "integer", "minimum": 0, "default": 0 },
         "trim_quartile": { "type": "boolean", "default": true },
         "compare_periods": { "type": "integer", "minimum": 1, "maximum": 90, "default": 7, "description": "Core verdict/kpis: last N periods vs the N before." },
-        "targets": { "type": "object", "additionalProperties": { "type": "number" }, "description": "Optional target per measure id for the core verdict." }
+        "targets": { "type": "object", "additionalProperties": { "type": "number" }, "description": "Optional target per measure id for the core verdict." },
+        "targets_blob": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$", "description": "A declared blob holding {measure_id: target} (optionally per segment: {measure_id: {\"<dim>=<value>\": target}}); overrides rules.targets when present." }
       }
     },
     "theme": {
@@ -185,6 +186,37 @@
       "properties": {
         "accent": { "enum": ["blue", "teal", "purple", "amber", "coral"], "default": "blue" },
         "follow": { "enum": ["system", "light", "dark"], "default": "system" }
+      }
+    },
+    "store": {
+      "type": "object",
+      "description": "Persistence the app may use at runtime, brokered by the host and scoped to this app and tenant. Cache: small, shared, expiring values (a saved target, an annotation, a memoised result). Blobs: large read-only objects the builder uploads once (lookup tables, targets per segment, model weights).",
+      "additionalProperties": false,
+      "properties": {
+        "cache": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ttl_seconds": { "type": "integer", "minimum": 60, "maximum": 2592000, "default": 86400 },
+            "max_value_bytes": { "type": "integer", "minimum": 1024, "maximum": 262144, "default": 65536 },
+            "writable_by": { "enum": ["viewer", "builder"], "default": "viewer", "description": "viewer: anyone who can open the app may write (shared state). builder: only apps:write." }
+          }
+        },
+        "blobs": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "purpose"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+              "purpose": { "type": "string", "maxLength": 200 },
+              "kind": { "enum": ["json", "csv", "binary"], "default": "json" },
+              "max_bytes": { "type": "integer", "minimum": 1024, "maximum": 104857600, "default": 10485760 }
+            }
+          }
+        }
       }
     },
     "panels": {

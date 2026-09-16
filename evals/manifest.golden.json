@@ -64,12 +64,12 @@
   },
   "retail-refund-watch.json": {
     "panels": [
+      "verdict",
       "kpis",
       "breakdown",
       "trend",
       "heatmap",
-      "trend",
-      "verdict"
+      "trend"
     ],
     "queries": {
       "totals": "SELECT refund_count, refund_rate_pct, orders_total FROM m_retail_demo WHERE event_time >= :from AND event_time < :to",

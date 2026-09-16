@@ -117,6 +117,11 @@ export function validateSpec(spec) {
     if (claimed.has(control.kind) && !provided.has(control.kind)) errors.push(`/controls "${control.kind}" needs a family that provides it`)
   }
 
+  const blobNames = new Set((spec.store?.blobs ?? []).map((blob) => blob.name))
+  if (blobNames.size !== (spec.store?.blobs ?? []).length) errors.push('/store/blobs names must be unique')
+  const targetsBlob = spec.rules?.targets_blob
+  if (targetsBlob !== undefined && !blobNames.has(targetsBlob)) errors.push(`/rules/targets_blob "${targetsBlob}" is not a declared blob in /store/blobs`)
+
   const columns = spec.measures.map((measure) => measure.column)
   if (new Set(columns).size !== columns.length) errors.push('/measures two measures bind the same column')
   for (const dimension of dims) if (columns.includes(dimension)) errors.push(`"${dimension}" is both a measure column and a dimension`)

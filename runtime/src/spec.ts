@@ -79,6 +79,14 @@ export type Rules = {
   readonly trim_quartile?: boolean
   readonly compare_periods?: number
   readonly targets?: Readonly<Record<string, number>>
+  /** A declared blob holding targets; overrides `targets` when present. */
+  readonly targets_blob?: string
+}
+
+/** Persistence the app may use, brokered by the host and scoped to this app. */
+export type StoreSpec = {
+  readonly cache?: { readonly ttl_seconds?: number; readonly max_value_bytes?: number; readonly writable_by?: 'viewer' | 'builder' }
+  readonly blobs?: readonly { readonly name: string; readonly purpose: string; readonly kind?: 'json' | 'csv' | 'binary'; readonly max_bytes?: number }[]
 }
 
 export type Spec = {
@@ -100,6 +108,7 @@ export type Spec = {
   readonly words?: Readonly<Record<string, string>>
   readonly rules?: Rules
   readonly theme?: { readonly accent?: 'blue' | 'teal' | 'purple' | 'amber' | 'coral'; readonly follow?: 'system' | 'light' | 'dark' }
+  readonly store?: StoreSpec
   readonly panels?: readonly Panel[]
 }
 
