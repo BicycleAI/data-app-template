@@ -25,6 +25,7 @@ Everything you produce is a **DataAppSpec v2** (schema at the end): a generic co
 | Go live | `dataapp_publish(app_id, version)` | Only after an explicit yes. |
 | Revise | `design_spec(app_id)` → edit → `design_compose` | Change the spec, never the code. |
 | Exec view | `design_brief(app_id)` | One-screen derivation of any published spec. |
+| Upload a blob | `design_blob_upload(app_id, name, file)` | Put a declared blob in the app's blob address; `design_blob_list(app_id)` to see what is there. |
 
 Never call `dataapp_upload_url`, `dataapp_complete_upload` or write a manifest. Those are the engineer's path.
 
@@ -93,6 +94,25 @@ Measures are the spec's measure ids (from the model card), or, with the `ab_test
 | What happens where **[cut]** meets **[cut]**? | `heatmap` |
 | Which few segments matter most? | `extremes` |
 | How long, how split, how many? | `overview` |
+
+
+## Persistence an app may declare
+
+Most apps need none. Two kinds exist, and the spec declares them under `store`; nothing undeclared is served.
+
+| | `store.cache` | `store.blobs` |
+| --- | --- | --- |
+| What it is | A small, shared, expiring key-value space (Redis) scoped to this app in this tenant | A blob address per app for large read-only objects |
+| Good for | A target a PM sets and every viewer should see; an annotation; a memoised result; "last known good" | Lookup tables, targets per segment, reference mappings, model weights, precomputed tables |
+| Size | ≤ 64 KB per value (default), TTL 1 minute – 30 days | Up to 100 MB per blob, ≤ 16 blobs |
+| Who writes | Viewers (default, shared state) or only builders (`writable_by: "builder"`) | Only builders, through `design_blob_upload` |
+| Who reads | Anyone who can open the app | Anyone who can open the app |
+
+Propose a **blob** when a question needs data the model does not hold — "compare against our targets", "map codes to names", "use last quarter's forecast". Ask what the file is, declare it with a `name` and `purpose`, then upload it with `design_blob_upload(app_id, name, file)` after compose. The recipe `verdict` reads a blob named in `rules.targets_blob` as `{ "<measure id>": target }`.
+
+Propose the **cache** when several viewers should see one another's changes — a threshold, a chosen baseline, a note. Say plainly that it is shared and expires; the frame has no viewer identity, so nothing per-person can live there.
+
+Never propose either for: raw event data (that is what queries are for), anything personal, secrets or tokens, or files the tenant has not approved for the app. Storage is per tenant and per app; two apps never share a namespace.
 
 ## Stop rules
 

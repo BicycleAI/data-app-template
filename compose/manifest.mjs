@@ -13,13 +13,21 @@ import { datasetsFor } from './catalogue.mjs'
 import { renderDatasets } from './datasets.mjs'
 
 export function deriveManifest(spec) {
-  return {
+  const manifest = {
     appId: spec.appId ?? '',
     entry: 'app.js',
     styles: ['app.css'],
     title: spec.title,
     queries: renderDatasets(spec, datasetsFor(spec)),
   }
+  // Persistence is declared like queries: only what the manifest names is served.
+  if (spec.store?.cache !== undefined) {
+    manifest.cache = { ttlSeconds: spec.store.cache.ttl_seconds ?? 86400, maxValueBytes: spec.store.cache.max_value_bytes ?? 65536, writableBy: spec.store.cache.writable_by ?? 'viewer' }
+  }
+  if ((spec.store?.blobs ?? []).length > 0) {
+    manifest.blobs = spec.store.blobs.map((blob) => ({ name: blob.name, kind: blob.kind ?? 'json', maxBytes: blob.max_bytes ?? 10485760, purpose: blob.purpose }))
+  }
+  return manifest
 }
 
 /**
@@ -30,6 +38,9 @@ export function deriveManifest(spec) {
 export function checkManifest(manifest) {
   const errors = []
   if (manifest.queries.length > 32) errors.push(`${manifest.queries.length} queries; the limit is 32`)
+  const blobNames = (manifest.blobs ?? []).map((blob) => blob.name)
+  if (new Set(blobNames).size !== blobNames.length) errors.push('blob names must be unique')
+  if (blobNames.length > 16) errors.push(`${blobNames.length} blobs; the limit is 16`)
   const ids = new Set()
   for (const query of manifest.queries) {
     if (ids.has(query.id)) errors.push(`duplicate query id "${query.id}"`)

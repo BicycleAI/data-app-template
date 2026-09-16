@@ -25,6 +25,10 @@
     { "say": "Is the refund rate within target?", "recipe": "verdict", "bind": { "measure": "refund_rate" } }
   ],
   "controls": [ { "kind": "measure" }, { "kind": "dimensions" }, { "kind": "heatmap_axes" } ],
-  "rules": { "compare_periods": 7, "targets": { "refund_rate": 5 } },
-  "theme": { "accent": "coral", "follow": "system" }
+  "rules": { "compare_periods": 7, "targets": { "refund_rate": 5 }, "targets_blob": "targets" },
+  "theme": { "accent": "coral", "follow": "system" },
+  "store": {
+    "cache": { "ttl_seconds": 604800, "writable_by": "viewer" },
+    "blobs": [ { "name": "targets", "purpose": "Refund-rate target per measure, set by the PM; the verdict compares against it.", "kind": "json" } ]
+  }
 }

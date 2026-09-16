@@ -23,6 +23,9 @@
   ],
   "slots": [
     {
+      "recipe": "verdict"
+    },
+    {
       "recipe": "kpis",
       "always": true,
       "bind": {
