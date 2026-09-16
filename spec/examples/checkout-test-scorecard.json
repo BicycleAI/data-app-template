@@ -1,9 +1,8 @@
 {
   "version": 2,
-  "appId": "app_f921dee874a6452586c3",
-  "model": "rnAXPGFf",
-  "title": "Is my experiment winning?",
-  "decision": "Tell me in one line whether the variant is winning, and which channel is carrying it.",
+  "model": "m_checkout_demo",
+  "title": "Is my checkout test winning?",
+  "decision": "Tell me in one line whether the treatment is winning, and which market is carrying it.",
   "persona": "biz",
   "template": "scorecard",
   "time": {
@@ -11,22 +10,22 @@
     "to": "tomorrow"
   },
   "entity": {
-    "field": "seti_id",
-    "label": "Experiment",
+    "field": "test_id",
+    "label": "Test",
     "type": "number",
     "list": {
-      "label": "seti_tag_name",
-      "description": "seti_desc",
-      "status": "status",
-      "group": "primary_product_desc",
-      "end": "test_end_date",
-      "rank": "bookers_v2"
+      "label": "test_name",
+      "description": "test_desc",
+      "status": "test_status",
+      "group": "test_group",
+      "end": "test_end",
+      "rank": "unique_bookers"
     }
   },
   "measures": [
     {
       "id": "bookers",
-      "column": "bookers_v2",
+      "column": "unique_bookers",
       "label": "Bookers",
       "format": "number",
       "good": "up",
@@ -34,49 +33,49 @@
     },
     {
       "id": "orders",
-      "column": "gross_orders_v2",
-      "label": "Gross orders",
+      "column": "order_count",
+      "label": "Orders",
       "format": "number",
       "good": "up"
     },
     {
       "id": "value",
-      "column": "total_net_value_v2",
+      "column": "order_value",
       "label": "Net value",
       "format": "currency",
       "good": "up"
     },
     {
       "id": "participants_arm",
-      "column": "variant_participants_v2",
+      "column": "arm_participants",
       "label": "Variant participants"
     },
     {
       "id": "participants_control",
-      "column": "default_participants_v2",
-      "label": "Default participants"
+      "column": "control_participants",
+      "label": "Control participants"
     },
     {
       "id": "participants_total",
-      "column": "total_participants_v2",
+      "column": "total_participants",
       "label": "Total participants"
     }
   ],
   "dimensions": [
     {
-      "field": "channel",
-      "label": "Channel"
+      "field": "device",
+      "label": "Device"
     },
     {
-      "field": "device_desc",
-      "label": "Device"
+      "field": "market",
+      "label": "Market"
     }
   ],
   "family": {
     "kind": "ab_test",
     "arms": {
-      "field": "seti_variant_name",
-      "control": "DEFAULT"
+      "field": "variant_name",
+      "control": "CONTROL"
     },
     "roles": {
       "bookers": "bookers",
@@ -89,24 +88,23 @@
       }
     },
     "context": {
-      "description": "seti_desc",
-      "tag": "seti_tag_name",
-      "status": "status",
-      "end": "test_end_date",
+      "description": "test_desc",
+      "status": "test_status",
+      "end": "test_end",
       "as_of": "data_as_of",
-      "group": "primary_product_desc"
+      "group": "test_group"
     }
   },
   "questions": [
     {
-      "say": "Is the variant beating default on extra bookings a day?",
+      "say": "Is the treatment beating control on extra bookings a day?",
       "recipe": "verdict",
       "bind": {
         "measure": "NIBPD"
       }
     },
     {
-      "say": "Which channel carries it?",
+      "say": "Which market carries it?",
       "recipe": "lift_by_dimension",
       "bind": {
         "dims": "first",

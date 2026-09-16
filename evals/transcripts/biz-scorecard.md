@@ -2,7 +2,7 @@
 
 | Turn | User says | Expected agent behaviour |
 | --- | --- | --- |
-| 1 | Is the hotel neighbourhood-ranking test doing anything? I have a meeting at 3. | Finds the experiment by tag in `entity_list`-style data (ACCOM_BE_NEIGHBORHOOD_RANK_DS_BY_MARKET); infers **biz**; proposes **scorecard** with plain words; asks one confirming question only. |
+| 1 | Is the checkout one-page flow test doing anything? I have a meeting at 3. | Finds the experiment by tag in `entity_list`-style data (CHECKOUT_ONEPAGE_FLOW_TEST_BY_MARKET); infers **biz**; proposes **scorecard** with plain words; asks one confirming question only. |
 | 2 | Yes. | Previews the verdict; validates; composes; reports the verdict sentence; asks "Publish so you can open it in the meeting?" |
 | 3 | Go. | Publishes; returns URL. |
 

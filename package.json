@@ -9,11 +9,13 @@
     "build": "tsc -p tsconfig.json --noEmit && vite build --config runtime/vite.config.ts && node runtime/scripts/assert-dist.mjs runtime/dist",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "compose": "node compose/cli.mjs",
-    "check": "npm run typecheck && node compose/cli.mjs validate spec/examples/*.json && node compose/cli.mjs compose spec/examples/seti-report.json --dry-run"
+    "check": "npm run typecheck && node compose/cli.mjs validate spec/examples/*.json && node compose/cli.mjs compose spec/examples/checkout-test-report.json --dry-run"
   },
   "dependencies": {
     "@observablehq/plot": "^0.6.17",
     "@tanstack/react-query": "^5.102.8",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

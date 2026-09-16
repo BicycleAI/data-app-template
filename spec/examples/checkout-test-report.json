@@ -1,9 +1,8 @@
 {
   "version": 2,
-  "appId": "app_563490ae40ee431ab35d",
-  "model": "rnAXPGFf",
-  "title": "SETI Experiment Analysis",
-  "decision": "Ship or hold a SETI experiment, and learn which cohorts it helps or hurts.",
+  "model": "m_checkout_demo",
+  "title": "Checkout Test Analysis",
+  "decision": "Ship or hold a checkout test, and learn which cohorts it helps or hurts.",
   "persona": "pm",
   "template": "report",
   "time": {
@@ -12,22 +11,22 @@
     "to": "tomorrow"
   },
   "entity": {
-    "field": "seti_id",
-    "label": "Experiment",
+    "field": "test_id",
+    "label": "Test",
     "type": "number",
     "list": {
-      "label": "seti_tag_name",
-      "description": "seti_desc",
-      "status": "status",
-      "group": "primary_product_desc",
-      "end": "test_end_date",
-      "rank": "bookers_v2"
+      "label": "test_name",
+      "description": "test_desc",
+      "status": "test_status",
+      "group": "test_group",
+      "end": "test_end",
+      "rank": "unique_bookers"
     }
   },
   "measures": [
     {
       "id": "bookers",
-      "column": "bookers_v2",
+      "column": "unique_bookers",
       "label": "Bookers",
       "format": "number",
       "good": "up",
@@ -35,73 +34,53 @@
     },
     {
       "id": "orders",
-      "column": "gross_orders_v2",
-      "label": "Gross orders",
+      "column": "order_count",
+      "label": "Orders",
       "format": "number",
       "good": "up"
     },
     {
       "id": "value",
-      "column": "total_net_value_v2",
+      "column": "order_value",
       "label": "Net value",
       "format": "currency",
       "good": "up"
     },
     {
       "id": "participants_arm",
-      "column": "variant_participants_v2",
+      "column": "arm_participants",
       "label": "Variant participants"
     },
     {
       "id": "participants_control",
-      "column": "default_participants_v2",
-      "label": "Default participants"
+      "column": "control_participants",
+      "label": "Control participants"
     },
     {
       "id": "participants_total",
-      "column": "total_participants_v2",
+      "column": "total_participants",
       "label": "Total participants"
     }
   ],
   "dimensions": [
     {
-      "field": "product_desc",
-      "label": "Product"
-    },
-    {
-      "field": "channel",
-      "label": "Channel"
-    },
-    {
-      "field": "device_desc",
+      "field": "device",
       "label": "Device"
     },
     {
-      "field": "payment_method",
-      "label": "Payment Method"
+      "field": "market",
+      "label": "Market"
     },
     {
-      "field": "vip_flag",
-      "label": "VIP Flag"
-    },
-    {
-      "field": "vip_tier",
-      "label": "VIP Tier"
-    },
-    {
-      "field": "offer_method",
-      "label": "Offer Method"
-    },
-    {
-      "field": "new_pcln",
-      "label": "New PCLN"
+      "field": "customer_tier",
+      "label": "Customer tier"
     }
   ],
   "family": {
     "kind": "ab_test",
     "arms": {
-      "field": "seti_variant_name",
-      "control": "DEFAULT",
+      "field": "variant_name",
+      "control": "CONTROL",
       "exclude": [
         "CONTROL"
       ]
@@ -117,18 +96,17 @@
       }
     },
     "context": {
-      "description": "seti_desc",
-      "tag": "seti_tag_name",
-      "status": "status",
-      "start": "test_start_date",
-      "end": "test_end_date",
+      "description": "test_desc",
+      "status": "test_status",
+      "start": "test_start",
+      "end": "test_end",
       "as_of": "data_as_of",
-      "group": "primary_product_desc"
+      "group": "test_group"
     }
   },
   "questions": [
     {
-      "say": "Is VARIANT beating DEFAULT on incremental bookings, bookers and net commerce per day?",
+      "say": "Is TREATMENT beating CONTROL on incremental bookings, bookers and net commerce per day?",
       "recipe": "kpi_tiles"
     },
     {

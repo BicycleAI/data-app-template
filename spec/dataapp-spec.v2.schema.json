@@ -27,7 +27,7 @@
     },
     "entity": {
       "type": "object",
-      "description": "Present when the app is about one thing at a time (an experiment, a hotel, a route). Absent for a whole-model view.",
+      "description": "Present when the app is about one thing at a time (an experiment, a store, a route). Absent for a whole-model view.",
       "additionalProperties": false,
       "required": ["field", "label"],
       "properties": {

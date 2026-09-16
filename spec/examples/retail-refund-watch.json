@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "model": "m_retail_demo",
+  "title": "Retail Refund Watch",
+  "decision": "Which regions and categories are driving refunds, is any of them trending, and are we within target?",
+  "persona": "analyst",
+  "template": "explorer",
+  "time": { "column": "event_time", "from": "2026-08-01", "to": "tomorrow", "grain": "day" },
+  "measures": [
+    { "id": "refunded", "column": "refund_count", "label": "Refunded orders", "format": "number", "good": "down", "role": "primary" },
+    { "id": "refund_rate", "column": "refund_rate_pct", "label": "Refund rate", "format": "rate", "good": "down" },
+    { "id": "orders", "column": "orders_total", "label": "Orders", "format": "number", "good": "up" }
+  ],
+  "dimensions": [
+    { "field": "region", "label": "Region" },
+    { "field": "channel", "label": "Channel" },
+    { "field": "category", "label": "Category" }
+  ],
+  "questions": [
+    { "say": "How big is the refund problem, and which way is it moving?", "recipe": "kpis" },
+    { "say": "How has it moved, split by region?", "recipe": "trend", "bind": { "by": "region" } },
+    { "say": "How has it moved, split by category?", "recipe": "trend", "bind": { "by": "category" } },
+    { "say": "Which regions refund most?", "recipe": "breakdown", "bind": { "dims": ["region"], "limit": 10 } },
+    { "say": "What happens where region meets category?", "recipe": "heatmap", "bind": { "rows": "region", "cols": "category" } },
+    { "say": "Is the refund rate within target?", "recipe": "verdict", "bind": { "measure": "refund_rate" } }
+  ],
+  "controls": [ { "kind": "measure" }, { "kind": "dimensions" }, { "kind": "heatmap_axes" } ],
+  "rules": { "compare_periods": 7, "targets": { "refund_rate": 5 } },
+  "theme": { "accent": "coral", "follow": "system" }
+}

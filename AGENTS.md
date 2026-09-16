@@ -20,6 +20,7 @@ The one piece of machinery that exists in both languages is the dataset renderer
 - **No SQL in code.** Every query is declared in `recipes/datasets.json` (core) or `families/<kind>/datasets.json`, and rendered by `compose/datasets.mjs`. That renderer may learn new substitutions; it must never learn what a dataset means.
 - Query ids are derived, never authored. Core: `entity_list` (if entity), `totals`, `by_time`, `by_dimension` (if dimensions), `by_time_<dim>` (one per `trend.by`, max 3). `ab_test` family: `entity_list`, `experiment_meta`, `arm_totals`, `segments`, `daily_trend`. Recipes read only those (`runtime/src/spec.ts` → `QUERY`).
 - The kit is model-agnostic. Nothing under `recipes/`, `templates/core/`, `runtime/` or `compose/` may name a field, metric column or model id. Model bindings live in tenant profiles (see `profiles/README.md`); `profiles/examples/` holds test fixtures only.
+- This repo is public: no real customer model id or tenant metric/dimension name anywhere outside `template/`. `scripts/no-real-ids.sh` guards it — run it (optionally with `KIT_FORBIDDEN_IDS='id1|id2'`) before a PR; it always fails if an example `model` id under `spec/examples/` or `profiles/examples/` doesn't start with `m_`.
 - Components use `--bda-*` tokens only; colour values live in `runtime/src/theme.css`, both palettes plus the `data-accent` variants.
 - Semantic SQL only: metrics are columns, `FROM <model>`, a bounded time range, no JOINs, no OR, no semicolons, ≤ 8000 chars.
 - A spec composes to ≤ 32 queries; core specs use 2–6, `ab_test` specs use 5.
@@ -27,7 +28,7 @@ The one piece of machinery that exists in both languages is the dataset renderer
 ## Layout
 
 ```
-spec/             schema (v2) + examples: hotel-booking-health (core), seti-report/explorer/scorecard (ab_test)
+spec/             schema (v2) + examples: retail-orders-health/retail-refund-watch (core), checkout-test-report/explorer/scorecard (ab_test)
 recipes/<id>/     core recipes — recipe.json (catalogue entry) + Render.tsx; work on any model
 recipes/datasets.json        the core queries, declared
 families/<kind>/datasets.json  a family's queries (set `replaces_core` when it reads the model differently)
