@@ -4,7 +4,7 @@
 #
 # Usage:
 #   scripts/no-real-ids.sh
-#   KIT_FORBIDDEN_IDS='rnAXPGFf|RGfoyOBb' scripts/no-real-ids.sh
+#   KIT_FORBIDDEN_IDS='id_one|id_two' scripts/no-real-ids.sh
 #
 # KIT_FORBIDDEN_IDS is a pipe-separated extended-regex of names that must not
 # appear anywhere in the repo (excluding template/, the hand-build starter,
@@ -21,7 +21,7 @@ cd "$root"
 status=0
 
 if [ -n "${KIT_FORBIDDEN_IDS:-}" ]; then
-  hits="$(git grep -iEn "${KIT_FORBIDDEN_IDS}" -- . ':!template' ':!node_modules' || true)"
+  hits="$(git grep -iEn "${KIT_FORBIDDEN_IDS}" -- . ':!template' ':!node_modules' ':!scripts/no-real-ids.sh' || true)"
   if [ -n "$hits" ]; then
     echo "no-real-ids: forbidden pattern matched (KIT_FORBIDDEN_IDS='${KIT_FORBIDDEN_IDS}'):"
     echo "$hits"
