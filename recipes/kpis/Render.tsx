@@ -69,9 +69,11 @@ function Tile({
     [points, color],
   )
   const deltaColor = good === null ? 'var(--bda-text-secondary)' : good ? 'var(--bda-positive)' : 'var(--bda-negative)'
+  // "the current values and deltas" — cheap, and every tile shares one panel id, so the host sees one object per measure.
+  const digest = { measureId: measure.id, value: total, delta: change.delta, pct: change.pct }
   if (!spark) {
     return (
-      <Widget heading={<span className="kit-card__label">{word(spec, measure.id)}</span>} className="kit-card" skeleton={{ kind: 'metric' }} {...widgetState(query)}>
+      <Widget heading={<span className="kit-card__label">{word(spec, measure.id)}</span>} className="kit-card" skeleton={{ kind: 'metric' }} digest={digest} {...widgetState(query)}>
         <span className="kit-card__value">{fmtMeasure(total, measure.format, true)}</span>
         <span className="kit-card__hint" style={{ color: deltaColor }}>
           {change.delta === null ? 'no prior period' : `${fmtDelta(change, measure.format)} vs prior ${change.periods}${(spec.time.grain ?? 'day')[0]}`}
@@ -85,6 +87,7 @@ function Tile({
       className={`bda-card kit-kpi${active ? ' kit-kpi--active' : ''}`}
       style={{ borderTopColor: color }}
       skeleton={{ kind: 'metric' }}
+      digest={digest}
       {...widgetState(query)}
     >
       <div className="kit-kpi__value">{fmtMeasure(total, measure.format, true)}</div>

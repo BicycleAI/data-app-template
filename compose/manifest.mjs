@@ -27,6 +27,11 @@ export function deriveManifest(spec) {
   if ((spec.store?.blobs ?? []).length > 0) {
     manifest.blobs = spec.store.blobs.map((blob) => ({ name: blob.name, kind: blob.kind ?? 'json', maxBytes: blob.max_bytes ?? 10485760, purpose: blob.purpose }))
   }
+  // The runtime always reports panel context (invariant 9: it never renders chat
+  // itself); this just tells the host whether *it* may offer a chat for this app.
+  if (spec.chat !== undefined) {
+    manifest.chat = { enabled: spec.chat.enabled, anchors: spec.chat.anchors ?? ['panel'] }
+  }
   return manifest
 }
 
