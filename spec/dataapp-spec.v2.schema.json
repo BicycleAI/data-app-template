@@ -247,6 +247,16 @@
         "required": ["recipe"],
         "properties": { "recipe": { "type": "string" }, "bind": { "type": "object" }, "say": { "type": "string" }, "width": { "enum": ["full", "half", "third"] } }
       }
+    },
+    "chat": {
+      "type": "object",
+      "description": "Whether the host page offers its chat for this app. The runtime never renders a chat UI itself (invariant 9) — it only reports panel context and selection for the host's own chat to use; this just turns that reporting on. Anchors describe what the host may let the chat point at or read.",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "anchors": { "type": "array", "items": { "enum": ["panel", "selection", "none"] }, "minItems": 1, "uniqueItems": true, "default": ["panel"] }
+      }
     }
   },
   "$defs": {

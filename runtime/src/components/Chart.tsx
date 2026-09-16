@@ -84,12 +84,26 @@ type Props = {
   /** Accessible description. Charts are images to a screen reader. */
   readonly title?: string
   readonly className?: string
+  /**
+   * Called with the nearest datum on click, when `options` includes a mark
+   * built with `Plot.pointerX`/`Plot.pointer` — that transform is what
+   * tracks "nearest", this only turns a click into a read of its current
+   * value. Used by recipes that report a `selection` (trend, heatmap); most
+   * charts have no need for it.
+   */
+  readonly onPointer?: (value: unknown) => void
 }
 
-export function Chart({ options, height = 260, title, className }: Props) {
+export function Chart({ options, height = 260, title, className, onPointer }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [theme, setTheme] = useState<ThemeTokens>(readThemeTokens)
+  // A ref, not a dependency: a new `onPointer` identity every render should
+  // not tear down and rebuild the plot, only change what a later click calls.
+  const onPointerRef = useRef(onPointer)
+  useEffect(() => {
+    onPointerRef.current = onPointer
+  }, [onPointer])
 
   // Plot needs a pixel width; the frame's is whatever the host page gave it.
   useEffect(() => {
@@ -143,7 +157,22 @@ export function Chart({ options, height = 260, title, className }: Props) {
     }
     node.replaceChildren(figure)
 
+    // `Plot.pointerX`/`Plot.pointer` dispatch `input` on the figure as the
+    // pointer moves, with `figure.value` holding the nearest datum — this
+    // just remembers the latest one and hands it to `onPointer` on click, so
+    // a tap picks "whatever was nearest" rather than requiring a pixel-exact
+    // hit on the mark itself.
+    let latest: unknown
+    const onInput = () => {
+      latest = (figure as unknown as { value?: unknown }).value
+    }
+    const onClick = () => onPointerRef.current?.(latest)
+    figure.addEventListener('input', onInput)
+    figure.addEventListener('click', onClick)
+
     return () => {
+      figure.removeEventListener('input', onInput)
+      figure.removeEventListener('click', onClick)
       // Plot returns a detached node it does not own; remove it explicitly.
       figure.remove()
     }

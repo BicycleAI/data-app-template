@@ -131,6 +131,14 @@ export type Spec = {
   readonly theme?: { readonly accent?: 'blue' | 'teal' | 'purple' | 'amber' | 'coral'; readonly follow?: 'system' | 'light' | 'dark' }
   readonly store?: StoreSpec
   readonly panels?: readonly Panel[]
+  /**
+   * Whether the host page offers its chat for this app, and what it may
+   * anchor to. Read by the host, not by the runtime: the runtime reports
+   * panel context and selection unconditionally (see `studio/contextRegistry.ts`)
+   * and never renders a chat UI itself — invariant 9, "the chat UI is
+   * host-owned".
+   */
+  readonly chat?: { readonly enabled: boolean; readonly anchors?: readonly ('panel' | 'selection' | 'none')[] }
 }
 
 declare global {

@@ -301,3 +301,20 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
 .kit-widget-error__code { font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--bda-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
 .kit-widget-error__retry { appearance: none; border: 1px solid var(--bda-negative); background: transparent; color: var(--bda-negative); border-radius: var(--bda-radius-pill); padding: 3px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .kit-widget-error__retry:hover { background: color-mix(in srgb, var(--bda-negative) 12%, transparent); }
+
+/* Host-driven highlight: the host page asked to point at a panel already on
+ * screen — `studio:sandbox:highlight` in `studio/contextRegistry.ts`.
+ * CSS-only pulse, held for 1.6s by the JS side; no animation loop to tear down. */
+.kit-card--highlight { animation: kit-card-highlight-pulse 0.8s ease-out 2; }
+@keyframes kit-card-highlight-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bda-accent) 55%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--bda-accent) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kit-card--highlight { animation: none; box-shadow: 0 0 0 2px var(--bda-accent); }
+}
+
+/* The row/point/cell a recipe reported as `selection` (ranking, table, trend,
+ * heatmap) — a minimal, theme-aware indicator rather than a bespoke look per
+ * recipe. */
+.kit-selected, tr.kit-selected td { background: var(--bda-accent-soft); outline: 1px solid var(--bda-accent-muted); outline-offset: -1px; }

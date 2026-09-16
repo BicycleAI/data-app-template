@@ -31,6 +31,7 @@ import { ReportChrome } from './chrome/Report.js'
 import { type CoreData, type Dataset, useAbDataset, useCoreDataset } from './data.js'
 import type { CoreProps, RecipeProps } from './parts.js'
 import { type AbFamily, isAb, type Panel, type Spec } from './spec.js'
+import { PanelMetaProvider } from './studio/contextRegistry.js'
 import { UiProvider } from './ui.js'
 
 /** Exported for evals/loading.test.tsx, which renders every recipe with its datasets pending. */
@@ -82,28 +83,43 @@ export function App({ spec }: { spec: Spec }) {
  */
 function CoreBody({ spec, entityId }: { spec: Spec; entityId: string | undefined }) {
   const core = useCoreDataset(spec, entityId)
-  return <Panels panels={panelsOf(spec)} render={(panel, index) => <CorePanel key={index} spec={spec} core={core} panel={panel} />} />
+  return <Panels panels={panelsOf(spec)} render={(panel, index) => <CorePanel key={index} spec={spec} core={core} panel={panel} index={index} />} />
 }
 
 function AbBody({ spec, entityId }: { spec: Spec & { family: AbFamily }; entityId: string }) {
   const data = useAbDataset(spec, entityId)
-  return <Panels panels={panelsOf(spec)} render={(panel, index) => <AbPanel key={index} spec={spec} data={data} panel={panel} />} />
+  return <Panels panels={panelsOf(spec)} render={(panel, index) => <AbPanel key={index} spec={spec} data={data} panel={panel} index={index} />} />
 }
 
 function panelsOf(spec: Spec): readonly Panel[] {
   return spec.panels ?? spec.questions.map((question) => ({ recipe: question.recipe, bind: question.bind ?? {}, say: question.say }))
 }
 
-function CorePanel({ spec, core, panel }: { spec: Spec; core: CoreData; panel: Panel }) {
-  const Recipe = CORE[panel.recipe]
-  if (Recipe === undefined) return <div className="bda-state">Unknown recipe “{panel.recipe}”.</div>
-  return <Recipe spec={spec} core={core} bind={panel.bind ?? {}} />
+/** `p3:ranking` — the resolved panel's position plus its recipe. Stable across a render, which is what the context reporter keys its registry on. */
+function panelId(index: number, recipe: string): string {
+  return `p${index}:${recipe}`
 }
 
-function AbPanel({ spec, data, panel }: { spec: Spec; data: Dataset; panel: Panel }) {
+function CorePanel({ spec, core, panel, index }: { spec: Spec; core: CoreData; panel: Panel; index: number }) {
+  const Recipe = CORE[panel.recipe]
+  if (Recipe === undefined) return <div className="bda-state">Unknown recipe “{panel.recipe}”.</div>
+  const meta = { panelId: panelId(index, panel.recipe), recipe: panel.recipe, say: panel.say, bind: panel.bind ?? {} }
+  return (
+    <PanelMetaProvider value={meta}>
+      <Recipe spec={spec} core={core} bind={panel.bind ?? {}} />
+    </PanelMetaProvider>
+  )
+}
+
+function AbPanel({ spec, data, panel, index }: { spec: Spec; data: Dataset; panel: Panel; index: number }) {
   const Recipe = AB[panel.recipe]
   if (Recipe === undefined) return <div className="bda-state">Unknown recipe “{panel.recipe}”.</div>
-  return <Recipe spec={spec} data={data} bind={panel.bind ?? {}} />
+  const meta = { panelId: panelId(index, panel.recipe), recipe: panel.recipe, say: panel.say, bind: panel.bind ?? {} }
+  return (
+    <PanelMetaProvider value={meta}>
+      <Recipe spec={spec} data={data} bind={panel.bind ?? {}} />
+    </PanelMetaProvider>
+  )
 }
 
 /** Half-width neighbours share a row; everything else is full width. */

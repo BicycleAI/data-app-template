@@ -160,5 +160,10 @@ export function validateSpec(spec) {
   if (new Set(columns).size !== columns.length) errors.push('/measures two measures bind the same column')
   for (const dimension of dims) if (columns.includes(dimension)) errors.push(`"${dimension}" is both a measure column and a dimension`)
 
+  // "none" says the chat may anchor to nothing in particular — it is meaningless
+  // alongside a real anchor, and the schema's `enum` cannot express that on its own.
+  const anchors = spec.chat?.anchors
+  if (anchors !== undefined && anchors.includes('none') && anchors.length > 1) errors.push('/chat/anchors "none" cannot be combined with other anchors')
+
   return { ok: errors.length === 0, errors }
 }

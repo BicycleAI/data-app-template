@@ -6,6 +6,7 @@ import { SkeletonChart, SkeletonMetric, SkeletonTable, SkeletonText } from './co
 import type { CoreData, Dataset, QueryState } from './data.js'
 import { fmtSigned } from './format.js'
 import type { MetricOrCvr, Spec } from './spec.js'
+import { usePanelMeta, useRegisterPanelInstance } from './studio/contextRegistry.js'
 import type { BdaError } from './studio/types.js'
 
 export const METRIC_COLOR: Record<MetricOrCvr, string> = {
@@ -160,6 +161,14 @@ export type WidgetProps = {
   /** Defaults to the standard card. Pass a section's own class for widgets that render outside `.bda-card` (verdict banners, the hypothesis quote). */
   readonly className?: string
   readonly style?: CSSProperties
+  /**
+   * What this card is showing, for the host's context reporter — the top
+   * rows, the last few points, the current values, whatever is cheap and
+   * ≤ 2 KB. Omit when the widget has nothing worth summarising (a verdict
+   * banner, a findings list); the panel is still reported, just without a
+   * `digest`. See `studio/contextRegistry.ts`.
+   */
+  readonly digest?: unknown
   readonly children: ReactNode
 }
 
@@ -169,11 +178,19 @@ export type WidgetProps = {
  * `kit-card--refreshing` state for a background refetch, and a per-widget
  * error with Retry. Every recipe routes its cards through this — see
  * AGENTS.md's "Widgets never blank" invariant.
+ *
+ * It also registers this card with the host's context reporter (invariant 9:
+ * the runtime never renders the host's own UI, it only reports what is on
+ * screen) — its `panelId` comes from `PanelMetaProvider` (App.tsx wraps every
+ * resolved panel in one), so a recipe never has to know it exists.
  */
-export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, children }: WidgetProps) {
+export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, digest, children }: WidgetProps) {
   const refreshing = fetching && !pending
+  const meta = usePanelMeta()
+  const { nodeRef, highlighted } = useRegisterPanelInstance(meta, digest)
+  const classes = [className, refreshing ? 'kit-card--refreshing' : '', highlighted ? 'kit-card--highlight' : ''].filter((part) => part.length > 0).join(' ')
   return (
-    <div className={refreshing ? `${className} kit-card--refreshing` : className} style={style} aria-busy={pending}>
+    <div ref={nodeRef} className={classes} style={style} aria-busy={pending}>
       {heading}
       {error !== null ? <WidgetError error={error} onRetry={onRetry ?? (() => {})} /> : pending ? <SkeletonFor spec={skeleton} /> : children}
     </div>

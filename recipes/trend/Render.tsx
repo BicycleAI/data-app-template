@@ -5,6 +5,7 @@ import { Chart } from '../../runtime/src/components/Chart.js'
 import { fmtMeasure, isRate } from '../../runtime/src/core.js'
 import { type CoreProps, measureColor, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
 import { dimensionLabel, type MeasureSpec, measureById, primaryMeasure, type Spec, word } from '../../runtime/src/spec.js'
+import { usePanelId, useSelection } from '../../runtime/src/studio/contextRegistry.js'
 import { MeasureSelect, useUi } from '../../runtime/src/ui.js'
 
 /**
@@ -33,10 +34,18 @@ export function Render({ spec, core, bind }: CoreProps) {
 }
 
 type Point = { period: Date; value: number; series?: string }
+/** What a click on the chart reports as `selection` — the nearest point, tagged with which measure's line it came from. */
+type PointSelection = { measureId: string; period: string; value: number }
 
 function TrendChart({ spec, measure, series }: { spec: Spec; measure: MeasureSpec; series: CoreProps['core']['series'] }) {
   const color = measureColor(spec, measure.id)
+  const panelId = usePanelId()
+  const [selected, setSelected] = useSelection<PointSelection>(panelId)
   const points = useMemo(() => (series.rows ?? []).flatMap((p) => (p.values[measure.id] === null ? [] : [{ period: p.period, value: p.values[measure.id] as number }])), [series.rows, measure.id])
+  const onPointer = (value: unknown) => {
+    const point = value as Point | null | undefined
+    setSelected(point === null || point === undefined ? undefined : { measureId: measure.id, period: isoDay(point.period), value: point.value })
+  }
   const options = useMemo(
     () => ({
       y: { label: null, tickFormat: (value: number) => fmtMeasure(value, measure.format, true), ...(isRate(measure) ? {} : { zero: true }) },
@@ -45,10 +54,13 @@ function TrendChart({ spec, measure, series }: { spec: Spec; measure: MeasureSpe
         Plot.areaY(points, { x: 'period', y: 'value', fill: color, fillOpacity: 0.08, curve: 'monotone-x' }),
         Plot.lineY(points, { x: 'period', y: 'value', stroke: color, strokeWidth: 2.5, curve: 'monotone-x' }),
         Plot.dot(points, { x: 'period', y: 'value', fill: color, r: 2.5, tip: true, title: (d: Point) => `${isoDay(d.period)}: ${fmtMeasure(d.value, measure.format)}` }),
+        // A click-to-select point, tracked by Plot's own nearest-neighbour pointer — see `Chart`'s `onPointer`.
+        Plot.dot(points, Plot.pointerX({ x: 'period', y: 'value', fill: color, r: 5.5, stroke: 'var(--bda-surface-raised)', strokeWidth: 2 })),
       ],
     }),
     [points, color, measure],
   )
+  const digest = useMemo(() => points.slice(-7).map((p) => ({ period: isoDay(p.period), value: p.value })), [points])
   return (
     <Widget
       heading={
@@ -58,9 +70,15 @@ function TrendChart({ spec, measure, series }: { spec: Spec; measure: MeasureSpe
         </>
       }
       skeleton={{ kind: 'chart', height: 220 }}
+      digest={digest}
       {...widgetState(series)}
     >
-      {points.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={220} title={`${measure.label} trend`} />}
+      {points.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={220} title={`${measure.label} trend`} onPointer={onPointer} />}
+      {selected?.measureId === measure.id ? (
+        <p className="kit-caption bda-subtle">
+          Selected: {selected.period} · {fmtMeasure(selected.value, measure.format)}
+        </p>
+      ) : null}
     </Widget>
   )
 }
@@ -68,6 +86,8 @@ function TrendChart({ spec, measure, series }: { spec: Spec; measure: MeasureSpe
 function ByDimension({ spec, core, by, measure }: { spec: Spec; core: CoreProps['core']; by: string; measure: MeasureSpec }) {
   const query = core.trendBy(by)
   const rows = query.rows ?? []
+  const panelId = usePanelId()
+  const [selected, setSelected] = useSelection<Point>(panelId)
   const data = useMemo<Point[]>(() => {
     const totals = new Map<string, number>()
     const points: Point[] = []
@@ -83,6 +103,20 @@ function ByDimension({ spec, core, by, measure }: { spec: Spec; core: CoreProps[
     const keep = new Set([...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([series]) => series))
     return points.filter((point) => keep.has(point.series ?? ''))
   }, [rows, by, measure])
+  const digest = useMemo(() => {
+    const bySeries = new Map<string, Point[]>()
+    for (const point of [...data].sort((a, b) => a.period.getTime() - b.period.getTime())) {
+      const key = point.series ?? ''
+      const list = bySeries.get(key)
+      if (list === undefined) bySeries.set(key, [point])
+      else list.push(point)
+    }
+    return [...bySeries.entries()].map(([seriesName, points]) => ({ series: seriesName, points: points.slice(-7).map((p) => ({ period: isoDay(p.period), value: p.value })) }))
+  }, [data])
+  const onPointer = (value: unknown) => {
+    const point = value as Point | null | undefined
+    setSelected(point === null || point === undefined ? undefined : point)
+  }
   const options = useMemo(
     () => ({
       y: { label: null, tickFormat: (value: number) => fmtMeasure(value, measure.format, true) },
@@ -90,6 +124,7 @@ function ByDimension({ spec, core, by, measure }: { spec: Spec; core: CoreProps[
       color: { legend: true },
       marks: [
         Plot.lineY(data, { x: 'period', y: 'value', stroke: 'series', strokeWidth: 2, curve: 'monotone-x', tip: true, title: (d: Point) => `${d.series} ${isoDay(d.period)}: ${fmtMeasure(d.value, measure.format)}` }),
+        Plot.dot(data, Plot.pointerX({ x: 'period', y: 'value', stroke: 'series', r: 5, strokeWidth: 2.5 })),
       ],
     }),
     [data, measure],
@@ -104,9 +139,15 @@ function ByDimension({ spec, core, by, measure }: { spec: Spec; core: CoreProps[
         </>
       }
       skeleton={{ kind: 'chart', height: 280 }}
+      digest={digest}
       {...widgetState(query)}
     >
-      {data.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={280} title={`${measure.label} by ${dimensionLabel(spec, by)}`} />}
+      {data.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={280} title={`${measure.label} by ${dimensionLabel(spec, by)}`} onPointer={onPointer} />}
+      {selected !== undefined ? (
+        <p className="kit-caption bda-subtle">
+          Selected: {selected.series} · {isoDay(selected.period)} · {fmtMeasure(selected.value, measure.format)}
+        </p>
+      ) : null}
     </Widget>
   )
 }

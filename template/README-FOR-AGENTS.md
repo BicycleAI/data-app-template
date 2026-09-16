@@ -504,6 +504,61 @@ Common marks: `Plot.barY` / `Plot.barX` (categorical), `Plot.lineY` +
 `Plot.ruleY([0])` (a baseline). For a share-of-total, prefer a sorted
 `Plot.barX` over a pie — it is easier to read and Plot has no pie mark.
 
+## Report your panels
+
+The host page owns chat for every data app — one implementation, living
+there, never in your bundle. Do not build an ask box, a drawer or any chat UI
+here; that would duplicate the host's and drift from it. What your app has to
+do instead is **report what is on screen**, so the host's chat can see it. A
+composed app gets this for free from its `Widget` wrapper; a hand-built app
+gets it by calling `studio/contextRegistry.ts` directly — the same protocol,
+without the composer's panel registry to hang it off of. (It is a separate
+file from `studio/context.ts`, which is your app's identity — token, app id,
+theme — an unrelated concern.)
+
+Wrap every card your app renders:
+
+```tsx
+import { useEffect, useRef } from 'react'
+import { registerPanel, unregisterPanel } from './studio/contextRegistry.js'
+
+function RevenueCard({ rows }: { rows: Row[] | undefined }) {
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (el === null) return
+    registerPanel(el, {
+      panelId: 'revenue_by_month', // stable across renders — a query id is a good choice
+      recipe: 'custom',
+      say: 'Monthly revenue',
+      digest: rows?.slice(0, 10), // top rows, last points, current values — whatever is cheap; ≤ 2 KB, or it is trimmed
+    })
+    return () => unregisterPanel('revenue_by_month')
+  }, [rows])
+
+  return (
+    <div ref={cardRef} className="bda-card" aria-busy={rows === undefined}>
+      {/* … */}
+    </div>
+  )
+}
+```
+
+That call does three things, all automatic once it is in place: it reports
+the card's position on screen (re-measured on scroll and resize), it reports
+`digest` whenever you pass a new one, and it listens for the host asking to
+point at this panel (`onHighlight`) so you can scroll it into view and add a
+highlight class. If a card has a row, point or cell a viewer can pick, report
+that too with `setSelection(panelId, value)` from its click handler — the
+host's chat can then ask about "the selected one" instead of you re-describing
+it in words.
+
+None of this needs a server round trip or changes what you render — it is a
+handful of `postMessage` calls to `window.parent`, which the host is already
+listening for. Full API, including the highlight handler, is documented at
+the top of `studio/contextRegistry.ts`.
+
 ## Submitting
 
 ```bash
