@@ -120,45 +120,16 @@ Max 32 queries per manifest.
 
 ### What semantic SQL allows
 
-The shape is always the same:
+The grammar, the `query_*` loop, the errors and a worked example of every query shape
+the kit uses are in **`../skills/semantic-query/SKILL.md`** — that file is the single
+statement of this; load it before you write a query. The shape, as a reminder:
 
 ```
 SELECT <metric column>[, <dimension>...]
 FROM <the app's model>
 WHERE <time column> >= :from AND <time column> < :to
-[GROUP BY is implicit]
+[GROUP BY is implicit — do not write one]
 [ORDER BY <metric> DESC] [LIMIT n]
-```
-
-- **`FROM` is the model id**, e.g. `FROM QxGTe8DD`. Never a table name.
-- **Metrics are columns, already aggregated.** `total_channel_revenue` is
-  defined as a sum by the semantic layer. Write
-  `SELECT brand_tier, total_channel_revenue`, *not*
-  `SELECT brand_tier, sum(revenue)`.
-- **A bounded time range is required.** Both ends. An open-ended
-  `WHERE ts >= :since` will not compile.
-- **Time series:** `date_trunc('day', <time column>)` — also `'week'`,
-  `'month'`.
-- **Top-n:** `ORDER BY <metric> DESC LIMIT n`.
-- **No JOINs and no subqueries.** Dimensions of the metric's event type are
-  already available as columns; `query_search_fields` gives you their exact
-  names.
-
-So this, from an older version of this document, is **wrong** and will not
-compile:
-
-```sql
--- WRONG: a table, a raw aggregate, an unbounded range
-select sales_region, sum(revenue) as total_revenue
-from orders where order_date >= :since group by sales_region
-```
-
-and this is the same intent, correctly:
-
-```sql
--- RIGHT: the model, a declared metric, a closed range
-SELECT sales_region, total_revenue FROM <model>
-WHERE order_date >= :from AND order_date < :to
 ```
 
 ## Fetching data

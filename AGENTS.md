@@ -28,7 +28,7 @@ The one piece of machinery that exists in both languages is the dataset renderer
 - The kit is model-agnostic. Nothing under `recipes/`, `templates/core/`, `runtime/` or `compose/` may name a field, metric column or model id. Model bindings live in tenant profiles (see `profiles/README.md`); `profiles/examples/` holds test fixtures only.
 - This repo is public: no real customer model id or tenant metric/dimension name anywhere outside `template/`. `scripts/no-real-ids.sh` guards it — run it (optionally with `KIT_FORBIDDEN_IDS='id1|id2'`) before a PR; it always fails if an example `model` id under `spec/examples/` or `profiles/examples/` doesn't start with `m_`.
 - Components use `--bda-*` tokens only; colour values live in `runtime/src/theme.css`, both palettes plus the `data-accent` variants.
-- Semantic SQL only: metrics are columns, `FROM <model>`, a bounded time range, no JOINs, no OR, no semicolons, ≤ 8000 chars.
+- Semantic SQL only: metrics are columns, `FROM <model>`, a bounded time range, no JOINs, no OR, no semicolons, ≤ 8000 chars — stated in full in `skills/semantic-query/SKILL.md`, and nowhere else.
 - A spec composes to ≤ 32 queries; core specs use 2–6, `ab_test` specs use 5.
 
 ## Widgets never blank
@@ -52,7 +52,8 @@ profiles/         README + example tenant profiles (fixtures only; real profiles
 runtime/          the data-driven app: spec.ts, core.ts (generic maths), analysis.ts (ab_test maths), data.ts, ui.tsx, chrome/, App.tsx
 compose/          validate → resolve → render datasets → bundle → upload; `cli.mjs` is `kit`
                   datasets.mjs is the renderer; manifest.mjs holds no SQL
-skills/           SKILL.md — the interview; published by the MCP as a prompt and resource
+skills/ask-show-ship/   SKILL.md — the interview; published by the MCP as a prompt and resource
+skills/semantic-query/  SKILL.md — the semantic SQL grammar and the query_* loop; the one statement of it, loaded by the interview, template/README-FOR-AGENTS.md and the app chat agent
 evals/            golden manifests + transcript fixtures
 template/         hand-build starter (do not add features here)
 ```
