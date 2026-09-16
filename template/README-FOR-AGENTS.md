@@ -1,3 +1,5 @@
+> **Start with compose.** Most apps should not be hand-built. Load `skills/ask-show-ship/SKILL.md` and compose a spec with `kit compose` (or the `design_*` MCP tools). Use this template only when a recipe cannot express what you need.
+
 # Building a Bicycle data app
 
 You are modifying this template into an app that answers one question about a
