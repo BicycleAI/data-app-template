@@ -1,0 +1,56 @@
+{
+  "id": "explorer",
+  "name": "Explorer",
+  "chrome": "explorer",
+  "persona_default": [
+    "analyst"
+  ],
+  "description": "A surface to operate: sidebar picker, KPI tiles with sparklines, lift by every dimension, scatter, composable heatmap, extremes.",
+  "family": "ab_test",
+  "controls": [
+    {
+      "kind": "entity"
+    },
+    {
+      "kind": "measure",
+      "options": [
+        "NIBPD",
+        "NIBrPD",
+        "NICPD"
+      ],
+      "default": "NIBPD"
+    },
+    {
+      "kind": "variant"
+    },
+    {
+      "kind": "heatmap_axes"
+    }
+  ],
+  "slots": [
+    {
+      "recipe": "kpi_tiles",
+      "always": true,
+      "bind": {
+        "style": "spark"
+      }
+    },
+    {
+      "recipe": "lift_by_dimension",
+      "bind": {
+        "dims": "all"
+      }
+    },
+    {
+      "recipe": "volume_vs_lift",
+      "width": "half"
+    },
+    {
+      "recipe": "heatmap",
+      "width": "half"
+    },
+    {
+      "recipe": "extremes"
+    }
+  ]
+}

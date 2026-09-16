@@ -1,0 +1,17 @@
+{
+  "id": "hypothesis",
+  "name": "Hypothesis",
+  "answers": "What was the change meant to do?",
+  "shape": "quote [description]",
+  "needs": [
+    "experiment_meta"
+  ],
+  "slots": 0,
+  "fits": [
+    "pm",
+    "analyst"
+  ],
+  "bind": {},
+  "caveat": null,
+  "family": "ab_test"
+}

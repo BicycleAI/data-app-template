@@ -1,0 +1,28 @@
+{
+  "id": "brief",
+  "name": "Brief",
+  "chrome": "report",
+  "persona_default": [
+    "exec"
+  ],
+  "description": "One screen for a phone: verdict and three numbers.",
+  "family": "ab_test",
+  "controls": [
+    {
+      "kind": "entity"
+    }
+  ],
+  "slots": [
+    {
+      "recipe": "verdict",
+      "always": true
+    },
+    {
+      "recipe": "kpi_tiles",
+      "always": true,
+      "bind": {
+        "style": "row"
+      }
+    }
+  ]
+}

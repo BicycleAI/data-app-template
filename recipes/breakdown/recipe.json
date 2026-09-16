@@ -1,0 +1,4 @@
+{ "id": "breakdown", "family": "core", "name": "Breakdown", "answers": "Which values of a dimension carry the measure?", "shape": "[measure] by [cut]",
+  "needs": ["by_dimension"], "slots": 0, "fits": ["biz", "pm", "analyst"],
+  "bind": { "dims": { "type": "dims", "default": "ui" }, "measure": { "type": "measure", "default": "ui" }, "limit": { "type": "int", "default": 10 } },
+  "caveat": "Rates are weighted by the primary measure of each leaf when rolling up." }

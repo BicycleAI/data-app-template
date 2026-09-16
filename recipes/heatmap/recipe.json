@@ -1,0 +1,3 @@
+{ "id": "heatmap", "family": "core", "name": "Heatmap", "answers": "What happens where two cuts meet?", "shape": "[measure] for [cut] x [cut]",
+  "needs": ["by_dimension"], "slots": 0, "fits": ["analyst", "pm"],
+  "bind": { "rows": { "type": "dim", "default": "ui" }, "cols": { "type": "dim", "default": "ui" }, "measure": { "type": "measure", "default": "ui" } }, "caveat": "Limited to the 12 heaviest rows and 10 heaviest columns." }

@@ -1,0 +1,28 @@
+{
+  "id": "brief",
+  "family": "core",
+  "name": "Brief",
+  "chrome": "report",
+  "persona_default": [
+    "exec"
+  ],
+  "description": "One screen for a phone: a verdict and the tiles.",
+  "controls": [
+    {
+      "kind": "entity"
+    }
+  ],
+  "slots": [
+    {
+      "recipe": "verdict",
+      "always": true
+    },
+    {
+      "recipe": "kpis",
+      "always": true,
+      "bind": {
+        "style": "row"
+      }
+    }
+  ]
+}

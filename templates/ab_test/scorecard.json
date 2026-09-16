@@ -1,0 +1,46 @@
+{
+  "id": "scorecard",
+  "name": "Scorecard",
+  "chrome": "report",
+  "persona_default": [
+    "biz"
+  ],
+  "description": "The answer first: a verdict, three numbers, one breakdown, one trend.",
+  "family": "ab_test",
+  "controls": [
+    {
+      "kind": "entity"
+    },
+    {
+      "kind": "variant"
+    }
+  ],
+  "slots": [
+    {
+      "recipe": "verdict",
+      "always": true
+    },
+    {
+      "recipe": "kpi_tiles",
+      "always": true,
+      "bind": {
+        "style": "row"
+      }
+    },
+    {
+      "recipe": "lift_by_dimension",
+      "bind": {
+        "dims": "first",
+        "limit": 8
+      }
+    },
+    {
+      "recipe": "cumulative_trend",
+      "bind": {
+        "measures": [
+          "NIBPD"
+        ]
+      }
+    }
+  ]
+}

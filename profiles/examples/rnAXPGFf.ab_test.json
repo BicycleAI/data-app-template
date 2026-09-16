@@ -1,0 +1,133 @@
+{
+  "model": "rnAXPGFf",
+  "name": "SETI Experiment Analysis",
+  "reviewed_by": "data team (SETI data story v10)",
+  "time": {
+    "column": "timestamp",
+    "from": "2026-02-01",
+    "to": "tomorrow"
+  },
+  "entity": {
+    "field": "seti_id",
+    "label": "Experiment",
+    "type": "number",
+    "list": {
+      "label": "seti_tag_name",
+      "description": "seti_desc",
+      "status": "status",
+      "group": "primary_product_desc",
+      "end": "test_end_date",
+      "rank": "bookers_v2"
+    }
+  },
+  "measures": [
+    {
+      "id": "bookers",
+      "column": "bookers_v2",
+      "label": "Bookers",
+      "format": "number",
+      "good": "up",
+      "role": "primary"
+    },
+    {
+      "id": "orders",
+      "column": "gross_orders_v2",
+      "label": "Gross orders",
+      "format": "number",
+      "good": "up"
+    },
+    {
+      "id": "value",
+      "column": "total_net_value_v2",
+      "label": "Net value",
+      "format": "currency",
+      "good": "up"
+    },
+    {
+      "id": "participants_arm",
+      "column": "variant_participants_v2",
+      "label": "Variant participants",
+      "format": "number"
+    },
+    {
+      "id": "participants_control",
+      "column": "default_participants_v2",
+      "label": "Default participants",
+      "format": "number"
+    },
+    {
+      "id": "participants_total",
+      "column": "total_participants_v2",
+      "label": "Total participants",
+      "format": "number"
+    }
+  ],
+  "dimensions": [
+    {
+      "field": "product_desc",
+      "label": "Product"
+    },
+    {
+      "field": "channel",
+      "label": "Channel"
+    },
+    {
+      "field": "device_desc",
+      "label": "Device"
+    },
+    {
+      "field": "payment_method",
+      "label": "Payment Method"
+    },
+    {
+      "field": "vip_flag",
+      "label": "VIP Flag"
+    },
+    {
+      "field": "vip_tier",
+      "label": "VIP Tier"
+    },
+    {
+      "field": "offer_method",
+      "label": "Offer Method"
+    },
+    {
+      "field": "new_pcln",
+      "label": "New PCLN"
+    }
+  ],
+  "family": {
+    "kind": "ab_test",
+    "arms": {
+      "field": "seti_variant_name",
+      "control": "DEFAULT",
+      "exclude": [
+        "CONTROL"
+      ]
+    },
+    "roles": {
+      "bookers": "bookers",
+      "orders": "orders",
+      "value": "value",
+      "participants": {
+        "arm": "participants_arm",
+        "control": "participants_control",
+        "total": "participants_total"
+      }
+    },
+    "context": {
+      "description": "seti_desc",
+      "tag": "seti_tag_name",
+      "status": "status",
+      "start": "test_start_date",
+      "end": "test_end_date",
+      "as_of": "data_as_of",
+      "group": "primary_product_desc"
+    }
+  },
+  "caveats": [
+    "test_start_date is null in this model; the runtime derives the start from the first day with data.",
+    "test_end_date arrives as epoch seconds.",
+    "Segment roll-ups are exact for orders and net value; bookers is a distinct count per leaf so combined segments are an upper bound."
+  ]
+}

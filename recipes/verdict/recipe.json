@@ -1,0 +1,3 @@
+{ "id": "verdict", "family": "core", "name": "Verdict", "answers": "Is the primary measure on track?", "shape": "Is [measure] improving, slipping or on target?",
+  "needs": ["totals", "by_time"], "slots": 0, "fits": ["biz", "exec"], "bind": { "measure": { "type": "measure", "default": "primary" } },
+  "caveat": "Without a target in rules.targets the verdict compares the last N periods with the N before." }

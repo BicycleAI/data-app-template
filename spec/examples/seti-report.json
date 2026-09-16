@@ -1,0 +1,167 @@
+{
+  "version": 2,
+  "appId": "app_563490ae40ee431ab35d",
+  "model": "rnAXPGFf",
+  "title": "SETI Experiment Analysis",
+  "decision": "Ship or hold a SETI experiment, and learn which cohorts it helps or hurts.",
+  "persona": "pm",
+  "template": "report",
+  "time": {
+    "column": "timestamp",
+    "from": "2026-02-01",
+    "to": "tomorrow"
+  },
+  "entity": {
+    "field": "seti_id",
+    "label": "Experiment",
+    "type": "number",
+    "list": {
+      "label": "seti_tag_name",
+      "description": "seti_desc",
+      "status": "status",
+      "group": "primary_product_desc",
+      "end": "test_end_date",
+      "rank": "bookers_v2"
+    }
+  },
+  "measures": [
+    {
+      "id": "bookers",
+      "column": "bookers_v2",
+      "label": "Bookers",
+      "format": "number",
+      "good": "up",
+      "role": "primary"
+    },
+    {
+      "id": "orders",
+      "column": "gross_orders_v2",
+      "label": "Gross orders",
+      "format": "number",
+      "good": "up"
+    },
+    {
+      "id": "value",
+      "column": "total_net_value_v2",
+      "label": "Net value",
+      "format": "currency",
+      "good": "up"
+    },
+    {
+      "id": "participants_arm",
+      "column": "variant_participants_v2",
+      "label": "Variant participants"
+    },
+    {
+      "id": "participants_control",
+      "column": "default_participants_v2",
+      "label": "Default participants"
+    },
+    {
+      "id": "participants_total",
+      "column": "total_participants_v2",
+      "label": "Total participants"
+    }
+  ],
+  "dimensions": [
+    {
+      "field": "product_desc",
+      "label": "Product"
+    },
+    {
+      "field": "channel",
+      "label": "Channel"
+    },
+    {
+      "field": "device_desc",
+      "label": "Device"
+    },
+    {
+      "field": "payment_method",
+      "label": "Payment Method"
+    },
+    {
+      "field": "vip_flag",
+      "label": "VIP Flag"
+    },
+    {
+      "field": "vip_tier",
+      "label": "VIP Tier"
+    },
+    {
+      "field": "offer_method",
+      "label": "Offer Method"
+    },
+    {
+      "field": "new_pcln",
+      "label": "New PCLN"
+    }
+  ],
+  "family": {
+    "kind": "ab_test",
+    "arms": {
+      "field": "seti_variant_name",
+      "control": "DEFAULT",
+      "exclude": [
+        "CONTROL"
+      ]
+    },
+    "roles": {
+      "bookers": "bookers",
+      "orders": "orders",
+      "value": "value",
+      "participants": {
+        "arm": "participants_arm",
+        "control": "participants_control",
+        "total": "participants_total"
+      }
+    },
+    "context": {
+      "description": "seti_desc",
+      "tag": "seti_tag_name",
+      "status": "status",
+      "start": "test_start_date",
+      "end": "test_end_date",
+      "as_of": "data_as_of",
+      "group": "primary_product_desc"
+    }
+  },
+  "questions": [
+    {
+      "say": "Is VARIANT beating DEFAULT on incremental bookings, bookers and net commerce per day?",
+      "recipe": "kpi_tiles"
+    },
+    {
+      "say": "What is the common thread across the segments that help and hurt?",
+      "recipe": "insights"
+    },
+    {
+      "say": "Which exact segments help and hurt, across every three-way cut?",
+      "recipe": "lifters_draggers",
+      "bind": {
+        "count": 10
+      }
+    },
+    {
+      "say": "Has the lift settled since test start?",
+      "recipe": "cumulative_trend",
+      "bind": {
+        "measures": [
+          "NIBPD",
+          "NIBrPD",
+          "NICPD",
+          "CVR"
+        ]
+      }
+    }
+  ],
+  "rules": {
+    "confidence_bar": "90%",
+    "min_bookers": 0,
+    "trim_quartile": true
+  },
+  "theme": {
+    "accent": "blue",
+    "follow": "system"
+  }
+}

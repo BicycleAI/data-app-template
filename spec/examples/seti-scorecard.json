@@ -1,0 +1,141 @@
+{
+  "version": 2,
+  "appId": "app_f921dee874a6452586c3",
+  "model": "rnAXPGFf",
+  "title": "Is my experiment winning?",
+  "decision": "Tell me in one line whether the variant is winning, and which channel is carrying it.",
+  "persona": "biz",
+  "template": "scorecard",
+  "time": {
+    "from": "2026-02-01",
+    "to": "tomorrow"
+  },
+  "entity": {
+    "field": "seti_id",
+    "label": "Experiment",
+    "type": "number",
+    "list": {
+      "label": "seti_tag_name",
+      "description": "seti_desc",
+      "status": "status",
+      "group": "primary_product_desc",
+      "end": "test_end_date",
+      "rank": "bookers_v2"
+    }
+  },
+  "measures": [
+    {
+      "id": "bookers",
+      "column": "bookers_v2",
+      "label": "Bookers",
+      "format": "number",
+      "good": "up",
+      "role": "primary"
+    },
+    {
+      "id": "orders",
+      "column": "gross_orders_v2",
+      "label": "Gross orders",
+      "format": "number",
+      "good": "up"
+    },
+    {
+      "id": "value",
+      "column": "total_net_value_v2",
+      "label": "Net value",
+      "format": "currency",
+      "good": "up"
+    },
+    {
+      "id": "participants_arm",
+      "column": "variant_participants_v2",
+      "label": "Variant participants"
+    },
+    {
+      "id": "participants_control",
+      "column": "default_participants_v2",
+      "label": "Default participants"
+    },
+    {
+      "id": "participants_total",
+      "column": "total_participants_v2",
+      "label": "Total participants"
+    }
+  ],
+  "dimensions": [
+    {
+      "field": "channel",
+      "label": "Channel"
+    },
+    {
+      "field": "device_desc",
+      "label": "Device"
+    }
+  ],
+  "family": {
+    "kind": "ab_test",
+    "arms": {
+      "field": "seti_variant_name",
+      "control": "DEFAULT"
+    },
+    "roles": {
+      "bookers": "bookers",
+      "orders": "orders",
+      "value": "value",
+      "participants": {
+        "arm": "participants_arm",
+        "control": "participants_control",
+        "total": "participants_total"
+      }
+    },
+    "context": {
+      "description": "seti_desc",
+      "tag": "seti_tag_name",
+      "status": "status",
+      "end": "test_end_date",
+      "as_of": "data_as_of",
+      "group": "primary_product_desc"
+    }
+  },
+  "questions": [
+    {
+      "say": "Is the variant beating default on extra bookings a day?",
+      "recipe": "verdict",
+      "bind": {
+        "measure": "NIBPD"
+      }
+    },
+    {
+      "say": "Which channel carries it?",
+      "recipe": "lift_by_dimension",
+      "bind": {
+        "dims": "first",
+        "limit": 8
+      }
+    },
+    {
+      "say": "Has it settled?",
+      "recipe": "cumulative_trend",
+      "bind": {
+        "measures": [
+          "NIBPD"
+        ]
+      }
+    }
+  ],
+  "words": {
+    "NIBPD": "Extra bookings / day",
+    "NIBrPD": "Extra bookers / day",
+    "NICPD": "Extra net value / day",
+    "CVR": "Conversion"
+  },
+  "rules": {
+    "confidence_bar": "90%",
+    "min_bookers": 2500,
+    "trim_quartile": true
+  },
+  "theme": {
+    "accent": "teal",
+    "follow": "system"
+  }
+}

@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bicycle.ai/schemas/dataapp-spec.v2.json",
+  "title": "DataAppSpec v2",
+  "description": "What the Ask, Show, Ship interview collects, for any semantic model in any tenant. A generic core (measures, dimensions, optional entity, time) plus an optional analysis family that adds derived metrics and its own recipes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "model", "title", "persona", "template", "time", "measures", "dimensions", "questions"],
+  "properties": {
+    "version": { "const": 2 },
+    "appId": { "type": "string", "pattern": "^app_[a-f0-9]{20}$", "description": "Set once the app exists." },
+    "model": { "type": "string", "minLength": 4, "maxLength": 32 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "decision": { "type": "string", "maxLength": 300 },
+    "persona": { "enum": ["biz", "pm", "analyst", "exec"] },
+    "template": { "enum": ["scorecard", "report", "explorer", "brief"] },
+    "time": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "column": { "$ref": "#/$defs/field", "default": "timestamp" },
+        "from": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "to": { "type": "string", "pattern": "^(tomorrow|\\d{4}-\\d{2}-\\d{2})$" },
+        "grain": { "enum": ["day", "week", "month"], "default": "day" }
+      }
+    },
+    "entity": {
+      "type": "object",
+      "description": "Present when the app is about one thing at a time (an experiment, a hotel, a route). Absent for a whole-model view.",
+      "additionalProperties": false,
+      "required": ["field", "label"],
+      "properties": {
+        "field": { "$ref": "#/$defs/field" },
+        "label": { "type": "string", "maxLength": 40 },
+        "type": { "enum": ["number", "string"], "default": "number" },
+        "list": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rank"],
+          "properties": {
+            "label": { "$ref": "#/$defs/field" },
+            "description": { "$ref": "#/$defs/field" },
+            "status": { "$ref": "#/$defs/field" },
+            "group": { "$ref": "#/$defs/field" },
+            "end": { "$ref": "#/$defs/field" },
+            "rank": { "$ref": "#/$defs/field" }
+          }
+        }
+      }
+    },
+    "measures": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "column", "label"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+          "column": { "$ref": "#/$defs/field", "description": "A metric column of the model, as query_describe_model lists it." },
+          "label": { "type": "string", "maxLength": 60 },
+          "format": { "enum": ["number", "currency", "percent", "rate"], "default": "number", "description": "rate = already a percentage value (15.7 means 15.7%)" },
+          "good": { "enum": ["up", "down"], "default": "up" },
+          "role": { "enum": ["primary", "secondary"], "default": "secondary" }
+        }
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "label"],
+        "properties": {
+          "field": { "$ref": "#/$defs/field" },
+          "label": { "type": "string", "maxLength": 40 }
+        }
+      }
+    },
+    "family": {
+      "type": "object",
+      "description": "An analysis family adds derived metrics, datasets and recipes. Omit for the generic core.",
+      "required": ["kind"],
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": ["kind", "arms", "roles"],
+          "properties": {
+            "kind": { "const": "ab_test" },
+            "arms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["field", "control"],
+              "properties": {
+                "field": { "$ref": "#/$defs/field" },
+                "control": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "exclude": { "type": "array", "items": { "type": "string" }, "default": ["CONTROL"] }
+              }
+            },
+            "roles": {
+              "type": "object",
+              "description": "Measure ids that play each role in the incremental maths.",
+              "additionalProperties": false,
+              "required": ["bookers", "orders", "value", "participants"],
+              "properties": {
+                "bookers": { "$ref": "#/$defs/measureId" },
+                "orders": { "$ref": "#/$defs/measureId" },
+                "value": { "$ref": "#/$defs/measureId" },
+                "participants": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["arm", "control", "total"],
+                  "properties": {
+                    "arm": { "$ref": "#/$defs/measureId" },
+                    "control": { "$ref": "#/$defs/measureId" },
+                    "total": { "$ref": "#/$defs/measureId" }
+                  }
+                }
+              }
+            },
+            "context": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "description": { "$ref": "#/$defs/field" },
+                "tag": { "$ref": "#/$defs/field" },
+                "status": { "$ref": "#/$defs/field" },
+                "start": { "$ref": "#/$defs/field" },
+                "end": { "$ref": "#/$defs/field" },
+                "as_of": { "$ref": "#/$defs/field" },
+                "group": { "$ref": "#/$defs/field" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["say", "recipe"],
+        "properties": {
+          "say": { "type": "string", "maxLength": 200 },
+          "recipe": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+          "bind": { "type": "object", "additionalProperties": true }
+        }
+      }
+    },
+    "controls": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind"],
+        "properties": {
+          "kind": { "enum": ["entity", "measure", "depth", "dimensions", "variant", "heatmap_axes", "grain"] },
+          "options": { "type": "array", "items": {} },
+          "default": {}
+        }
+      }
+    },
+    "words": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 60 }, "description": "Display names keyed by measure id or derived metric id." },
+    "rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "confidence_bar": { "enum": ["80%", "90%", "95%", "99%"], "default": "90%" },
+        "min_bookers": { "type": "integer", "minimum": 0, "default": 0 },
+        "trim_quartile": { "type": "boolean", "default": true },
+        "compare_periods": { "type": "integer", "minimum": 1, "maximum": 90, "default": 7, "description": "Core verdict/kpis: last N periods vs the N before." },
+        "targets": { "type": "object", "additionalProperties": { "type": "number" }, "description": "Optional target per measure id for the core verdict." }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accent": { "enum": ["blue", "teal", "purple", "amber", "coral"], "default": "blue" },
+        "follow": { "enum": ["system", "light", "dark"], "default": "system" }
+      }
+    },
+    "panels": {
+      "type": "array",
+      "description": "Resolved by the composer. Not authored by hand.",
+      "items": {
+        "type": "object",
+        "required": ["recipe"],
+        "properties": { "recipe": { "type": "string" }, "bind": { "type": "object" }, "say": { "type": "string" }, "width": { "enum": ["full", "half", "third"] } }
+      }
+    }
+  },
+  "$defs": {
+    "field": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_.]{0,63}$" },
+    "measureId": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$" }
+  }
+}

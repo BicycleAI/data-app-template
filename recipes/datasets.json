@@ -1,0 +1,61 @@
+{
+  "family": "core",
+  "note": "Datasets every core app can pull. Rendered by compose/datasets.mjs; see that file for the substitution vocabulary.",
+  "datasets": [
+    {
+      "id": "entity_list",
+      "when": "entity",
+      "select": ["{{entity}}", "{{entity_fields}}", "{{entity_rank}}"],
+      "where": "range",
+      "params": "range",
+      "order": "{{entity_rank}} DESC",
+      "limit": 1000,
+      "columns": [
+        { "token": "entity", "type": "entity" },
+        { "list": "entity_fields", "type": "string" },
+        { "token": "entity_rank", "type": "number" }
+      ],
+      "maxLimit": 1000
+    },
+    {
+      "id": "totals",
+      "select": ["{{measures}}"],
+      "where": "entity",
+      "params": "entity",
+      "columns": [{ "list": "measures", "type": "number" }],
+      "maxLimit": 100
+    },
+    {
+      "id": "by_time",
+      "select": ["date_trunc('{{grain}}', {{time}}) AS period", "{{measures}}"],
+      "where": "entity",
+      "params": "entity",
+      "columns": [{ "name": "period", "type": "string" }, { "list": "measures", "type": "number" }],
+      "maxLimit": 5000
+    },
+    {
+      "id": "by_dimension",
+      "when": "dimensions",
+      "select": ["{{dimensions}}", "{{measures}}"],
+      "where": "entity",
+      "params": "entity",
+      "order": "{{primary}} DESC",
+      "limit": 10000,
+      "columns": [{ "list": "dimensions", "type": "string" }, { "list": "measures", "type": "number" }],
+      "maxLimit": 10000
+    },
+    {
+      "id": "by_time_{{each_slug}}",
+      "repeat": { "over": "panel_bind", "recipe": "trend", "bind": "by", "max": 3 },
+      "select": ["date_trunc('{{grain}}', {{time}}) AS period", "{{each}}", "{{measures}}"],
+      "where": "entity",
+      "params": "entity",
+      "columns": [
+        { "name": "period", "type": "string" },
+        { "token": "each", "type": "string" },
+        { "list": "measures", "type": "number" }
+      ],
+      "maxLimit": 5000
+    }
+  ]
+}

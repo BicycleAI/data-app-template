@@ -1,0 +1,22 @@
+{
+  "id": "volume_vs_lift",
+  "name": "Volume vs lift",
+  "answers": "Is the effect real or thin?",
+  "shape": "segments by [volume] and [measure], coloured by confidence",
+  "needs": [
+    "segments",
+    "arm_totals"
+  ],
+  "slots": 0,
+  "fits": [
+    "analyst"
+  ],
+  "bind": {
+    "measure": {
+      "type": "measure",
+      "default": "ui"
+    }
+  },
+  "caveat": "Points outlined in red gain bookings but lose net commerce.",
+  "family": "ab_test"
+}

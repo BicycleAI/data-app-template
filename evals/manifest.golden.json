@@ -1,0 +1,81 @@
+{
+  "hotel-booking-health.json": {
+    "panels": [
+      "kpis",
+      "narrative",
+      "trend",
+      "breakdown",
+      "ranking",
+      "table"
+    ],
+    "queries": {
+      "totals": "SELECT total_successful_bookings_v2, total_failed_bookings_v2, total_booking_failure_rate_overall_v2, all_offers FROM RGfoyOBb WHERE timestamp >= :from AND timestamp < :to",
+      "by_time": "SELECT date_trunc('day', timestamp) AS period, total_successful_bookings_v2, total_failed_bookings_v2, total_booking_failure_rate_overall_v2, all_offers FROM RGfoyOBb WHERE timestamp >= :from AND timestamp < :to",
+      "by_dimension": "SELECT brand_owner_name_grouped, city_name, failureType, total_successful_bookings_v2, total_failed_bookings_v2, total_booking_failure_rate_overall_v2, all_offers FROM RGfoyOBb WHERE timestamp >= :from AND timestamp < :to ORDER BY total_successful_bookings_v2 DESC LIMIT 10000"
+    }
+  },
+  "hotel-failure-watch.json": {
+    "panels": [
+      "kpis",
+      "breakdown",
+      "trend",
+      "heatmap",
+      "trend"
+    ],
+    "queries": {
+      "totals": "SELECT total_failed_bookings_v2, total_booking_failure_rate_overall_v2, total_successful_bookings_v2 FROM RGfoyOBb WHERE timestamp >= :from AND timestamp < :to",
+      "by_time": "SELECT date_trunc('day', timestamp) AS period, total_failed_bookings_v2, total_booking_failure_rate_overall_v2, total_successful_bookings_v2 FROM RGfoyOBb WHERE timestamp >= :from AND timestamp < :to",
+      "by_dimension": "SELECT brand_owner_name_grouped, failureType, city_name, total_failed_bookings_v2, total_booking_failure_rate_overall_v2, total_successful_bookings_v2 FROM RGfoyOBb WHERE timestamp >= :from AND timestamp < :to ORDER BY total_failed_bookings_v2 DESC LIMIT 10000",
+      "by_time_brand_owner_name_grouped": "SELECT date_trunc('day', timestamp) AS period, brand_owner_name_grouped, total_failed_bookings_v2, total_booking_failure_rate_overall_v2, total_successful_bookings_v2 FROM RGfoyOBb WHERE timestamp >= :from AND timestamp < :to",
+      "by_time_failuretype": "SELECT date_trunc('day', timestamp) AS period, failureType, total_failed_bookings_v2, total_booking_failure_rate_overall_v2, total_successful_bookings_v2 FROM RGfoyOBb WHERE timestamp >= :from AND timestamp < :to"
+    }
+  },
+  "seti-explorer.json": {
+    "panels": [
+      "kpi_tiles",
+      "lift_by_dimension",
+      "volume_vs_lift",
+      "heatmap",
+      "extremes"
+    ],
+    "queries": {
+      "entity_list": "SELECT seti_id, seti_tag_name, seti_desc, status, primary_product_desc, test_end_date, bookers_v2 FROM rnAXPGFf WHERE timestamp >= :from AND timestamp < :to ORDER BY bookers_v2 DESC LIMIT 1000",
+      "experiment_meta": "SELECT seti_variant_name, seti_desc, seti_tag_name, status, test_start_date, test_end_date, data_as_of, primary_product_desc, bookers_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to",
+      "arm_totals": "SELECT seti_variant_name, variant_participants_v2, default_participants_v2, total_participants_v2, bookers_v2, gross_orders_v2, total_net_value_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to",
+      "segments": "SELECT seti_variant_name, product_desc, channel, device_desc, payment_method, vip_flag, vip_tier, offer_method, new_pcln, bookers_v2, gross_orders_v2, total_net_value_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to ORDER BY bookers_v2 DESC LIMIT 10000",
+      "daily_trend": "SELECT date_trunc('day', timestamp) AS day, seti_variant_name, bookers_v2, gross_orders_v2, total_net_value_v2, variant_participants_v2, default_participants_v2, total_participants_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to"
+    }
+  },
+  "seti-report.json": {
+    "panels": [
+      "kpi_tiles",
+      "hypothesis",
+      "insights",
+      "lifters_draggers",
+      "cumulative_trend",
+      "overview"
+    ],
+    "queries": {
+      "entity_list": "SELECT seti_id, seti_tag_name, seti_desc, status, primary_product_desc, test_end_date, bookers_v2 FROM rnAXPGFf WHERE timestamp >= :from AND timestamp < :to ORDER BY bookers_v2 DESC LIMIT 1000",
+      "experiment_meta": "SELECT seti_variant_name, seti_desc, seti_tag_name, status, test_start_date, test_end_date, data_as_of, primary_product_desc, bookers_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to",
+      "arm_totals": "SELECT seti_variant_name, variant_participants_v2, default_participants_v2, total_participants_v2, bookers_v2, gross_orders_v2, total_net_value_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to",
+      "segments": "SELECT seti_variant_name, product_desc, channel, device_desc, payment_method, vip_flag, vip_tier, offer_method, new_pcln, bookers_v2, gross_orders_v2, total_net_value_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to ORDER BY bookers_v2 DESC LIMIT 10000",
+      "daily_trend": "SELECT date_trunc('day', timestamp) AS day, seti_variant_name, bookers_v2, gross_orders_v2, total_net_value_v2, variant_participants_v2, default_participants_v2, total_participants_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to"
+    }
+  },
+  "seti-scorecard.json": {
+    "panels": [
+      "verdict",
+      "kpi_tiles",
+      "lift_by_dimension",
+      "cumulative_trend"
+    ],
+    "queries": {
+      "entity_list": "SELECT seti_id, seti_tag_name, seti_desc, status, primary_product_desc, test_end_date, bookers_v2 FROM rnAXPGFf WHERE timestamp >= :from AND timestamp < :to ORDER BY bookers_v2 DESC LIMIT 1000",
+      "experiment_meta": "SELECT seti_variant_name, seti_desc, seti_tag_name, status, test_end_date, data_as_of, primary_product_desc, bookers_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to",
+      "arm_totals": "SELECT seti_variant_name, variant_participants_v2, default_participants_v2, total_participants_v2, bookers_v2, gross_orders_v2, total_net_value_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to",
+      "segments": "SELECT seti_variant_name, channel, device_desc, bookers_v2, gross_orders_v2, total_net_value_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to ORDER BY bookers_v2 DESC LIMIT 10000",
+      "daily_trend": "SELECT date_trunc('day', timestamp) AS day, seti_variant_name, bookers_v2, gross_orders_v2, total_net_value_v2, variant_participants_v2, default_participants_v2, total_participants_v2 FROM rnAXPGFf WHERE seti_id = :entity AND timestamp >= :from AND timestamp < :to"
+    }
+  }
+}

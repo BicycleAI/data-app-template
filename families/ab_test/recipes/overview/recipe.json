@@ -1,0 +1,18 @@
+{
+  "id": "overview",
+  "name": "Experiment overview",
+  "answers": "How long, how split, how many?",
+  "shape": "period, length, traffic split, participants, coverage",
+  "needs": [
+    "experiment_meta",
+    "arm_totals"
+  ],
+  "slots": 0,
+  "fits": [
+    "pm",
+    "analyst"
+  ],
+  "bind": {},
+  "caveat": "States the distinct-count roll-up caveat in the footer.",
+  "family": "ab_test"
+}

@@ -1,0 +1,32 @@
+{
+  "id": "lift_by_dimension",
+  "name": "Lift by dimension",
+  "answers": "Which channel / device carries it?",
+  "shape": "Which [cut] carries the lift on [measure]?",
+  "needs": [
+    "segments",
+    "arm_totals"
+  ],
+  "slots": 0,
+  "fits": [
+    "pm",
+    "analyst",
+    "biz"
+  ],
+  "bind": {
+    "dims": {
+      "type": "dims",
+      "default": "all"
+    },
+    "measure": {
+      "type": "measure",
+      "default": "ui"
+    },
+    "limit": {
+      "type": "int",
+      "default": 12
+    }
+  },
+  "caveat": "Bookers per value are distinct counts per leaf; sums across leaves are an upper bound.",
+  "family": "ab_test"
+}

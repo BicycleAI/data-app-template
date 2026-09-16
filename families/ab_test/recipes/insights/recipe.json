@@ -1,0 +1,23 @@
+{
+  "id": "insights",
+  "name": "Narrative insights",
+  "answers": "So what?",
+  "shape": "common threads across the top and bottom segments on [measure]",
+  "needs": [
+    "segments",
+    "arm_totals"
+  ],
+  "slots": 0,
+  "fits": [
+    "biz",
+    "pm"
+  ],
+  "bind": {
+    "measure": {
+      "type": "measure",
+      "default": "ui"
+    }
+  },
+  "caveat": "Insights are deterministic patterns over segments, not a model's opinion.",
+  "family": "ab_test"
+}

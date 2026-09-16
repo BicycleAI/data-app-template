@@ -1,0 +1,101 @@
+{
+  "kind": "ab_test",
+  "name": "A/B test, incremental per day",
+  "description": "Two or more arms of an experiment compared against a control arm. Adds NIBPD / NIBrPD / NICPD / CVR with a two-proportion z-test, cumulative trends, and segment lifters and draggers.",
+  "requires": {
+    "entity": true,
+    "roles": [
+      "bookers",
+      "orders",
+      "value",
+      "participants.arm",
+      "participants.control",
+      "participants.total"
+    ],
+    "arms": true
+  },
+  "metrics": {
+    "measure": [
+      "NIBPD",
+      "NIBrPD",
+      "NICPD"
+    ],
+    "series": [
+      "NIBPD",
+      "NIBrPD",
+      "NICPD",
+      "CVR"
+    ]
+  },
+  "control_kinds": [
+    "depth",
+    "variant"
+  ],
+  "derived": {
+    "NIBPD": {
+      "name": "Net Incremental Bookings per Day",
+      "unit": "bookings/day",
+      "formula": "(orders_arm / w_arm - orders_control / w_control) / effective_tld"
+    },
+    "NIBrPD": {
+      "name": "Net Incremental Bookers per Day",
+      "unit": "bookers/day",
+      "formula": "(bookers_arm / w_arm - bookers_control / w_control) / effective_tld"
+    },
+    "NICPD": {
+      "name": "Net Incremental Commerce per Day",
+      "unit": "USD/day",
+      "formula": "(value_arm / w_arm - value_control / w_control) / effective_tld"
+    },
+    "CVR": {
+      "name": "Conversion Rate",
+      "unit": "%",
+      "formula": "bookers / participants; two-proportion z-test vs control"
+    },
+    "weights": "w_arm = participants_arm / participants_total; w_control = participants_control / participants_total",
+    "effective_tld": "fractional days from test start through the end of the latest snapshot, clamped to test end"
+  },
+  "detect": {
+    "description": "How design_model_card decides to suggest this family for a model.",
+    "arm_field_hints": [
+      "variant",
+      "arm",
+      "bucket",
+      "treatment"
+    ],
+    "participant_metric_hints": [
+      "participant",
+      "exposed",
+      "assigned"
+    ],
+    "control_value_hints": [
+      "DEFAULT",
+      "CONTROL",
+      "BASELINE"
+    ]
+  },
+  "datasets": [
+    "entity_list",
+    "experiment_meta",
+    "arm_totals",
+    "segments",
+    "daily_trend"
+  ],
+  "recipes": [
+    "verdict",
+    "kpi_tiles",
+    "hypothesis",
+    "insights",
+    "lift_by_dimension",
+    "lifters_draggers",
+    "cumulative_trend",
+    "volume_vs_lift",
+    "heatmap",
+    "extremes",
+    "overview"
+  ],
+  "caveats": [
+    "Segment roll-ups are exact for sums; a distinct-count measure summed across leaves is an upper bound.",
+    "Z-tests use experiment-level participant counts, not per-segment participants."
+  ]
+}

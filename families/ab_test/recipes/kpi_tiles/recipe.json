@@ -1,0 +1,29 @@
+{
+  "id": "kpi_tiles",
+  "name": "KPI tiles",
+  "answers": "How big, and which way is it going?",
+  "shape": "[measures] for [arm] vs [control]",
+  "needs": [
+    "arm_totals",
+    "daily_trend"
+  ],
+  "slots": 0,
+  "fits": [
+    "biz",
+    "pm",
+    "analyst",
+    "exec"
+  ],
+  "bind": {
+    "style": {
+      "type": "enum",
+      "options": [
+        "row",
+        "spark"
+      ],
+      "default": "row"
+    }
+  },
+  "caveat": null,
+  "family": "ab_test"
+}

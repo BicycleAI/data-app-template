@@ -1,0 +1,3 @@
+{ "id": "kpis", "family": "core", "name": "KPI tiles", "answers": "How big is each measure, and which way is it moving?", "shape": "[measures] over the window, last N periods vs the N before",
+  "needs": ["totals", "by_time"], "slots": 0, "fits": ["biz", "pm", "analyst", "exec"],
+  "bind": { "style": { "type": "enum", "options": ["row", "spark"], "default": "row" }, "measures": { "type": "measures", "default": "all" } }, "caveat": null }
