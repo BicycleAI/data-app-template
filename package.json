@@ -8,8 +8,9 @@
     "dev": "vite --config runtime/vite.config.ts",
     "build": "tsc -p tsconfig.json --noEmit && vite build --config runtime/vite.config.ts && node runtime/scripts/assert-dist.mjs runtime/dist",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
     "compose": "node compose/cli.mjs",
-    "check": "npm run typecheck && node compose/cli.mjs validate spec/examples/*.json && node compose/cli.mjs compose spec/examples/checkout-test-report.json --dry-run"
+    "check": "npm run typecheck && node compose/cli.mjs validate spec/examples/*.json && node compose/cli.mjs compose spec/examples/checkout-test-report.json --dry-run && npm run test"
   },
   "dependencies": {
     "@observablehq/plot": "^0.6.17",
@@ -20,11 +21,11 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.3.0",
+    "@testing-library/react": "16.3.3",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
     "@vitejs/plugin-react": "^6.1.1",
-    "happy-dom": "^20.14.0",
+    "happy-dom": "20.14.5",
     "typescript": "~5.9.3",
     "vite": "^8.2.2",
     "vitest": "4.1.11"

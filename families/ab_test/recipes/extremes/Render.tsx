@@ -1,26 +1,36 @@
-import { useMemo } from 'react'
 import type { Segment } from '../../../../runtime/src/analysis.js'
+import { mergeQueries } from '../../../../runtime/src/data.js'
 import { fmtInt, fmtSigned } from '../../../../runtime/src/format.js'
-import { Badge, type RecipeProps, SectionHead } from '../../../../runtime/src/parts.js'
+import { Badge, type RecipeProps, SectionHead, Widget, widgetState } from '../../../../runtime/src/parts.js'
 import { type Metric } from '../../../../runtime/src/spec.js'
 import { activeVariant, useUi } from '../../../../runtime/src/ui.js'
 
+/** Waits on `data.overall` + `data.segmentsAt`. */
 export function Render({ spec, data, bind }: RecipeProps) {
   const ui = useUi()
-  const variant = activeVariant(data, ui.variantIndex)
+  const overall = data.overall.rows ?? []
+  const variant = activeVariant(overall, ui.variantIndex)
   const metric = (typeof bind.measure === 'string' && bind.measure !== 'ui' ? (bind.measure as Metric) : ui.metric) ?? 'NIBPD'
   const count = typeof bind.count === 'number' ? bind.count : 6
-  const segments = useMemo(() => (variant === undefined ? [] : data.segmentsAt(ui.dims, 2).filter((segment) => segment.variant === variant.name)), [data, ui.dims, variant])
+  const segQuery = data.segmentsAt(ui.dims, 2)
+  const query = mergeQueries(data.overall, segQuery)
+  const segments = variant === undefined ? [] : (segQuery.rows ?? []).filter((segment) => segment.variant === variant.name)
   const up = segments.filter((segment) => segment[metric] > 0).sort((a, b) => b[metric] - a[metric]).slice(0, count)
   const down = segments.filter((segment) => segment[metric] < 0).sort((a, b) => a[metric] - b[metric]).slice(0, count)
   const max = Math.max(...[...up, ...down].map((segment) => Math.abs(segment[metric])), 1)
   const column = (title: string, rows: readonly Segment[], tone: 'positive' | 'negative') => (
-    <div className="bda-card kit-panel">
-      <div className="kit-dim__head">
-        <span className="kit-dim__title" style={{ color: `var(--bda-${tone})` }}>
-          {title}
-        </span>
-      </div>
+    <Widget
+      className="bda-card kit-panel"
+      heading={
+        <div className="kit-dim__head">
+          <span className="kit-dim__title" style={{ color: `var(--bda-${tone})` }}>
+            {title}
+          </span>
+        </div>
+      }
+      skeleton={{ kind: 'table', rows: count }}
+      {...widgetState(query)}
+    >
       {rows.length === 0 ? (
         <div className="bda-state">None.</div>
       ) : (
@@ -42,7 +52,7 @@ export function Render({ spec, data, bind }: RecipeProps) {
           ))}
         </ul>
       )}
-    </div>
+    </Widget>
   )
   return (
     <section className="kit-section">

@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { fmtMeasure, topBy } from '../../runtime/src/core.js'
-import { type CoreProps, SectionHead } from '../../runtime/src/parts.js'
+import { type CoreProps, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
 import { dimensionLabel, measureById, primaryMeasure, word } from '../../runtime/src/spec.js'
 import { MeasureSelect, useUi } from '../../runtime/src/ui.js'
 
-/** Top and bottom values of one dimension by the selected measure, with every other measure alongside. */
+/** Top and bottom values of one dimension by the selected measure, with every other measure alongside. Waits on `core.dims`. */
 export function Render({ spec, core, bind }: CoreProps) {
   const ui = useUi()
   const measure = (typeof bind.measure === 'string' ? measureById(spec, bind.measure) : undefined) ?? measureById(spec, ui.measure) ?? primaryMeasure(spec)
@@ -19,10 +19,7 @@ export function Render({ spec, core, bind }: CoreProps) {
   const bottom = showBottom ? topBy(ranked, measure.id, count, 'asc').filter((slice) => !top.includes(slice)) : []
   const others = spec.measures.filter((m) => m.id !== measure.id).slice(0, 3)
   const table = (title: string, rows: typeof top) => (
-    <div className="bda-card kit-tcard">
-      <div className="kit-tcard__head">
-        <span>{title}</span>
-      </div>
+    <Widget className="bda-card kit-tcard" heading={<div className="kit-tcard__head"><span>{title}</span></div>} skeleton={{ kind: 'table', rows: count }} {...widgetState(core.dims)}>
       {rows.length === 0 ? (
         <div className="bda-state">None.</div>
       ) : (
@@ -55,7 +52,7 @@ export function Render({ spec, core, bind }: CoreProps) {
           </table>
         </div>
       )}
-    </div>
+    </Widget>
   )
   return (
     <section className="kit-section">

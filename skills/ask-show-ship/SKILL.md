@@ -49,7 +49,7 @@ Each move: what you ask · what you show · when to stop. One move per message u
 
 **3 · Who is it for.** Confirm persona and where it is read. Call `design_templates`; name the template you propose and what it contains in one sentence. For biz, propose and move on; for pm/analyst, offer the alternative.
 
-**4 · Build the questions.** Use the sentence grammar below. Propose 3 (biz) to 5 (pm) sentences from the model card; each maps to exactly one recipe from `design_recipes`. For each accepted sentence call `design_recipe_preview` with a real entity from `entity_list`-style data (the card gives you one) and show the rows. Let the user swap a slot, drop a sentence, or add one. Cap at the persona's count. **biz stops here**: fill defaults and go to move 7.
+**4 · Build the questions.** Use the sentence grammar below. Propose 3 (biz) to 5 (pm) sentences from the model card; each maps to exactly one recipe from `design_recipes`. For each accepted sentence call `design_recipe_preview` with a real entity from `entity_list`-style data (the card gives you one) and show the rows. Let the user swap a slot, drop a sentence, or add one. Cap at the persona's count. **biz stops here**: fill defaults and go to move 7. Loading is the runtime's job; never describe it to the user.
 
 **5 · Decide what viewers can change.** Propose controls from the template defaults: entity picker, metric, depth, dimensions, variant, heatmap axes. Rule of thumb you state: up to 5 options → pills, up to 12 → select, more → search box. The user says yes or no per control.
 

@@ -2,11 +2,11 @@ import * as Plot from '@observablehq/plot'
 import { useMemo } from 'react'
 import { Chart } from '../../runtime/src/components/Chart.js'
 import { fmtMeasure } from '../../runtime/src/core.js'
-import { type CoreProps, SectionHead } from '../../runtime/src/parts.js'
+import { type CoreProps, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
 import { dimensionLabel, measureById, primaryMeasure, word } from '../../runtime/src/spec.js'
 import { HeatmapAxes, useUi } from '../../runtime/src/ui.js'
 
-/** The selected measure where two dimensions meet. */
+/** The selected measure where two dimensions meet. Waits on `core.dims`. */
 export function Render({ spec, core, bind }: CoreProps) {
   const ui = useUi()
   const measure = (typeof bind.measure === 'string' ? measureById(spec, bind.measure) : undefined) ?? measureById(spec, ui.measure) ?? primaryMeasure(spec)
@@ -43,9 +43,13 @@ export function Render({ spec, core, bind }: CoreProps) {
   )
   const rowCount = new Set(cells.map((cell) => cell.row)).size
   return (
-    <div className="bda-card kit-panel">
-      <SectionHead title={`${dimensionLabel(spec, rowsDim)} × ${dimensionLabel(spec, colsDim)}`} right={<HeatmapAxes spec={spec} />} />
+    <Widget
+      className="bda-card kit-panel"
+      heading={<SectionHead title={`${dimensionLabel(spec, rowsDim)} × ${dimensionLabel(spec, colsDim)}`} right={<HeatmapAxes spec={spec} />} />}
+      skeleton={{ kind: 'chart', height: 320 }}
+      {...widgetState(core.dims)}
+    >
       {rowsDim === colsDim ? <div className="bda-state">Pick two different dimensions.</div> : cells.length === 0 ? <div className="bda-state">No cells.</div> : <Chart options={options} height={Math.min(520, Math.max(220, 100 + rowCount * 34))} title={`${measure.label} heatmap`} />}
-    </div>
+    </Widget>
   )
 }

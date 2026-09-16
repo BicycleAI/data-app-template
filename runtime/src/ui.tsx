@@ -6,7 +6,7 @@
  */
 
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react'
-import type { Dataset } from './data.js'
+import type { VariantOverall } from './analysis.js'
 import { control, controlEnabled, isAb, type Metric, METRICS, primaryMeasure, type Spec, word } from './spec.js'
 
 export type UiState = {
@@ -76,8 +76,9 @@ export function useUi(): UiState & UiActions {
   return value
 }
 
-export function activeVariant(data: Dataset, index: number) {
-  return data.overall[Math.min(index, data.overall.length - 1)] ?? data.overall[0]
+/** `overall` is `data.overall.rows ?? []` — undefined means "still pending", which the caller gates on separately. */
+export function activeVariant(overall: readonly VariantOverall[], index: number): VariantOverall | undefined {
+  return overall[Math.min(index, overall.length - 1)] ?? overall[0]
 }
 
 /** Pills for the selected measure. Works for core measure ids and ab_test derived metrics alike. */
@@ -155,12 +156,12 @@ export function DimensionChecks({ spec }: { spec: Spec }) {
   )
 }
 
-export function VariantSwitch({ spec, data }: { spec: Spec; data: Dataset }) {
+export function VariantSwitch({ spec, overall }: { spec: Spec; overall: readonly VariantOverall[] }) {
   const ui = useUi()
-  if (data.overall.length <= 1 || !controlEnabled(spec, 'variant')) return null
+  if (overall.length <= 1 || !controlEnabled(spec, 'variant')) return null
   return (
     <div className="kit-seg" role="group" aria-label="Variant">
-      {data.overall.map((option, index) => (
+      {overall.map((option, index) => (
         <button key={option.name} type="button" className="kit-seg__btn" aria-pressed={index === ui.variantIndex} onClick={() => ui.setVariantIndex(index)}>
           {option.name}
         </button>

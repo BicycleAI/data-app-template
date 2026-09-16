@@ -31,6 +31,14 @@ The one piece of machinery that exists in both languages is the dataset renderer
 - Semantic SQL only: metrics are columns, `FROM <model>`, a bounded time range, no JOINs, no OR, no semicolons, ≤ 8000 chars.
 - A spec composes to ≤ 32 queries; core specs use 2–6, `ab_test` specs use 5.
 
+## Widgets never blank
+
+1. Layout renders on first paint and never unmounts — header, controls, cards, headings appear immediately; only the inside of a card waits.
+2. Each widget waits for ITS OWN query. Never gate `App` (or a chrome) on `data === undefined`; never early-return "Loading…" from a component that owns layout.
+3. Skeletons sized to what is coming (`SkeletonChart` with the chart's height, `SkeletonMetric`, `SkeletonTable` with a row count), `aria-busy="true"` on the card while pending.
+4. When a control changes (entity, measure, grain, dimensions, variant, heatmap axes), the widget keeps its previous rows visible with a quiet refreshing state and swaps when new rows arrive — skeleton only on first load or when the shape changes (different dimension). Use TanStack Query `placeholderData: keepPreviousData` in the dataset hooks; expose `isFetching` → class `kit-card--refreshing` (subtle, respects prefers-reduced-motion).
+5. Errors are per widget: the card shows what failed (BdaError code + message) and a Retry button (refetch); the rest of the app stays usable.
+
 ## Layout
 
 ```
