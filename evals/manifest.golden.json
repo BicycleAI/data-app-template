@@ -47,6 +47,21 @@
       "daily_trend": "SELECT date_trunc('day', timestamp) AS day, variant_name, unique_bookers, order_count, order_value, arm_participants, control_participants, total_participants FROM m_checkout_demo WHERE test_id = :entity AND timestamp >= :from AND timestamp < :to"
     }
   },
+  "retail-orders-health-filtered.json": {
+    "panels": [
+      "kpis",
+      "narrative",
+      "trend",
+      "breakdown",
+      "ranking",
+      "table"
+    ],
+    "queries": {
+      "totals": "SELECT orders_total, revenue_total, refund_rate_pct, avg_order_value FROM m_retail_demo WHERE event_time >= :from AND event_time < :to AND region IN (:region_0, :region_1, :region_2) AND channel = :channel_0",
+      "by_time": "SELECT date_trunc('day', event_time) AS period, orders_total, revenue_total, refund_rate_pct, avg_order_value FROM m_retail_demo WHERE event_time >= :from AND event_time < :to AND region IN (:region_0, :region_1, :region_2) AND channel = :channel_0",
+      "by_dimension": "SELECT region, channel, category, orders_total, revenue_total, refund_rate_pct, avg_order_value FROM m_retail_demo WHERE event_time >= :from AND event_time < :to ORDER BY orders_total DESC LIMIT 10000"
+    }
+  },
   "retail-orders-health.json": {
     "panels": [
       "kpis",

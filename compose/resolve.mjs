@@ -57,6 +57,16 @@ export function resolveSpec(input) {
   }
 }
 
+/**
+ * The filter controls in the user's words: "You can narrow by: Region, Channel".
+ * Empty when the spec declares no filters.
+ */
+export function narrowsBy(spec) {
+  const labelOf = (field) => spec.dimensions?.find((dimension) => dimension.field === field)?.label ?? field
+  const labels = (spec.controls ?? []).filter((control) => control.kind === 'filter').map((control) => labelOf(control.dim))
+  return labels.length === 0 ? '' : `You can narrow by: ${labels.join(', ')}`
+}
+
 /** The one-screen executive derivation of any spec. */
 export function briefOf(spec) {
   const family = familyOf(spec)
@@ -68,6 +78,11 @@ export function briefOf(spec) {
     persona: 'exec',
     template: 'brief',
     questions: [{ say: `Is ${spec.words?.[measure] ?? measure} on track?`, recipe: 'verdict', bind: { measure } }],
-    controls: spec.entity === undefined ? [] : [{ kind: 'entity' }],
+    // One screen, but the same narrowing: an exec reading it should be able to cut the
+    // same way the full app does, so the filters and the time range come across.
+    controls: [
+      ...(spec.entity === undefined ? [] : [{ kind: 'entity' }]),
+      ...(spec.controls ?? []).filter((control) => control.kind === 'filter' || control.kind === 'time'),
+    ],
   }
 }

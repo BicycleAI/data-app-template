@@ -19,6 +19,9 @@
     },
     {
       "kind": "heatmap_axes"
+    },
+    {
+      "kind": "time"
     }
   ],
   "slots": [

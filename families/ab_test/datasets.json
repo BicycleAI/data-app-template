@@ -32,6 +32,7 @@
     },
     {
       "id": "arm_totals",
+      "filters": true,
       "select": [
         "{{arm}}",
         "{{role:participants.arm}}",
@@ -72,6 +73,7 @@
     },
     {
       "id": "daily_trend",
+      "filters": true,
       "select": [
         "date_trunc('day', {{time}}) AS day",
         "{{arm}}",

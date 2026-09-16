@@ -27,8 +27,29 @@ export type MeasureSpec = {
 
 export type DimensionSpec = { readonly field: string; readonly label: string }
 
-export type ControlKind = 'entity' | 'measure' | 'depth' | 'dimensions' | 'variant' | 'heatmap_axes' | 'grain'
-export type ControlSpec = { readonly kind: ControlKind; readonly options?: readonly unknown[]; readonly default?: unknown }
+export type ControlKind = 'entity' | 'measure' | 'depth' | 'dimensions' | 'variant' | 'heatmap_axes' | 'grain' | 'filter' | 'time'
+export type TimePreset = '7d' | '30d' | '90d' | 'quarter' | 'ytd'
+export type ControlSpec = {
+  readonly kind: ControlKind
+  readonly options?: readonly unknown[]
+  readonly default?: unknown
+  /** `filter` only: the declared dimension this control narrows. */
+  readonly dim?: string
+  /** `filter` only: the viewer may pick several values. */
+  readonly multi?: boolean
+  /**
+   * `filter` only: how many values may be narrowed to at once. The composer
+   * declares one `<slug>_<i>` query parameter per slot; spare slots repeat the
+   * last picked value, and picking more than this many leaves the aggregate
+   * queries unnarrowed. Defaults to `min(options.length, 5)`.
+   */
+  readonly slots?: number
+  /** `time` only: the ranges offered. */
+  readonly presets?: readonly TimePreset[]
+}
+
+/** A `filter` control, narrowed to the shape the FilterBar needs. */
+export type FilterControl = ControlSpec & { readonly kind: 'filter'; readonly dim: string }
 
 export type Panel = {
   readonly recipe: string
@@ -163,6 +184,19 @@ export function controlEnabled(spec: Spec, kind: ControlKind): boolean {
 
 export function control(spec: Spec, kind: ControlKind): ControlSpec | undefined {
   return (spec.controls ?? []).find((control) => control.kind === kind)
+}
+
+/**
+ * The declared filter controls, in spec order.
+ *
+ * The datasets that aggregate the dimension away carry one `<slug>_<i>` string
+ * parameter per slot (see compose/datasets.mjs `## Filters`); binding the
+ * viewer's pick to those parameters, padding the spare slots and saying so when
+ * the pick is wider than the slots, is the FilterBar's job (T3.3). Nothing
+ * renders these yet.
+ */
+export function filterControls(spec: Spec): readonly FilterControl[] {
+  return (spec.controls ?? []).filter((control): control is FilterControl => control.kind === 'filter' && typeof control.dim === 'string')
 }
 
 export function resolveTo(to: string): string {

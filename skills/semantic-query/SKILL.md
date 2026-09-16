@@ -35,9 +35,20 @@ WHERE <time column> >= :from AND <time column> < :to
 - **Both ends of the time range are mandatory.** `WHERE event_time >= :from` on its own
   fails with `time_range_required`. `BETWEEN` works, but only on the time column.
 - **Filter a dimension** with `AND <dimension> = :value` — also `!=`, `>`, `<`, `>=`,
-  `<=`, `LIKE 'pattern%'`, and `IN ('a', 'b')` with literal values. Whether a *list
-  parameter* (`IN (:regions)`) compiles is **unverified**: `query_compile` it before you
-  build anything on it.
+  `<=`, `LIKE 'pattern%'`, and `IN ('a', 'b')` with literal values.
+- **A list parameter does not work — and it does not tell you so.** `IN (:regions)` with
+  `regions: ["a", "b"]` *compiles clean*, then returns **zero rows**: the compiler folds
+  the list into a nested argument (`Comparator.IN, [['a','b']]`) that matches nothing.
+  Verified by running it. This is the one place where `query_compile` passing is not
+  enough — `query_run` it and compare against the unfiltered rows.
+- **Two forms do work, both verified by running them:** literals, `IN ('a', 'b')`, and
+  **one scalar parameter per slot**, `IN (:r0, :r1)` with `r0: "a", r1: "b"`. Prefer the
+  second when the values come from a control, since the query can then be re-run with
+  new values instead of rebuilt. Its one constraint is a fixed number of slots, and
+  **duplicates are harmless** — `IN` is a set, so a spare slot can repeat a value you
+  already passed (verified: five slots with one value repeated four times returns the
+  same rows as the two-value query). A manifest's `parameters[].type` is
+  `string | number | boolean | date`, which is why there is no list form to declare.
 - Max 8000 characters. No semicolon.
 - **Not available:** `JOIN` (`no_joins`), subqueries and `UNION` (`no_subqueries`),
   `SELECT *` (`no_star`), `OR` (`unsupported_where: OR is not supported; run separate
@@ -107,6 +118,22 @@ SELECT date_trunc('day', event_time) AS period, region, refund_count, refund_rat
 
 **`entity_list`** — the pickable things and their labels, ranked. *Use to populate an
 entity picker.* Declared identically by both families; rendered below.
+
+**When the app declares filter controls**, the composer adds one scalar parameter per
+slot to the queries that aggregate that dimension away — `totals` and `by_time` (and
+`arm_totals` and `daily_trend` in `ab_test`). A multi-select filter gets `IN`, a
+single-select gets `=`:
+
+```sql
+SELECT orders_total, revenue_total, refund_rate_pct, avg_order_value FROM m_retail_demo WHERE event_time >= :from AND event_time < :to AND region IN (:region_0, :region_1, :region_2) AND channel = :channel_0
+```
+
+Each slot is declared `{ type: "string", required: true }` with a default, so the query
+is runnable as it stands. Spare slots repeat the last picked value.
+
+`by_dimension`, `by_time_<dim>` and `segments` never get the clause: they select the
+dimension, so the app narrows them after the rows land. If someone asks why a tile and a
+breakdown disagree, this is why — the tile is scoped to the filtered set.
 
 ### `ab_test` family (`m_checkout_demo`: `timestamp`, entity `test_id`, arms `variant_name`)
 

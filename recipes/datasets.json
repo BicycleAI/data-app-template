@@ -19,6 +19,7 @@
     },
     {
       "id": "totals",
+      "filters": true,
       "select": ["{{measures}}"],
       "where": "entity",
       "params": "entity",
@@ -27,6 +28,7 @@
     },
     {
       "id": "by_time",
+      "filters": true,
       "select": ["date_trunc('{{grain}}', {{time}}) AS period", "{{measures}}"],
       "where": "entity",
       "params": "entity",

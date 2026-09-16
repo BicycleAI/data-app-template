@@ -15,7 +15,7 @@ import { resolve } from 'node:path'
 import { buildBundle, extractSpec } from './bundle.mjs'
 import { loadCatalogue } from './catalogue.mjs'
 import { checkManifest, deriveManifest } from './manifest.mjs'
-import { briefOf, resolveSpec } from './resolve.mjs'
+import { briefOf, narrowsBy, resolveSpec } from './resolve.mjs'
 import { uploadBundle } from './upload.mjs'
 import { validateSpec } from './validate.mjs'
 
@@ -48,12 +48,14 @@ async function composeSpec(spec, outDir) {
   const manifest = deriveManifest(resolved)
   const manifestErrors = checkManifest(manifest)
   if (manifestErrors.length > 0) fail(`derived manifest is invalid:\n  - ${manifestErrors.join('\n  - ')}`)
+  const narrows = narrowsBy(resolved)
   if (flags['dry-run']) {
-    process.stdout.write(`${JSON.stringify({ ok: true, appId: resolved.appId ?? null, panels: resolved.panels.map((panel) => panel.recipe), queries: manifest.queries.map((query) => query.id), slots: `${manifest.queries.length}/32` }, null, 2)}\n`)
+    process.stdout.write(`${JSON.stringify({ ok: true, appId: resolved.appId ?? null, panels: resolved.panels.map((panel) => panel.recipe), queries: manifest.queries.map((query) => query.id), slots: `${manifest.queries.length}/32`, ...(narrows === '' ? {} : { narrows }) }, null, 2)}\n`)
     return
   }
   const built = buildBundle(resolved, manifest, outDir)
-  process.stdout.write(`${JSON.stringify({ ok: true, ...built, panels: resolved.panels.map((panel) => panel.recipe), slots: `${manifest.queries.length}/32` }, null, 2)}\n`)
+  process.stdout.write(`${JSON.stringify({ ok: true, ...built, panels: resolved.panels.map((panel) => panel.recipe), slots: `${manifest.queries.length}/32`, ...(narrows === '' ? {} : { narrows }) }, null, 2)}\n`)
+  if (narrows !== '') process.stdout.write(`${narrows}\n`)
   if (typeof flags['upload-url'] === 'string') {
     await uploadBundle(built.zip, flags['upload-url'])
     process.stdout.write(`uploaded. Now: dataapp_complete_upload(app_id, version, sha256="${built.sha256}", bytes=${built.bytes})\n`)

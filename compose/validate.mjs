@@ -16,9 +16,13 @@ import { fileURLToPath } from 'node:url'
 import Ajv2020 from 'ajv/dist/2020.js'
 import addFormats from 'ajv-formats'
 import { datasetsFor, loadCatalogue, recipesFor, templateFor } from './catalogue.mjs'
+import { filtersOf } from './datasets.mjs'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 const SCHEMA = JSON.parse(readFileSync(`${here}/../spec/dataapp-spec.v2.schema.json`, 'utf8'))
+
+/** The service's cap on a query's declared parameters (`data_apps/manifest.py`). */
+const PARAMETER_LIMIT = 16
 
 let compiled
 function validator() {
@@ -110,11 +114,41 @@ export function validateSpec(spec) {
     if (repeat.seen.size > max) errors.push(`at most ${max} "${repeat.recipe}" questions may bind a different ${repeat.bind} — each one costs a query`)
   }
 
+  // `filter` and `time` are core kinds — every spec may use them, so they are never claimed by a family.
   const claimed = claimedControls()
   const provided = new Set(family?.control_kinds ?? [])
-  for (const control of spec.controls ?? []) {
+  const narrowed = new Set()
+  spec.controls?.forEach((control, index) => {
     if (control.kind === 'measure' && Array.isArray(control.options) && control.options.some((measure) => !okMeasure(measure))) errors.push('/controls measure options must be declared measures')
     if (claimed.has(control.kind) && !provided.has(control.kind)) errors.push(`/controls "${control.kind}" needs a family that provides it`)
+    if (control.kind !== 'filter') return
+    if (!dims.has(control.dim)) errors.push(`/controls/${index}/dim "${control.dim}" is not a declared dimension`)
+    if (narrowed.has(control.dim)) errors.push(`/controls/${index}/dim "${control.dim}" is narrowed by more than one filter`)
+    narrowed.add(control.dim)
+    // `options` is the chip list; the default is what the slots are seeded with, so it has to be pickable.
+    const options = control.options
+    const chosen = control.default === undefined ? [] : [control.default].flat()
+    if (Array.isArray(options) && chosen.some((value) => !options.includes(value))) errors.push(`/controls/${index}/default is not among that filter's options`)
+    if (control.multi !== true && Array.isArray(control.default)) errors.push(`/controls/${index}/default is a list, but the filter is not multi`)
+    if (control.multi !== true && control.slots !== undefined) errors.push(`/controls/${index}/slots only applies to a multi filter`)
+    if (chosen.length > (control.slots ?? Infinity)) errors.push(`/controls/${index}/default names ${chosen.length} values but the filter has ${control.slots} slots`)
+  })
+
+  // Each filter slot is a query parameter, and a query may declare at most 16.
+  // Fail here with the arithmetic rather than let the service reject the upload.
+  if (errors.length === 0) {
+    const filters = filtersOf(spec)
+    const slots = filters.reduce((total, filter) => total + filter.parameters.length, 0)
+    const names = filters.flatMap((filter) => filter.parameters.map((parameter) => parameter.name))
+    for (const name of new Set(names)) {
+      if (names.filter((other) => other === name).length > 1) errors.push(`/controls two filters both render the parameter "${name}" — their dimension names differ only in punctuation`)
+    }
+    for (const dataset of datasetsFor(spec)) {
+      if (dataset.filters !== true) continue
+      const fixed = dataset.params === 'entity' && spec.entity !== undefined ? 3 : 2 // entity? + from + to
+      const total = fixed + slots
+      if (total > PARAMETER_LIMIT) errors.push(`filters on ${dataset.id} need ${total} parameters; the limit is ${PARAMETER_LIMIT} — lower \`slots\` or drop a filter`)
+    }
   }
 
   const blobNames = new Set((spec.store?.blobs ?? []).map((blob) => blob.name))
