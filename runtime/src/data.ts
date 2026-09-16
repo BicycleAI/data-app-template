@@ -2,6 +2,16 @@
  * Datasets, fetched through the declared queries and turned into the
  * structures recipes read. The core datasets exist for every spec; the
  * ab_test family adds its own.
+ *
+ * Every dataset is exposed as a `QueryState<T>`: `rows` is `undefined` until
+ * its own query lands, alongside `isPending` (first load, no data to show
+ * yet), `isFetching` (a background refetch — a control changed but the
+ * previous rows are still on screen), `error` and `refetch`. Recipes read
+ * `rows` and hand the rest to `Widget` (parts.tsx), which is what decides
+ * whether to show a skeleton, the stale rows with a quiet refreshing state,
+ * or an error with a Retry button. Nothing here ever collapses several
+ * widgets' worth of state into one "loading" flag that blocks a whole page —
+ * see AGENTS.md's "Widgets never blank" invariant.
  */
 
 import { useMemo } from 'react'
@@ -72,17 +82,54 @@ function entityParameters(spec: Spec, entityId: string | undefined): Record<stri
 
 const rows = (result: QueryResult | undefined) => (result === undefined ? undefined : toObjects(result))
 
+/* ------------------------------------------------------------- query state */
+
+/**
+ * One query's worth of state, as every widget needs it.
+ *
+ * `rows` is the built value — not raw wire rows — so a recipe never re-runs
+ * its own maths differently from another recipe reading the same query.
+ */
+export type QueryState<T> = {
+  readonly rows: T | undefined
+  readonly isPending: boolean
+  readonly isFetching: boolean
+  readonly error: BdaError | null
+  readonly refetch: () => void
+}
+
+function pendingState<T>(): QueryState<T> {
+  return { rows: undefined, isPending: true, isFetching: false, error: null, refetch: () => {} }
+}
+
+/**
+ * Combine several queries a single widget depends on into one state: pending
+ * until all have landed, fetching if any is refreshing, the first error if
+ * any failed, and a retry that refetches every one of them.
+ */
+export function mergeQueries(...states: readonly Pick<QueryState<unknown>, 'isPending' | 'isFetching' | 'error' | 'refetch'>[]): Pick<QueryState<unknown>, 'isPending' | 'isFetching' | 'error' | 'refetch'> {
+  return {
+    isPending: states.some((state) => state.isPending),
+    isFetching: states.some((state) => state.isFetching),
+    error: states.find((state) => state.error !== null)?.error ?? null,
+    refetch: () => {
+      for (const state of states) state.refetch()
+    },
+  }
+}
+
 /* ------------------------------------------------------------------ core */
 
 export type CoreData = {
-  readonly totals: Totals
-  readonly series: readonly Period[]
-  readonly wideRows: readonly Row[]
-  readonly seriesBy: ReadonlyMap<string, readonly Row[]>
-  slicesAt(dims: readonly string[]): Slice[]
+  readonly totals: QueryState<Totals>
+  readonly series: QueryState<readonly Period[]>
+  /** The wide by-dimension pull. Recipes read `slicesAt`, not this, for values. */
+  readonly dims: QueryState<readonly Row[]>
+  /** The per-dimension time series a `trend` panel with `by` reads (one query per trend dimension). */
+  trendBy(field: string): QueryState<readonly Row[]>
+  /** Rolled-up slices for a set of dimensions. `[]` while `dims` is pending — gate the widget on `core.dims`, not on the length of this. */
+  slicesAt(fields: readonly string[]): Slice[]
 }
-
-export type CoreState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'empty' } | { status: 'ready'; data: CoreData }
 
 /** Which dimensions the panels ask a per-dimension time series for (recipe `trend` with `by`). */
 export function trendDims(spec: Spec): string[] {
@@ -94,109 +141,160 @@ export function trendDims(spec: Spec): string[] {
   return [...out]
 }
 
-export function useCoreDataset(spec: Spec, entityId: string | undefined): CoreState {
+export function useCoreDataset(spec: Spec, entityId: string | undefined): CoreData {
   const ready = spec.entity === undefined || entityId !== undefined
   const parameters = entityParameters(spec, entityId)
-  const totals = useAppQuery(QUERY.totals, { parameters, enabled: ready })
-  const byTime = useAppQuery(QUERY.byTime, { parameters, limit: 5000, enabled: ready })
+  const totalsQ = useAppQuery(QUERY.totals, { parameters, enabled: ready })
+  const byTimeQ = useAppQuery(QUERY.byTime, { parameters, limit: 5000, enabled: ready })
   const hasDims = spec.dimensions.length > 0
-  const byDim = useAppQuery(QUERY.byDimension, { parameters, limit: 10000, enabled: ready && hasDims })
+  const byDimQ = useAppQuery(QUERY.byDimension, { parameters, limit: 10000, enabled: ready && hasDims })
   const dims = trendDims(spec)
   // Hooks must be called unconditionally; the composer caps trend dims at 3.
   const bt0 = useAppQuery(QUERY.byTimeDim(dims[0] ?? ''), { parameters, limit: 5000, enabled: ready && dims[0] !== undefined })
   const bt1 = useAppQuery(QUERY.byTimeDim(dims[1] ?? ''), { parameters, limit: 5000, enabled: ready && dims[1] !== undefined })
   const bt2 = useAppQuery(QUERY.byTimeDim(dims[2] ?? ''), { parameters, limit: 5000, enabled: ready && dims[2] !== undefined })
 
-  const totalRows = useMemo(() => rows(totals.data), [totals.data])
-  const timeRows = useMemo(() => rows(byTime.data), [byTime.data])
-  const dimRows = useMemo(() => rows(byDim.data), [byDim.data])
-  const btRows = [useMemo(() => rows(bt0.data), [bt0.data]), useMemo(() => rows(bt1.data), [bt1.data]), useMemo(() => rows(bt2.data), [bt2.data])]
+  const totalRows = useMemo(() => rows(totalsQ.data), [totalsQ.data])
+  const timeRows = useMemo(() => rows(byTimeQ.data), [byTimeQ.data])
+  const dimRows = useMemo(() => rows(byDimQ.data), [byDimQ.data])
+  const bt0Rows = useMemo(() => rows(bt0.data), [bt0.data])
+  const bt1Rows = useMemo(() => rows(bt1.data), [bt1.data])
+  const bt2Rows = useMemo(() => rows(bt2.data), [bt2.data])
 
-  return useMemo<CoreState>(() => {
-    if (!ready) return { status: 'loading' }
-    const failure = totals.error ?? byTime.error ?? (hasDims ? byDim.error : null) ?? bt0.error ?? bt1.error ?? bt2.error
-    if (failure !== null) return { status: 'error', message: failure.message }
-    if (totalRows === undefined || timeRows === undefined || (hasDims && dimRows === undefined)) return { status: 'loading' }
-    for (let index = 0; index < dims.length; index += 1) if (btRows[index] === undefined) return { status: 'loading' }
-    const built = buildTotals(spec, totalRows)
-    if (Object.values(built).every((value) => value === null) && timeRows.length === 0) return { status: 'empty' }
-    const wideRows = dimRows ?? []
-    const cache = new Map<string, Slice[]>()
-    const seriesBy = new Map<string, readonly Row[]>()
-    dims.forEach((dim, index) => seriesBy.set(dim, btRows[index] ?? []))
-    return {
-      status: 'ready',
-      data: {
-        totals: built,
-        series: buildSeries(spec, timeRows),
-        wideRows,
-        seriesBy,
-        slicesAt(fields) {
-          const key = fields.join(',')
-          const hit = cache.get(key)
-          if (hit !== undefined) return hit
-          const computed = rollup(spec, wideRows, fields)
-          cache.set(key, computed)
-          return computed
-        },
-      },
-    }
-  }, [spec, ready, hasDims, dims, totals.error, byTime.error, byDim.error, bt0.error, bt1.error, bt2.error, totalRows, timeRows, dimRows, btRows[0], btRows[1], btRows[2]])
+  const totalsBuilt = useMemo(() => (totalRows === undefined ? undefined : buildTotals(spec, totalRows)), [spec, totalRows])
+  const seriesBuilt = useMemo(() => (timeRows === undefined ? undefined : buildSeries(spec, timeRows)), [spec, timeRows])
+
+  const totals: QueryState<Totals> = { rows: totalsBuilt, isPending: totalsQ.isPending, isFetching: totalsQ.isFetching, error: totalsQ.error, refetch: () => void totalsQ.refetch() }
+  const series: QueryState<readonly Period[]> = { rows: seriesBuilt, isPending: byTimeQ.isPending, isFetching: byTimeQ.isFetching, error: byTimeQ.error, refetch: () => void byTimeQ.refetch() }
+  const dimsState: QueryState<readonly Row[]> = hasDims
+    ? { rows: dimRows, isPending: byDimQ.isPending, isFetching: byDimQ.isFetching, error: byDimQ.error, refetch: () => void byDimQ.refetch() }
+    : { rows: [], isPending: false, isFetching: false, error: null, refetch: () => {} }
+  const btStates: readonly QueryState<readonly Row[]>[] = [
+    { rows: bt0Rows, isPending: bt0.isPending, isFetching: bt0.isFetching, error: bt0.error, refetch: () => void bt0.refetch() },
+    { rows: bt1Rows, isPending: bt1.isPending, isFetching: bt1.isFetching, error: bt1.error, refetch: () => void bt1.refetch() },
+    { rows: bt2Rows, isPending: bt2.isPending, isFetching: bt2.isFetching, error: bt2.error, refetch: () => void bt2.refetch() },
+  ]
+
+  const slicesCache = useMemo(() => new Map<string, Slice[]>(), [dimsState.rows])
+
+  return {
+    totals,
+    series,
+    dims: dimsState,
+    trendBy(field) {
+      const index = dims.indexOf(field)
+      return index === -1 ? pendingState() : (btStates[index] ?? pendingState())
+    },
+    slicesAt(fields) {
+      const key = fields.join(',')
+      const hit = slicesCache.get(key)
+      if (hit !== undefined) return hit
+      const computed = dimsState.rows === undefined ? [] : rollup(spec, dimsState.rows, fields)
+      slicesCache.set(key, computed)
+      return computed
+    },
+  }
 }
 
 /* --------------------------------------------------------------- ab_test */
 
 export type Dataset = {
-  readonly meta: Meta
-  readonly overall: readonly VariantOverall[]
-  readonly wideRows: readonly Row[]
-  readonly trend: readonly TrendPoint[]
-  segmentsAt(dims: readonly string[], depth: number): Segment[]
+  /** Experiment metadata (description, tag, status, window). Needs `experiment_meta` + `daily_trend` (the trend rows bound the test window). */
+  readonly meta: QueryState<Meta>
+  /** Per-arm KPIs. Needs `meta` (for the window's effective length) + `arm_totals`. */
+  readonly overall: QueryState<readonly VariantOverall[]>
+  /** Cumulative-to-date KPIs per day per variant. Needs `overall` + `daily_trend`. */
+  readonly trend: QueryState<readonly TrendPoint[]>
+  /** Rolled-up per-arm segments for a set of dimensions at a combination depth. Needs `overall` + the wide `segments` pull. */
+  segmentsAt(fields: readonly string[], depth: number): QueryState<readonly Segment[]>
 }
 
-export type DatasetState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'empty' } | { status: 'ready'; data: Dataset }
-
-export function useAbDataset(spec: Spec & { family: AbFamily }, entityId: string): DatasetState {
+export function useAbDataset(spec: Spec & { family: AbFamily }, entityId: string): Dataset {
   const ab = useMemo(() => toAbSpec(spec), [spec])
   const parameters = entityParameters(spec, entityId)
-  const meta = useAppQuery(QUERY.meta, { parameters })
-  const totals = useAppQuery(QUERY.armTotals, { parameters })
-  const wide = useAppQuery(QUERY.segments, { parameters, limit: 10000 })
-  const daily = useAppQuery(QUERY.trend, { parameters, limit: 5000 })
+  const metaQ = useAppQuery(QUERY.meta, { parameters })
+  const totalsQ = useAppQuery(QUERY.armTotals, { parameters })
+  const wideQ = useAppQuery(QUERY.segments, { parameters, limit: 10000 })
+  const dailyQ = useAppQuery(QUERY.trend, { parameters, limit: 5000 })
 
-  const metaRows = useMemo(() => rows(meta.data), [meta.data])
-  const totalRows = useMemo(() => rows(totals.data), [totals.data])
-  const wideRows = useMemo(() => rows(wide.data), [wide.data])
-  const dailyRows = useMemo(() => rows(daily.data), [daily.data])
+  const metaRows = useMemo(() => rows(metaQ.data), [metaQ.data])
+  const totalRows = useMemo(() => rows(totalsQ.data), [totalsQ.data])
+  const wideRows = useMemo(() => rows(wideQ.data), [wideQ.data])
+  const dailyRows = useMemo(() => rows(dailyQ.data), [dailyQ.data])
 
-  return useMemo<DatasetState>(() => {
-    const failure = meta.error ?? totals.error ?? wide.error ?? daily.error
-    if (failure !== null) return { status: 'error', message: failure.message }
-    if (metaRows === undefined || totalRows === undefined || wideRows === undefined || dailyRows === undefined) return { status: 'loading' }
-    const built = buildMeta(ab, entityId, metaRows, dailyRows.map((row) => str(row.day).slice(0, 10)))
-    if (built === undefined) return { status: 'empty' }
-    const overall = buildOverall(ab, totalRows, built.window.effectiveTld)
-    if (overall.length === 0) return { status: 'empty' }
-    const trend = buildTrend(ab, dailyRows, overall, built.window)
-    const cache = new Map<string, Segment[]>()
-    return {
-      status: 'ready',
-      data: {
-        meta: built,
-        overall,
-        wideRows,
-        trend,
-        segmentsAt(dims, depth) {
-          const key = `${dims.join(',')}|${depth}`
-          const hit = cache.get(key)
-          if (hit !== undefined) return hit
-          const computed = applyRules(ab, buildSegments(ab, wideRows, overall, dims, depth, built.window.effectiveTld))
-          cache.set(key, computed)
-          return computed
+  const metaBuilt = useMemo(() => {
+    if (metaRows === undefined || dailyRows === undefined) return undefined
+    return buildMeta(ab, entityId, metaRows, dailyRows.map((row) => str(row.day).slice(0, 10)))
+  }, [ab, entityId, metaRows, dailyRows])
+
+  const metaState: QueryState<Meta> = {
+    rows: metaBuilt,
+    isPending: metaQ.isPending || dailyQ.isPending,
+    isFetching: metaQ.isFetching || dailyQ.isFetching,
+    error: metaQ.error ?? dailyQ.error,
+    refetch: () => {
+      void metaQ.refetch()
+      void dailyQ.refetch()
+    },
+  }
+
+  const overallBuilt = useMemo(() => {
+    if (metaBuilt === undefined || totalRows === undefined) return undefined
+    return buildOverall(ab, totalRows, metaBuilt.window.effectiveTld)
+  }, [ab, metaBuilt, totalRows])
+
+  const overallState: QueryState<readonly VariantOverall[]> = {
+    rows: overallBuilt,
+    isPending: metaState.isPending || totalsQ.isPending,
+    isFetching: metaState.isFetching || totalsQ.isFetching,
+    error: metaState.error ?? totalsQ.error,
+    refetch: () => {
+      metaState.refetch()
+      void totalsQ.refetch()
+    },
+  }
+
+  const trendBuilt = useMemo(() => {
+    if (metaBuilt === undefined || overallBuilt === undefined || dailyRows === undefined) return undefined
+    return buildTrend(ab, dailyRows, overallBuilt, metaBuilt.window)
+  }, [ab, metaBuilt, overallBuilt, dailyRows])
+
+  const trendState: QueryState<readonly TrendPoint[]> = {
+    rows: trendBuilt,
+    isPending: overallState.isPending || dailyQ.isPending,
+    isFetching: overallState.isFetching || dailyQ.isFetching,
+    error: overallState.error ?? dailyQ.error,
+    refetch: () => {
+      overallState.refetch()
+      void dailyQ.refetch()
+    },
+  }
+
+  const segmentsCache = useMemo(() => new Map<string, Segment[]>(), [overallBuilt, wideRows])
+
+  return {
+    meta: metaState,
+    overall: overallState,
+    trend: trendState,
+    segmentsAt(fields, depth) {
+      const base = {
+        isPending: overallState.isPending || wideQ.isPending,
+        isFetching: overallState.isFetching || wideQ.isFetching,
+        error: overallState.error ?? wideQ.error,
+        refetch: () => {
+          overallState.refetch()
+          void wideQ.refetch()
         },
-      },
-    }
-  }, [ab, entityId, meta.error, totals.error, wide.error, daily.error, metaRows, totalRows, wideRows, dailyRows])
+      }
+      const key = `${fields.join(',')}|${depth}`
+      const hit = segmentsCache.get(key)
+      if (hit !== undefined) return { rows: hit, ...base }
+      if (metaBuilt === undefined || overallBuilt === undefined || wideRows === undefined) return { rows: undefined, ...base }
+      const computed = applyRules(ab, buildSegments(ab, wideRows, overallBuilt, fields, depth, metaBuilt.window.effectiveTld))
+      segmentsCache.set(key, computed)
+      return { rows: computed, ...base }
+    },
+  }
 }
 
 export { isAb }

@@ -1,17 +1,20 @@
 import { fmtDelta, fmtMeasure, isGood, periodChange } from '../../runtime/src/core.js'
-import type { CoreProps } from '../../runtime/src/parts.js'
+import { mergeQueries } from '../../runtime/src/data.js'
+import { type CoreProps, Widget, widgetState } from '../../runtime/src/parts.js'
 import { measureById, primaryMeasure, word } from '../../runtime/src/spec.js'
 
 /**
  * One sentence about the primary measure: against its target when the spec
- * sets one, otherwise against the prior period.
+ * sets one, otherwise against the prior period. Waits on `totals` + `series`.
  */
 export function Render({ spec, core, bind }: CoreProps) {
   const measure = (typeof bind.measure === 'string' ? measureById(spec, bind.measure) : undefined) ?? primaryMeasure(spec)
   const name = word(spec, measure.id)
-  const total = core.totals[measure.id] ?? null
+  const query = mergeQueries(core.totals, core.series)
+  const total = core.totals.rows?.[measure.id] ?? null
   const periods = spec.rules?.compare_periods ?? 7
-  const change = periodChange(measure, core.series, periods)
+  const series = core.series.rows ?? []
+  const change = periodChange(measure, series, periods)
   const target = spec.rules?.targets?.[measure.id]
   const grain = spec.time.grain ?? 'day'
 
@@ -39,14 +42,14 @@ export function Render({ spec, core, bind }: CoreProps) {
   }
 
   return (
-    <section className={`kit-verdict kit-verdict--${tone}`}>
+    <Widget className={`kit-verdict kit-verdict--${tone}`} heading={<div className="kit-sh">Verdict</div>} skeleton={{ kind: 'text', lines: 2 }} {...widgetState(query)}>
       <div className="kit-verdict__head">
         <span className="kit-verdict__title">{headline}</span>
       </div>
       <p className="kit-verdict__body">{body}</p>
       <p className="kit-verdict__meta">
-        {spec.time.from} → latest · {core.series.length} {grain}s of data
+        {spec.time.from} → latest · {series.length} {grain}s of data
       </p>
-    </section>
+    </Widget>
   )
 }

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { fmtMeasure } from '../../runtime/src/core.js'
-import { type CoreProps, SectionHead } from '../../runtime/src/parts.js'
+import { type CoreProps, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
 import { dimensionLabel, primaryMeasure, word } from '../../runtime/src/spec.js'
 import { useUi } from '../../runtime/src/ui.js'
 
-/** Every measure for every combination of the selected dimensions; click a header to sort. */
+/** Every measure for every combination of the selected dimensions; click a header to sort. Waits on `core.dims`. */
 export function Render({ spec, core, bind }: CoreProps) {
   const ui = useUi()
   const dims = Array.isArray(bind.dims) ? (bind.dims as string[]) : ui.dims.slice(0, 3)
@@ -19,7 +19,7 @@ export function Render({ spec, core, bind }: CoreProps) {
   return (
     <section className="kit-section">
       <SectionHead title="Table" right={<span className="bda-subtle">{dims.map((dim) => dimensionLabel(spec, dim)).join(' × ')} · top {rows.length}</span>} />
-      <div className="bda-card kit-tcard">
+      <Widget className="bda-card kit-tcard" heading={null} skeleton={{ kind: 'table', rows: Math.min(limit, 10) }} {...widgetState(core.dims)}>
         <div className="kit-scroll">
           <table className="bda-table kit-table">
             <thead>
@@ -51,7 +51,7 @@ export function Render({ spec, core, bind }: CoreProps) {
             </tbody>
           </table>
         </div>
-      </div>
+      </Widget>
     </section>
   )
 }

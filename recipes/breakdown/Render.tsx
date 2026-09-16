@@ -2,11 +2,11 @@ import * as Plot from '@observablehq/plot'
 import { useMemo } from 'react'
 import { Chart } from '../../runtime/src/components/Chart.js'
 import { fmtMeasure, type Slice, topBy } from '../../runtime/src/core.js'
-import { type CoreProps, measureColor, SectionHead } from '../../runtime/src/parts.js'
+import { type CoreProps, measureColor, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
 import { dimensionLabel, type MeasureSpec, measureById, primaryMeasure, type Spec, word } from '../../runtime/src/spec.js'
 import { MeasureSelect, useUi } from '../../runtime/src/ui.js'
 
-/** One horizontal bar chart per dimension: the selected measure for each value, largest first. */
+/** One horizontal bar chart per dimension: the selected measure for each value, largest first. Waits on `core.dims`. */
 export function Render({ spec, core, bind }: CoreProps) {
   const ui = useUi()
   const measure = (typeof bind.measure === 'string' ? measureById(spec, bind.measure) : undefined) ?? measureById(spec, ui.measure) ?? primaryMeasure(spec)
@@ -18,14 +18,14 @@ export function Render({ spec, core, bind }: CoreProps) {
       <SectionHead title={`${word(spec, measure.id)} by dimension`} right={bind.measure === undefined ? <MeasureSelect spec={spec} /> : undefined} />
       <div className="kit-dims">
         {dims.map((dim) => (
-          <Bars key={dim} spec={spec} dim={dim} measure={measure} slices={core.slicesAt([dim])} limit={limit} />
+          <Bars key={dim} spec={spec} dim={dim} measure={measure} slices={core.slicesAt([dim])} query={core.dims} limit={limit} />
         ))}
       </div>
     </section>
   )
 }
 
-function Bars({ spec, dim, measure, slices, limit }: { spec: Spec; dim: string; measure: MeasureSpec; slices: readonly Slice[]; limit: number }) {
+function Bars({ spec, dim, measure, slices, query, limit }: { spec: Spec; dim: string; measure: MeasureSpec; slices: readonly Slice[]; query: CoreProps['core']['dims']; limit: number }) {
   const rows = useMemo(() => topBy(slices, measure.id, limit).map((slice) => ({ value: slice.values[0] ?? '', amount: slice.measures[measure.id] ?? 0, weight: slice.weight })), [slices, measure.id, limit])
   const color = measureColor(spec, measure.id)
   const options = useMemo(
@@ -41,12 +41,18 @@ function Bars({ spec, dim, measure, slices, limit }: { spec: Spec; dim: string; 
     [rows, color, measure, spec],
   )
   return (
-    <div className="bda-card kit-dim">
-      <div className="kit-dim__head">
-        <span className="kit-dim__title">{dimensionLabel(spec, dim)}</span>
-        <span className="bda-subtle">top {rows.length}</span>
-      </div>
+    <Widget
+      className="bda-card kit-dim"
+      heading={
+        <div className="kit-dim__head">
+          <span className="kit-dim__title">{dimensionLabel(spec, dim)}</span>
+          <span className="bda-subtle">top {rows.length}</span>
+        </div>
+      }
+      skeleton={{ kind: 'chart', height: Math.max(90, 18 + limit * 22) }}
+      {...widgetState(query)}
+    >
       {rows.length === 0 ? <div className="bda-state">No values.</div> : <Chart options={options} height={Math.max(90, 18 + rows.length * 22)} title={`${measure.label} by ${dimensionLabel(spec, dim)}`} />}
-    </div>
+    </Widget>
   )
 }

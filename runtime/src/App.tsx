@@ -33,7 +33,8 @@ import type { CoreProps, RecipeProps } from './parts.js'
 import { type AbFamily, isAb, type Panel, type Spec } from './spec.js'
 import { UiProvider } from './ui.js'
 
-const CORE: Record<string, ComponentType<CoreProps>> = {
+/** Exported for evals/loading.test.tsx, which renders every recipe with its datasets pending. */
+export const CORE: Record<string, ComponentType<CoreProps>> = {
   kpis: Kpis,
   verdict: Verdict,
   trend: Trend,
@@ -44,7 +45,8 @@ const CORE: Record<string, ComponentType<CoreProps>> = {
   narrative: Narrative,
 }
 
-const AB: Record<string, ComponentType<RecipeProps>> = {
+/** Exported for evals/loading.test.tsx. */
+export const AB: Record<string, ComponentType<RecipeProps>> = {
   verdict: AbVerdict,
   kpi_tiles: AbKpiTiles,
   hypothesis: AbHypothesis,
@@ -71,20 +73,21 @@ export function App({ spec }: { spec: Spec }) {
   )
 }
 
+/**
+ * Panels render immediately, unconditionally: each one is handed the
+ * dataset and reads its own `QueryState`s to decide, per widget, whether to
+ * show a skeleton, an error with Retry, or its rows. Never gate this on
+ * `core`/`data` being "ready" as a whole — see AGENTS.md's "Widgets never
+ * blank" invariant.
+ */
 function CoreBody({ spec, entityId }: { spec: Spec; entityId: string | undefined }) {
-  const state = useCoreDataset(spec, entityId)
-  if (state.status === 'error') return <div className="bda-state bda-state--error">{state.message}</div>
-  if (state.status === 'loading') return <div className="bda-state">Loading…</div>
-  if (state.status === 'empty') return <div className="bda-state">No data between {spec.time.from} and the latest available day.</div>
-  return <Panels panels={panelsOf(spec)} render={(panel, index) => <CorePanel key={index} spec={spec} core={state.data} panel={panel} />} />
+  const core = useCoreDataset(spec, entityId)
+  return <Panels panels={panelsOf(spec)} render={(panel, index) => <CorePanel key={index} spec={spec} core={core} panel={panel} />} />
 }
 
 function AbBody({ spec, entityId }: { spec: Spec & { family: AbFamily }; entityId: string }) {
-  const state = useAbDataset(spec, entityId)
-  if (state.status === 'error') return <div className="bda-state bda-state--error">{state.message}</div>
-  if (state.status === 'loading') return <div className="bda-state">Loading {spec.entity?.label.toLowerCase() ?? 'entity'} {entityId}…</div>
-  if (state.status === 'empty') return <div className="bda-state">No data for {entityId} between {spec.time.from} and the latest snapshot. Check the id, or pick one from the list.</div>
-  return <Panels panels={panelsOf(spec)} render={(panel, index) => <AbPanel key={index} spec={spec} data={state.data} panel={panel} />} />
+  const data = useAbDataset(spec, entityId)
+  return <Panels panels={panelsOf(spec)} render={(panel, index) => <AbPanel key={index} spec={spec} data={data} panel={panel} />} />
 }
 
 function panelsOf(spec: Spec): readonly Panel[] {

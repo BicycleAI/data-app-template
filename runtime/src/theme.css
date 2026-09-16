@@ -219,3 +219,85 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
 .kit-finding--negative::before { background: var(--bda-negative); }
 .kit-sortable { cursor: pointer; user-select: none; }
 .kit-sortable:hover { color: var(--bda-text-primary); }
+
+/* Skeletons
+ *
+ * A widget renders its card immediately and puts one of these where its data
+ * will go, so the page never blanks while a query is in flight. See
+ * components/Skeleton.tsx and the `Widget` wrapper in parts.tsx.
+ *
+ * The shimmer is a gradient swept across the block rather than an opacity
+ * pulse: a pulse on several blocks at once reads as flashing, which is both
+ * uglier and a worse idea for anyone sensitive to it. Under
+ * `prefers-reduced-motion` it stops moving entirely and stays a flat fill,
+ * which still communicates "not content yet".
+ */
+
+.bda-skeleton {
+  display: block;
+  width: 100%;
+  height: 13px;
+  border-radius: calc(var(--bda-radius) / 3);
+  background-color: var(--bda-grid);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--bda-surface-overlay) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: bda-skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes bda-skeleton-sweep {
+  from {
+    background-position: -120% 0;
+  }
+  to {
+    background-position: 220% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bda-skeleton {
+    background-image: none;
+    animation: none;
+  }
+}
+
+.bda-skeleton-stack { display: flex; flex-direction: column; gap: var(--bda-space-2); }
+.bda-skeleton-stack--metric { gap: var(--bda-space-1); align-items: center; }
+
+/* Matches `.bda-chart`'s block behaviour, so swapping in the real chart moves
+ * nothing around it. */
+.bda-skeleton--chart { height: 260px; border-radius: calc(var(--bda-radius) / 2); }
+
+.bda-skeleton-table { display: flex; flex-direction: column; }
+.bda-skeleton-table__row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  align-items: center;
+  gap: var(--bda-space-3);
+  /* The same vertical rhythm as a real table cell, so the header and rows
+   * land where the skeleton said they would. */
+  padding: var(--bda-space-2) var(--bda-space-3);
+  border-bottom: 1px solid var(--bda-grid);
+}
+.bda-skeleton-table__row:last-child { border-bottom: 0; }
+
+/* A background refetch (a control changed; previous rows stay on screen) is
+ * quieter than a first load: a soft opacity dip on the card rather than a
+ * skeleton swap. Respect prefers-reduced-motion by dropping the transition. */
+.kit-card--refreshing { opacity: 0.6; transition: opacity 150ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .kit-card--refreshing { transition: none; }
+}
+
+/* Per-widget error: what failed, and a way to try again without reloading
+ * the rest of the app. */
+.kit-widget-error { display: flex; flex-direction: column; align-items: flex-start; gap: var(--bda-space-2); color: var(--bda-negative); }
+.kit-widget-error__code { font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--bda-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.kit-widget-error__retry { appearance: none; border: 1px solid var(--bda-negative); background: transparent; color: var(--bda-negative); border-radius: var(--bda-radius-pill); padding: 3px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.kit-widget-error__retry:hover { background: color-mix(in srgb, var(--bda-negative) 12%, transparent); }

@@ -1,10 +1,12 @@
 /** Small shared pieces every recipe reaches for. */
 
-import type { ReactNode } from 'react'
-import type { Confidence } from './analysis.js'
-import type { CoreData, Dataset } from './data.js'
+import type { CSSProperties, ReactNode } from 'react'
+import type { Confidence, VariantOverall } from './analysis.js'
+import { SkeletonChart, SkeletonMetric, SkeletonTable, SkeletonText } from './components/Skeleton.js'
+import type { CoreData, Dataset, QueryState } from './data.js'
 import { fmtSigned } from './format.js'
 import type { MetricOrCvr, Spec } from './spec.js'
+import type { BdaError } from './studio/types.js'
 
 export const METRIC_COLOR: Record<MetricOrCvr, string> = {
   NIBPD: 'var(--bda-chart-1)',
@@ -104,11 +106,81 @@ export function statusTone(status: string): 'positive' | 'negative' | 'warn' {
   return upper.includes('WIN') ? 'positive' : upper.includes('LOSE') ? 'negative' : 'warn'
 }
 
-export function trafficSplit(data: Dataset, control: string): string {
-  const first = data.overall[0]
+export function trafficSplit(overall: readonly VariantOverall[], control: string): string {
+  const first = overall[0]
   if (first === undefined) return '—'
   const total = first.participantsTotal
   const pct = (count: number) => (total > 0 ? `${((count / total) * 100).toFixed(2).replace(/\.00$/, '')}%` : '—')
-  const parts = [`${pct(first.participantsDefault)} (${control})`, ...data.overall.map((variant) => `${pct(variant.participants)} (${variant.name})`)]
+  const parts = [`${pct(first.participantsDefault)} (${control})`, ...overall.map((variant) => `${pct(variant.participants)} (${variant.name})`)]
   return parts.join(' | ')
+}
+
+/**
+ * The shape a skeleton should take while a widget's own query is pending —
+ * sized to the content it stands in for, per AGENTS.md's "Widgets never
+ * blank" invariant.
+ */
+export type SkeletonSpec = { readonly kind: 'chart'; readonly height: number } | { readonly kind: 'metric' } | { readonly kind: 'table'; readonly rows: number } | { readonly kind: 'text'; readonly lines?: number }
+
+function SkeletonFor({ spec }: { spec: SkeletonSpec }) {
+  switch (spec.kind) {
+    case 'chart':
+      return <SkeletonChart height={spec.height} />
+    case 'metric':
+      return <SkeletonMetric />
+    case 'table':
+      return <SkeletonTable rows={spec.rows} />
+    case 'text':
+      return <SkeletonText {...(spec.lines === undefined ? {} : { lines: spec.lines })} />
+  }
+}
+
+/** What failed, and a way to try again without reloading the rest of the app. */
+export function WidgetError({ error, onRetry }: { error: BdaError; onRetry: () => void }) {
+  return (
+    <div className="kit-widget-error" role="alert">
+      <span className="kit-widget-error__code">{error.code}</span>
+      <span>{error.message}</span>
+      <button type="button" className="kit-widget-error__retry" onClick={onRetry}>
+        Retry
+      </button>
+    </div>
+  )
+}
+
+export type WidgetProps = {
+  /** Always rendered, pending or not — the reader sees what is coming while it loads. */
+  readonly heading: ReactNode
+  readonly pending: boolean
+  /** A background refetch (a control changed) while previous rows stay on screen. */
+  readonly fetching?: boolean
+  readonly error?: BdaError | null
+  readonly onRetry?: () => void
+  readonly skeleton: SkeletonSpec
+  /** Defaults to the standard card. Pass a section's own class for widgets that render outside `.bda-card` (verdict banners, the hypothesis quote). */
+  readonly className?: string
+  readonly style?: CSSProperties
+  readonly children: ReactNode
+}
+
+/**
+ * Wraps one widget's card: heading always on screen, `aria-busy` while its
+ * own query is pending, a sized skeleton in place of content, a quiet
+ * `kit-card--refreshing` state for a background refetch, and a per-widget
+ * error with Retry. Every recipe routes its cards through this — see
+ * AGENTS.md's "Widgets never blank" invariant.
+ */
+export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, children }: WidgetProps) {
+  const refreshing = fetching && !pending
+  return (
+    <div className={refreshing ? `${className} kit-card--refreshing` : className} style={style} aria-busy={pending}>
+      {heading}
+      {error !== null ? <WidgetError error={error} onRetry={onRetry ?? (() => {})} /> : pending ? <SkeletonFor spec={skeleton} /> : children}
+    </div>
+  )
+}
+
+/** `mergeQueries(...)` (or any single `QueryState`) collapsed to the props a `Widget` needs. */
+export function widgetState(merged: Pick<QueryState<unknown>, 'isPending' | 'isFetching' | 'error' | 'refetch'>): Pick<WidgetProps, 'pending' | 'fetching' | 'error' | 'onRetry'> {
+  return { pending: merged.isPending, fetching: merged.isFetching, error: merged.error, onRetry: merged.refetch }
 }

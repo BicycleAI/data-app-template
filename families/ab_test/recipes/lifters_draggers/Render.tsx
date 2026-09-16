@@ -1,38 +1,49 @@
 import { useMemo } from 'react'
 import { type Segment, topDraggers, topLifters } from '../../../../runtime/src/analysis.js'
+import { mergeQueries } from '../../../../runtime/src/data.js'
 import { fmtInt } from '../../../../runtime/src/format.js'
-import { Badge, type RecipeProps, Signed } from '../../../../runtime/src/parts.js'
+import { Badge, type RecipeProps, Signed, Widget, widgetState } from '../../../../runtime/src/parts.js'
 import { armsOf, type Spec, word } from '../../../../runtime/src/spec.js'
 import { activeVariant, MetricChips, useUi } from '../../../../runtime/src/ui.js'
 
+/** Waits on `data.overall` + `data.segmentsAt`. */
 export function Render({ spec, data, bind }: RecipeProps) {
   const ui = useUi()
-  const variant = activeVariant(data, ui.variantIndex)
+  const overall = data.overall.rows ?? []
+  const variant = activeVariant(overall, ui.variantIndex)
   const depth = typeof bind.depth === 'number' ? bind.depth : ui.depth
   const count = typeof bind.count === 'number' ? bind.count : 10
+  const segQuery = data.segmentsAt(ui.dims, depth)
+  const query = mergeQueries(data.overall, segQuery)
   const segments = useMemo(
-    () => (variant === undefined ? [] : data.segmentsAt(ui.dims, depth).filter((segment) => segment.variant === variant.name)),
-    [data, ui.dims, depth, variant],
+    () => (variant === undefined ? [] : (segQuery.rows ?? []).filter((segment) => segment.variant === variant.name)),
+    [segQuery.rows, variant],
   )
   return (
     <section className="kit-section">
       <div className="kit-sh">Deep-dive analysis</div>
-      <Table spec={spec} title="Top Lifters" tone="positive" rows={topLifters(segments, ui.metric, count)} />
-      <Table spec={spec} title="Top Draggers" tone="negative" rows={topDraggers(segments, ui.metric, count)} />
+      <Table spec={spec} title="Top Lifters" tone="positive" rows={topLifters(segments, ui.metric, count)} query={query} count={count} />
+      <Table spec={spec} title="Top Draggers" tone="negative" rows={topDraggers(segments, ui.metric, count)} query={query} count={count} />
     </section>
   )
 }
 
-function Table({ spec, title, tone, rows }: { spec: Spec; title: string; tone: 'positive' | 'negative'; rows: readonly Segment[] }) {
+function Table({ spec, title, tone, rows, query, count }: { spec: Spec; title: string; tone: 'positive' | 'negative'; rows: readonly Segment[]; query: ReturnType<typeof mergeQueries>; count: number }) {
   const ui = useUi()
   return (
-    <div className={`bda-card kit-tcard kit-tcard--${tone}`}>
-      <div className="kit-tcard__head">
-        <span>
-          {tone === 'positive' ? '↑' : '↓'} {title}
-        </span>
-        <MetricChips spec={spec} />
-      </div>
+    <Widget
+      className={`bda-card kit-tcard kit-tcard--${tone}`}
+      heading={
+        <div className="kit-tcard__head">
+          <span>
+            {tone === 'positive' ? '↑' : '↓'} {title}
+          </span>
+          <MetricChips spec={spec} />
+        </div>
+      }
+      skeleton={{ kind: 'table', rows: count }}
+      {...widgetState(query)}
+    >
       {rows.length === 0 ? (
         <div className="bda-state">
           No segments {tone === 'positive' ? 'above' : 'below'} zero on {word(spec, ui.metric)}.
@@ -75,6 +86,6 @@ function Table({ spec, title, tone, rows }: { spec: Spec; title: string; tone: '
           </table>
         </div>
       )}
-    </div>
+    </Widget>
   )
 }
