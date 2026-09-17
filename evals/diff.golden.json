@@ -1,0 +1,730 @@
+{
+  "retail-orders-health.json -> retail-orders-health-filtered.json": {
+    "changes": [
+      {
+        "kind": "control_added",
+        "path": "/controls/2",
+        "after": {
+          "kind": "time",
+          "presets": [
+            "7d",
+            "30d",
+            "90d",
+            "quarter"
+          ],
+          "default": "30d"
+        },
+        "text": "viewers can now choose a time range: 7d, 30d, 90d, quarter"
+      },
+      {
+        "kind": "control_added",
+        "path": "/controls/3",
+        "after": {
+          "kind": "filter",
+          "dim": "region",
+          "multi": true,
+          "options": [
+            "emea",
+            "amer",
+            "apac"
+          ],
+          "default": [
+            "emea",
+            "amer"
+          ]
+        },
+        "text": "viewers can now narrow by Region"
+      },
+      {
+        "kind": "control_added",
+        "path": "/controls/4",
+        "after": {
+          "kind": "filter",
+          "dim": "channel",
+          "options": [
+            "web",
+            "app",
+            "store"
+          ],
+          "default": "web"
+        },
+        "text": "viewers can now narrow by Channel"
+      },
+      {
+        "kind": "title_changed",
+        "path": "/title",
+        "before": "Retail Orders Health",
+        "after": "Retail Orders Health (filtered)",
+        "text": "title: \"Retail Orders Health\" -> \"Retail Orders Health (filtered)\""
+      },
+      {
+        "kind": "decision_changed",
+        "path": "/decision",
+        "before": "Are retail orders healthy, and where are refunds concentrated?",
+        "after": "Are retail orders healthy in the regions and channels we run, and where are refunds concentrated?",
+        "text": "decision: \"Are retail orders healthy, and where are refunds concentrated?\" -> \"Are retail orders healthy in the regions and channels we run, and where are refunds concentrated?\""
+      }
+    ]
+  },
+  "retail-orders-health.json -> retail-refund-watch.json": {
+    "changes": [
+      {
+        "kind": "panel_added",
+        "path": "/panels/0",
+        "after": {
+          "recipe": "verdict",
+          "bind": {
+            "measure": "refund_rate"
+          },
+          "say": "Is the refund rate within target?"
+        },
+        "text": "added \"Verdict\" - \"Is the refund rate within target?\""
+      },
+      {
+        "kind": "binding_changed",
+        "path": "/panels/1/bind/style",
+        "before": "row",
+        "after": "spark",
+        "text": "KPI tiles style: row -> spark"
+      },
+      {
+        "kind": "panel_changed",
+        "path": "/panels/1/say",
+        "before": "How many orders come in, and which way is it moving?",
+        "after": "How big is the refund problem, and which way is it moving?",
+        "text": "now asks \"How big is the refund problem, and which way is it moving?\" (was \"How many orders come in, and which way is it moving?\")"
+      },
+      {
+        "kind": "binding_changed",
+        "path": "/panels/2/bind/dims",
+        "before": [
+          "region",
+          "channel"
+        ],
+        "after": [
+          "region"
+        ],
+        "text": "Breakdown dims: Region and Channel -> Region"
+      },
+      {
+        "kind": "panel_changed",
+        "path": "/panels/2/say",
+        "before": "Which regions and channels carry the volume?",
+        "after": "Which regions refund most?",
+        "text": "now asks \"Which regions refund most?\" (was \"Which regions and channels carry the volume?\")"
+      },
+      {
+        "kind": "panel_added",
+        "path": "/panels/3",
+        "after": {
+          "recipe": "trend",
+          "bind": {
+            "by": "region"
+          },
+          "say": "How has it moved, split by region?",
+          "width": "half"
+        },
+        "text": "added \"Trend\" - \"How has it moved, split by region?\""
+      },
+      {
+        "kind": "panel_added",
+        "path": "/panels/4",
+        "after": {
+          "recipe": "heatmap",
+          "bind": {
+            "rows": "region",
+            "cols": "category"
+          },
+          "say": "What happens where region meets category?",
+          "width": "half"
+        },
+        "text": "added \"Heatmap\" - \"What happens where region meets category?\""
+      },
+      {
+        "kind": "panel_added",
+        "path": "/panels/5",
+        "after": {
+          "recipe": "trend",
+          "bind": {
+            "by": "category"
+          },
+          "say": "How has it moved, split by category?"
+        },
+        "text": "added \"Trend\" - \"How has it moved, split by category?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/1",
+        "before": {
+          "recipe": "narrative",
+          "bind": {},
+          "say": "What stands out this week?"
+        },
+        "text": "removed \"What stands out\" - \"What stands out this week?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/2",
+        "before": {
+          "recipe": "trend",
+          "bind": {
+            "measures": [
+              "orders",
+              "refund_rate"
+            ]
+          },
+          "say": "How have orders and the refund rate moved since August?"
+        },
+        "text": "removed \"Trend\" - \"How have orders and the refund rate moved since August?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/4",
+        "before": {
+          "recipe": "ranking",
+          "bind": {
+            "dim": "region",
+            "measure": "refund_rate"
+          },
+          "say": "Which regions have the best and worst refund rate?"
+        },
+        "text": "removed \"Ranking\" - \"Which regions have the best and worst refund rate?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/5",
+        "before": {
+          "recipe": "table",
+          "bind": {
+            "dims": [
+              "region",
+              "category"
+            ],
+            "limit": 30
+          },
+          "say": "Give me the numbers by region and category."
+        },
+        "text": "removed \"Table\" - \"Give me the numbers by region and category.\""
+      },
+      {
+        "kind": "measure_added",
+        "path": "/measures/0",
+        "after": {
+          "format": "number",
+          "good": "down",
+          "role": "primary",
+          "id": "refunded",
+          "column": "refund_count",
+          "label": "Refunded orders"
+        },
+        "text": "added measure \"Refunded orders\""
+      },
+      {
+        "kind": "measure_changed",
+        "path": "/measures/2/role",
+        "before": "primary",
+        "after": "secondary",
+        "text": "Orders is no longer the primary measure"
+      },
+      {
+        "kind": "measure_removed",
+        "path": "/measures/1",
+        "before": {
+          "format": "currency",
+          "good": "up",
+          "role": "secondary",
+          "id": "revenue",
+          "column": "revenue_total",
+          "label": "Revenue"
+        },
+        "text": "removed measure \"Revenue\""
+      },
+      {
+        "kind": "measure_removed",
+        "path": "/measures/3",
+        "before": {
+          "format": "currency",
+          "good": "up",
+          "role": "secondary",
+          "id": "aov",
+          "column": "avg_order_value",
+          "label": "Average order value"
+        },
+        "text": "removed measure \"Average order value\""
+      },
+      {
+        "kind": "control_added",
+        "path": "/controls/2",
+        "after": {
+          "kind": "heatmap_axes"
+        },
+        "text": "viewers can now change the heatmap axes"
+      },
+      {
+        "kind": "rule_changed",
+        "path": "/rules/targets_blob",
+        "after": "targets",
+        "text": "targets now come from the \"targets\" blob"
+      },
+      {
+        "kind": "rule_changed",
+        "path": "/rules/targets/refund_rate",
+        "after": 5,
+        "text": "now targets Refund rate at 5"
+      },
+      {
+        "kind": "words_changed",
+        "path": "/words/aov",
+        "before": "Average order value",
+        "text": "\"aov\" no longer has a label (was \"Average order value\")"
+      },
+      {
+        "kind": "words_changed",
+        "path": "/words/refunded",
+        "after": "Refunded orders",
+        "text": "\"refunded\" is now labeled \"Refunded orders\""
+      },
+      {
+        "kind": "words_changed",
+        "path": "/words/revenue",
+        "before": "Revenue",
+        "text": "\"revenue\" no longer has a label (was \"Revenue\")"
+      },
+      {
+        "kind": "title_changed",
+        "path": "/title",
+        "before": "Retail Orders Health",
+        "after": "Retail Refund Watch",
+        "text": "title: \"Retail Orders Health\" -> \"Retail Refund Watch\""
+      },
+      {
+        "kind": "decision_changed",
+        "path": "/decision",
+        "before": "Are retail orders healthy, and where are refunds concentrated?",
+        "after": "Which regions and categories are driving refunds, is any of them trending, and are we within target?",
+        "text": "decision: \"Are retail orders healthy, and where are refunds concentrated?\" -> \"Which regions and categories are driving refunds, is any of them trending, and are we within target?\""
+      },
+      {
+        "kind": "persona_changed",
+        "path": "/persona",
+        "before": "pm",
+        "after": "analyst",
+        "text": "now built for the analyst (was the PM)"
+      },
+      {
+        "kind": "template_changed",
+        "path": "/template",
+        "before": "report",
+        "after": "explorer",
+        "text": "now uses the \"explorer\" template (was \"report\")"
+      },
+      {
+        "kind": "theme_changed",
+        "path": "/theme/accent",
+        "before": "purple",
+        "after": "coral",
+        "text": "accent color: purple -> coral"
+      },
+      {
+        "kind": "store_changed",
+        "path": "/store/cache",
+        "after": {
+          "ttl_seconds": 604800,
+          "writable_by": "viewer"
+        },
+        "text": "the app can now cache viewer-writable state for 7 days"
+      },
+      {
+        "kind": "store_changed",
+        "path": "/store/blobs/targets",
+        "after": {
+          "name": "targets",
+          "purpose": "Refund-rate target per measure, set by the PM; the verdict compares against it.",
+          "kind": "json"
+        },
+        "text": "the app can now read the \"targets\" blob: Refund-rate target per measure, set by the PM; the verdict compares against it."
+      },
+      {
+        "kind": "chat_changed",
+        "path": "/chat/enabled",
+        "after": true,
+        "text": "chat is now available to viewers, anchored to panel, selection"
+      }
+    ]
+  },
+  "checkout-test-report.json -> checkout-test-explorer.json": {
+    "changes": [
+      {
+        "kind": "binding_changed",
+        "path": "/panels/0/bind/style",
+        "before": "row",
+        "after": "spark",
+        "text": "KPI tiles style: row -> spark"
+      },
+      {
+        "kind": "panel_changed",
+        "path": "/panels/0/say",
+        "before": "Is TREATMENT beating CONTROL on incremental bookings, bookers and net commerce per day?",
+        "text": "no longer shows a question (was \"Is TREATMENT beating CONTROL on incremental bookings, bookers and net commerce per day?\")"
+      },
+      {
+        "kind": "panel_added",
+        "path": "/panels/1",
+        "after": {
+          "recipe": "lift_by_dimension",
+          "bind": {
+            "dims": "all"
+          },
+          "say": "Which dimension values carry the lift?"
+        },
+        "text": "added \"Lift by dimension\" - \"Which dimension values carry the lift?\""
+      },
+      {
+        "kind": "panel_added",
+        "path": "/panels/2",
+        "after": {
+          "recipe": "volume_vs_lift",
+          "bind": {},
+          "say": "Is the effect real or thin?",
+          "width": "half"
+        },
+        "text": "added \"Volume vs lift\" - \"Is the effect real or thin?\""
+      },
+      {
+        "kind": "panel_added",
+        "path": "/panels/3",
+        "after": {
+          "recipe": "heatmap",
+          "bind": {},
+          "say": "What happens where two cuts meet?",
+          "width": "half"
+        },
+        "text": "added \"Composable heatmap\" - \"What happens where two cuts meet?\""
+      },
+      {
+        "kind": "panel_added",
+        "path": "/panels/4",
+        "after": {
+          "recipe": "extremes",
+          "bind": {},
+          "say": "Which few segments matter most?"
+        },
+        "text": "added \"Extremes\" - \"Which few segments matter most?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/1",
+        "before": {
+          "recipe": "hypothesis",
+          "bind": {}
+        },
+        "text": "removed \"Hypothesis\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/2",
+        "before": {
+          "recipe": "insights",
+          "bind": {},
+          "say": "What is the common thread across the segments that help and hurt?"
+        },
+        "text": "removed \"Narrative insights\" - \"What is the common thread across the segments that help and hurt?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/3",
+        "before": {
+          "recipe": "lifters_draggers",
+          "bind": {
+            "count": 10
+          },
+          "say": "Which exact segments help and hurt, across every three-way cut?"
+        },
+        "text": "removed \"Lifters and draggers\" - \"Which exact segments help and hurt, across every three-way cut?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/4",
+        "before": {
+          "recipe": "cumulative_trend",
+          "bind": {
+            "measures": [
+              "NIBPD",
+              "NIBrPD",
+              "NICPD",
+              "CVR"
+            ]
+          },
+          "say": "Has the lift settled since test start?"
+        },
+        "text": "removed \"Cumulative trend\" - \"Has the lift settled since test start?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/5",
+        "before": {
+          "recipe": "overview",
+          "bind": {}
+        },
+        "text": "removed \"Experiment overview\""
+      },
+      {
+        "kind": "control_added",
+        "path": "/controls/3",
+        "after": {
+          "kind": "heatmap_axes"
+        },
+        "text": "viewers can now change the heatmap axes"
+      },
+      {
+        "kind": "control_removed",
+        "path": "/controls/2",
+        "before": {
+          "kind": "depth",
+          "options": [
+            1,
+            2,
+            3
+          ],
+          "default": 3
+        },
+        "text": "viewers can no longer change how many cuts deep to look"
+      },
+      {
+        "kind": "control_removed",
+        "path": "/controls/3",
+        "before": {
+          "kind": "dimensions"
+        },
+        "text": "viewers can no longer choose which dimensions to cut by"
+      },
+      {
+        "kind": "title_changed",
+        "path": "/title",
+        "before": "Checkout Test Analysis",
+        "after": "Checkout Test Explorer",
+        "text": "title: \"Checkout Test Analysis\" -> \"Checkout Test Explorer\""
+      },
+      {
+        "kind": "decision_changed",
+        "path": "/decision",
+        "before": "Ship or hold a checkout test, and learn which cohorts it helps or hurts.",
+        "after": "Where does the lift live?",
+        "text": "decision: \"Ship or hold a checkout test, and learn which cohorts it helps or hurts.\" -> \"Where does the lift live?\""
+      },
+      {
+        "kind": "persona_changed",
+        "path": "/persona",
+        "before": "pm",
+        "after": "analyst",
+        "text": "now built for the analyst (was the PM)"
+      },
+      {
+        "kind": "template_changed",
+        "path": "/template",
+        "before": "report",
+        "after": "explorer",
+        "text": "now uses the \"explorer\" template (was \"report\")"
+      },
+      {
+        "kind": "theme_changed",
+        "path": "/theme/accent",
+        "before": "blue",
+        "after": "teal",
+        "text": "accent color: blue -> teal"
+      }
+    ]
+  },
+  "checkout-test-explorer.json -> checkout-test-scorecard.json": {
+    "changes": [
+      {
+        "kind": "panel_added",
+        "path": "/panels/0",
+        "after": {
+          "recipe": "verdict",
+          "bind": {
+            "measure": "NIBPD"
+          },
+          "say": "Is the treatment beating control on extra bookings a day?"
+        },
+        "text": "added \"Verdict banner\" - \"Is the treatment beating control on extra bookings a day?\""
+      },
+      {
+        "kind": "binding_changed",
+        "path": "/panels/1/bind/style",
+        "before": "spark",
+        "after": "row",
+        "text": "KPI tiles style: spark -> row"
+      },
+      {
+        "kind": "binding_changed",
+        "path": "/panels/2/bind/dims",
+        "before": "all",
+        "after": "first",
+        "text": "Lift by dimension dims: every dimension -> the first dimension"
+      },
+      {
+        "kind": "binding_changed",
+        "path": "/panels/2/bind/limit",
+        "after": 8,
+        "text": "Lift by dimension: limit set to 8"
+      },
+      {
+        "kind": "panel_changed",
+        "path": "/panels/2/say",
+        "before": "Which dimension values carry the lift?",
+        "after": "Which market carries it?",
+        "text": "now asks \"Which market carries it?\" (was \"Which dimension values carry the lift?\")"
+      },
+      {
+        "kind": "panel_added",
+        "path": "/panels/3",
+        "after": {
+          "recipe": "cumulative_trend",
+          "bind": {
+            "measures": [
+              "NIBPD"
+            ]
+          },
+          "say": "Has it settled?"
+        },
+        "text": "added \"Cumulative trend\" - \"Has it settled?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/2",
+        "before": {
+          "recipe": "volume_vs_lift",
+          "bind": {},
+          "say": "Is the effect real or thin?",
+          "width": "half"
+        },
+        "text": "removed \"Volume vs lift\" - \"Is the effect real or thin?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/3",
+        "before": {
+          "recipe": "heatmap",
+          "bind": {},
+          "say": "What happens where two cuts meet?",
+          "width": "half"
+        },
+        "text": "removed \"Composable heatmap\" - \"What happens where two cuts meet?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/4",
+        "before": {
+          "recipe": "extremes",
+          "bind": {},
+          "say": "Which few segments matter most?"
+        },
+        "text": "removed \"Extremes\" - \"Which few segments matter most?\""
+      },
+      {
+        "kind": "dimension_removed",
+        "path": "/dimensions/2",
+        "before": {
+          "field": "customer_tier",
+          "label": "Customer tier"
+        },
+        "text": "Customer tier is no longer available to cut by"
+      },
+      {
+        "kind": "control_removed",
+        "path": "/controls/1",
+        "before": {
+          "kind": "measure",
+          "options": [
+            "NIBPD",
+            "NIBrPD",
+            "NICPD"
+          ],
+          "default": "NIBPD"
+        },
+        "text": "viewers can no longer switch between NIBPD, NIBrPD, NICPD"
+      },
+      {
+        "kind": "control_removed",
+        "path": "/controls/3",
+        "before": {
+          "kind": "heatmap_axes"
+        },
+        "text": "viewers can no longer change the heatmap axes"
+      },
+      {
+        "kind": "rule_changed",
+        "path": "/rules/min_bookers",
+        "before": 0,
+        "after": 2500,
+        "text": "minimum bookers to include a segment: 0 -> 2500"
+      },
+      {
+        "kind": "words_changed",
+        "path": "/words/CVR",
+        "before": "CVR",
+        "after": "Conversion",
+        "text": "\"CVR\" is now called \"Conversion\""
+      },
+      {
+        "kind": "words_changed",
+        "path": "/words/NIBPD",
+        "before": "NIBPD",
+        "after": "Extra bookings / day",
+        "text": "\"NIBPD\" is now called \"Extra bookings / day\""
+      },
+      {
+        "kind": "words_changed",
+        "path": "/words/NIBrPD",
+        "before": "NIBrPD",
+        "after": "Extra bookers / day",
+        "text": "\"NIBrPD\" is now called \"Extra bookers / day\""
+      },
+      {
+        "kind": "words_changed",
+        "path": "/words/NICPD",
+        "before": "NICPD",
+        "after": "Extra net value / day",
+        "text": "\"NICPD\" is now called \"Extra net value / day\""
+      },
+      {
+        "kind": "title_changed",
+        "path": "/title",
+        "before": "Checkout Test Explorer",
+        "after": "Is my checkout test winning?",
+        "text": "title: \"Checkout Test Explorer\" -> \"Is my checkout test winning?\""
+      },
+      {
+        "kind": "decision_changed",
+        "path": "/decision",
+        "before": "Where does the lift live?",
+        "after": "Tell me in one line whether the treatment is winning, and which market is carrying it.",
+        "text": "decision: \"Where does the lift live?\" -> \"Tell me in one line whether the treatment is winning, and which market is carrying it.\""
+      },
+      {
+        "kind": "persona_changed",
+        "path": "/persona",
+        "before": "analyst",
+        "after": "biz",
+        "text": "now built for the business owner (was the analyst)"
+      },
+      {
+        "kind": "template_changed",
+        "path": "/template",
+        "before": "explorer",
+        "after": "scorecard",
+        "text": "now uses the \"scorecard\" template (was \"explorer\")"
+      },
+      {
+        "kind": "family_changed",
+        "path": "/family/context/start",
+        "before": "test_start",
+        "text": "family context start removed (was test_start)"
+      }
+    ]
+  },
+  "retail-orders-health.json -> retail-orders-health.json": {
+    "changes": []
+  }
+}
