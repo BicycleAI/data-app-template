@@ -24,5 +24,5 @@
   },
   "caveat": "Segments in the thinnest quartile by bookers are dropped so per-day extremes are not noise.",
   "family": "ab_test",
-  "explain": "Tables of top N segments by lift (positive and negative) with booker counts, all three metrics (NIBPD, NIBrPD, NICPD), and Z-test significance."
+  "explain": "Segments ranked by lift, top N positive and top N negative, with booker counts and all three metrics; segments under `min_bookers` are dropped, the thinnest quartile is trimmed when `trim_quartile` is on, and each row's Z-test says whether its lift clears the `confidence_bar`."
 }
