@@ -20,8 +20,9 @@ templates/        recipe lists per persona (core/ + family overrides)
 profiles/         example tenant profiles (fixtures only; real profiles in the API)
 runtime/          data-driven app: spec.ts, core.ts, analysis.ts, ui.tsx, App.tsx
 runtime/dist/     build output: app.js, app.css (vendored by bicycle-studio-api)
-compose/          CLI tool: validate, resolve, render, bundle
-compose/cli.mjs   kit commands: validate, compose, brief, manifest, extract, catalogue
+compose/          CLI tool: validate, resolve, render, bundle, diff
+compose/cli.mjs   kit commands: validate, compose, brief, manifest, extract, diff, catalogue
+compose/diff.mjs  typed spec diff (`kit diff`) — see README's `## Diff`
 evals/            golden manifests + transcript fixtures
 skills/           ask-show-ship SKILL.md (published by MCP as prompt + resource)
 template/         hand-build starter (React boilerplate; see template/README-FOR-AGENTS.md)
@@ -35,7 +36,66 @@ scripts/          no-real-ids.sh (guards against real customer data)
 - `kit brief <spec.json> [--out DIR]` — derive exec brief spec and compose it
 - `kit manifest <spec.json>` — print the derived bda.manifest.json
 - `kit extract <app.js>` — print the spec embedded in a bundle
+- `kit diff <a.json> <b.json> [--json]` — typed diff between two specs, in words (see `## Diff`)
 - `kit catalogue` — list recipes, templates, families as JSON
+
+## Diff
+
+Versions of an app are versions of its spec. `compose/diff.mjs` exports `diffSpecs(a, b) -> { changes: Change[] }`; `kit diff a.json b.json` prints one line of `change.text` per change (`--json` prints the `Change[]` instead). The Python service's `GET /versions/{a}/diff/{b}` produces the same shape from the same two rules, and the host renders `change.text` — never the raw spec. This section is that contract; the Python port copies it verbatim, so a wording or logic change here is a change there too.
+
+Both specs are run through `resolveSpec` first (so template slots, defaulted `words`/`rules`/`theme`/`controls`, and panels are accounted for), then through a small normalization step that fills the schema defaults `validate.mjs` does not materialize (`time.column`/`time.grain`, each measure's `format`/`good`/`role`, `entity.type`, an `ab_test` family's `arms.exclude`, `chat.anchors`) — otherwise an explicit default and an omitted one would diff as a change. `appId`, `model` and `version` are never diffed: they are the app's deployment identity, not its content.
+
+```ts
+type Change = {
+  kind: string        // one of the kinds below
+  path: string         // where in the resolved spec, e.g. "/panels/2/bind/by", "/rules/confidence_bar"
+  before?: unknown      // omitted when the change is a pure addition
+  after?: unknown       // omitted when the change is a pure removal
+  text: string          // the one-line human rendering — what the host shows
+}
+```
+
+### Panel identity
+
+Panels are matched across versions by **recipe**, plus — only when that recipe repeats within one spec — the bind key a `datasets.json` declares as that recipe's repeat key (trend's `by`; see `by_time_{{each_slug}}`'s `repeat` in `recipes/datasets.json`), falling back to the panel's `say` when no such key is declared. A recipe that appears once on each side is matched by recipe alone, so a change to *any* of its bind values — including a repeat-eligible key like `by` — surfaces as one `binding_changed`, not a removal and an addition. A recipe that repeats (two `trend` panels, one `by: region` and one `by: category`) is matched per distinct target, so each stays its own panel across versions.
+
+Matched panels, additions and changes are emitted in the *after* spec's panel order; removals that have no match trail at the end, in the *before* spec's order. Measures, dimensions and controls follow the same rule (matched by `id` / `field` / `kind` (+`dim` for a `filter`), after-order then leftover removals).
+
+### Change kinds
+
+One example `text` each. Marked rows are produced by one of the five pairs in `evals/diff.golden.json`; the rest (a kind the fixtures don't happen to exercise — no pair changes `time.grain` or `entity`, for instance) are illustrative but rendered by the same code path.
+
+| `kind` | Fires on | Example `text` | In goldens? |
+|---|---|---|---|
+| `panel_added` | a panel present only in the after spec | `added "Verdict" - "Is the refund rate within target?"` | yes |
+| `panel_removed` | a panel present only in the before spec | `removed "Ranking" - "Which regions have the best and worst refund rate?"` | yes |
+| `panel_changed` | a matched panel's `say` or `width` differs | `now asks "Which regions refund most?" (was "Which regions and channels carry the volume?")` | yes |
+| `binding_changed` | a matched panel's `bind` differs, one entry per changed key | `Orders over time now splits by Channel instead of Region` (trend's `by`, single-panel case); goldens show the generic form: `Breakdown dims: Region and Channel -> Region` | yes (generic form) |
+| `measure_added` | a measure id present only after | `added measure "Refunded orders"` | yes |
+| `measure_removed` | a measure id present only before | `removed measure "Revenue"` | yes |
+| `measure_changed` | a matched measure's `label`/`column`/`format`/`good`/`role` differs | `Orders is no longer the primary measure` | yes |
+| `dimension_added` | a dimension field present only after | `Region is now available to cut by` | no |
+| `dimension_removed` | a dimension field present only before | `Customer tier is no longer available to cut by` | yes |
+| `dimension_changed` | a matched dimension's `label` differs (not in the original kind list; added rather than dropping a real change — see below) | `"Region" is now called "Area"` | no |
+| `control_added` | a control present only after | `viewers can now narrow by Region` | yes |
+| `control_removed` | a control present only before | `viewers can no longer change the heatmap axes` | yes |
+| `control_changed` | a matched control's other fields differ | `narrow by Region: default emea, amer -> emea` | no |
+| `rule_changed` | any `rules` field, or a `rules.targets` entry | `minimum bookers to include a segment: 0 -> 2500`; also `confidence bar 90% -> 95%` (illustrative — no pair changes it) | yes (min_bookers, targets, targets_blob) |
+| `words_changed` | a `words` entry | `"NIBPD" is now called "Extra bookings / day"` | yes |
+| `time_changed` | `time.column`/`from`/`to`/`grain` | `now weekly instead of daily` (grain) | no |
+| `entity_changed` | any field of `entity` (including `entity.list.*`) | `entity label: Test -> Route` | no |
+| `family_changed` | any field of `family` (`arms.*`, `roles.*`, `context.*`) | `family context start removed (was test_start)` | yes |
+| `store_changed` | `store.cache` or a `store.blobs` entry | `the app can now read the "targets" blob: Refund-rate target per measure, set by the PM; the verdict compares against it.` | yes |
+| `chat_changed` | `chat.enabled` or `chat.anchors` | `chat is now available to viewers, anchored to panel, selection` | yes |
+| `theme_changed` | `theme.accent`/`follow` | `accent color: purple -> coral` | yes |
+| `title_changed` | `title` | `title: "Retail Orders Health" -> "Retail Refund Watch"` | yes |
+| `decision_changed` | `decision` | `decision: "Where does the lift live?" -> "Tell me in one line whether the treatment is winning, and which market is carrying it."` | yes |
+| `template_changed` | `template` | `now uses the "explorer" template (was "report")` | yes |
+| `persona_changed` | `persona` (not in the original kind list — see below) | `now built for the analyst (was the PM)` | yes |
+
+`persona_changed` and `dimension_changed` are additions to the kind list this task started from: `checkout-test-report -> checkout-test-explorer` genuinely changes `persona` (`pm` -> `analyst`), and a spec can legitimately rename a dimension's label without changing its field. Dropping either would silently swallow a real spec change, so they were added rather than folded into an existing kind or discarded. Every other kind in the original list is produced by at least one of the five golden pairs.
+
+Object-keyed sections sort their keys for determinism: `words`, `rules.targets`, `store.blobs` (by name), and a panel's or control's changed bind/field keys.
 
 ## npm scripts (root)
 
@@ -79,7 +139,7 @@ See `AGENTS.md` for the full list and details.
 # At the root
 npm ci
 npm run build
-npm run check
+npm run check      # includes node evals/diff.mjs
 node evals/run.mjs
 scripts/no-real-ids.sh
 

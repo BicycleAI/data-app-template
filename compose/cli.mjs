@@ -7,6 +7,7 @@
  *   kit brief    <spec.json> [--out DIR]     derive the exec brief spec and compose it
  *   kit manifest <spec.json>                 print the derived bda.manifest.json
  *   kit extract  <app.js>                    print the spec embedded in a composed bundle
+ *   kit diff     <a.json> <b.json> [--json]  typed diff between two specs, in words
  *   kit catalogue                            print recipes and templates as JSON
  */
 
@@ -14,6 +15,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { buildBundle, extractSpec } from './bundle.mjs'
 import { loadCatalogue } from './catalogue.mjs'
+import { diffSpecs } from './diff.mjs'
 import { checkManifest, deriveManifest } from './manifest.mjs'
 import { briefOf, narrowsBy, resolveSpec } from './resolve.mjs'
 import { uploadBundle } from './upload.mjs'
@@ -104,6 +106,22 @@ switch (command) {
     process.stdout.write(`${JSON.stringify(extractSpec(readFileSync(path, 'utf8')), null, 2)}\n`)
     break
   }
+  case 'diff': {
+    if (flags.app !== undefined) fail('kit diff --app <appId> <b.json> is out of scope for this kit — it needs the service to look up a version by app id. Compare two spec files instead: kit diff a.json b.json')
+    const [pathA, pathB] = positional
+    if (pathA === undefined || pathB === undefined) fail('usage: kit diff <a.json> <b.json> [--json]')
+    const specA = readSpec(pathA)
+    const specB = readSpec(pathB)
+    const resultA = validateSpec(specA)
+    if (!resultA.ok) fail(`${pathA} is invalid:\n  - ${resultA.errors.join('\n  - ')}`)
+    const resultB = validateSpec(specB)
+    if (!resultB.ok) fail(`${pathB} is invalid:\n  - ${resultB.errors.join('\n  - ')}`)
+    const { changes } = diffSpecs(specA, specB)
+    if (flags.json) process.stdout.write(`${JSON.stringify({ changes }, null, 2)}\n`)
+    else if (changes.length === 0) process.stdout.write('no changes\n')
+    else for (const change of changes) process.stdout.write(`${change.text}\n`)
+    break
+  }
   case 'catalogue': {
     const { recipes, templates, families } = loadCatalogue()
     if (flags['json']) {
@@ -125,5 +143,5 @@ switch (command) {
     break
   }
   default:
-    fail('usage: kit <validate|compose|brief|manifest|extract|catalogue> ...')
+    fail('usage: kit <validate|compose|brief|manifest|extract|diff|catalogue> ...')
 }
