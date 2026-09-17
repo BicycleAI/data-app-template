@@ -150,6 +150,10 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
 .kit-hint { margin: 0 0 var(--bda-space-3); }
 .kit-note { margin: 0; font-size: 12px; }
 .kit-caption { font-size: 11px; margin-top: var(--bda-space-1); }
+.kit-filterbar { display: flex; flex-direction: column; gap: var(--bda-space-2); margin: 0 0 var(--bda-space-3); }
+.kit-filterbar__group { align-items: center; }
+.kit-filterbar__note { flex-basis: 100%; }
+.kit-filterbar__range { font-variant-numeric: tabular-nums; }
 .kit-foot { text-align: center; color: var(--bda-text-secondary); font-size: 12px; padding: var(--bda-space-4) 0 0; border-top: 1px solid var(--bda-border); margin-top: var(--bda-space-3); }
 .kit-panel { padding: var(--bda-space-3) var(--bda-space-4); }
 

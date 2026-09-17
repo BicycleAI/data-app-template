@@ -4,6 +4,7 @@ import { type ReactNode, useState } from 'react'
 import { type EntityOption, useEntityList } from '../data.js'
 import { controlEnabled, type Spec } from '../spec.js'
 import { DepthPills, DimensionChecks, MeasureSelect } from '../ui.js'
+import { FilterBar } from './FilterBar.js'
 
 type Props = { spec: Spec; entityId: string | undefined; onEntity: (id: string) => void; children: ReactNode }
 
@@ -61,6 +62,7 @@ export function ReportChrome({ spec, entityId, onEntity, children }: Props) {
         </div>
       </nav>
       <DimensionChecks spec={spec} />
+      <FilterBar spec={spec} />
       {entity !== undefined && entityId === undefined ? <Landing spec={spec} options={options} loading={loading} error={error?.message} onPick={(id) => commit(id)} /> : children}
       <footer className="kit-foot">Powered by Bicycle AI</footer>
     </main>

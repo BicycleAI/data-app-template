@@ -28,6 +28,7 @@ import { Render as Trend } from '../../recipes/trend/Render.js'
 import { Render as Verdict } from '../../recipes/verdict/Render.js'
 import { ExplorerChrome } from './chrome/Explorer.js'
 import { ReportChrome } from './chrome/Report.js'
+import { ControlsProvider } from './controls.js'
 import { type CoreData, type Dataset, useAbDataset, useCoreDataset } from './data.js'
 import type { CoreProps, RecipeProps } from './parts.js'
 import { type AbFamily, isAb, type Panel, type Spec } from './spec.js'
@@ -67,9 +68,11 @@ export function App({ spec }: { spec: Spec }) {
   const needsEntity = spec.entity !== undefined
   return (
     <UiProvider spec={spec}>
-      <Chrome spec={spec} entityId={entityId} onEntity={setEntityId}>
-        {needsEntity && entityId === undefined ? null : isAb(spec) ? <AbBody spec={spec} entityId={entityId ?? ''} /> : <CoreBody spec={spec} entityId={entityId} />}
-      </Chrome>
+      <ControlsProvider spec={spec}>
+        <Chrome spec={spec} entityId={entityId} onEntity={setEntityId}>
+          {needsEntity && entityId === undefined ? null : isAb(spec) ? <AbBody spec={spec} entityId={entityId ?? ''} /> : <CoreBody spec={spec} entityId={entityId} />}
+        </Chrome>
+      </ControlsProvider>
     </UiProvider>
   )
 }
