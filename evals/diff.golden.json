@@ -2,6 +2,28 @@
   "retail-orders-health.json -> retail-orders-health-filtered.json": {
     "changes": [
       {
+        "kind": "panel_added",
+        "path": "/panels/1",
+        "after": {
+          "recipe": "narrative",
+          "bind": {},
+          "say": "What stands out this week?",
+          "explain": "Automatically generated insights in plain language: how each measure trended and where dimensions concentrate or diverge."
+        },
+        "text": "added \"What stands out\" - \"What stands out this week?\""
+      },
+      {
+        "kind": "panel_removed",
+        "path": "/panels/0",
+        "before": {
+          "recipe": "summary",
+          "bind": {},
+          "say": "What's the takeaway here, with every number checked?",
+          "explain": "Three to five sentences written from the panels on screen; every figure is referenced to the query it came from. Details show each panel's finding, figures and method."
+        },
+        "text": "removed \"Summary\" - \"What's the takeaway here, with every number checked?\""
+      },
+      {
         "kind": "control_added",
         "path": "/controls/2",
         "after": {
@@ -158,14 +180,14 @@
       },
       {
         "kind": "panel_removed",
-        "path": "/panels/1",
+        "path": "/panels/0",
         "before": {
-          "recipe": "narrative",
+          "recipe": "summary",
           "bind": {},
-          "say": "What stands out this week?",
-          "explain": "Automatically generated insights in plain language: how each measure trended and where dimensions concentrate or diverge."
+          "say": "What's the takeaway here, with every number checked?",
+          "explain": "Three to five sentences written from the panels on screen; every figure is referenced to the query it came from. Details show each panel's finding, figures and method."
         },
-        "text": "removed \"What stands out\" - \"What stands out this week?\""
+        "text": "removed \"Summary\" - \"What's the takeaway here, with every number checked?\""
       },
       {
         "kind": "panel_removed",

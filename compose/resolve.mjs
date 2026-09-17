@@ -49,6 +49,12 @@ export function resolveSpec(input) {
     ...Object.fromEntries(input.measures.map((measure) => [measure.id, measure.label])),
     ...Object.fromEntries((family?.metrics?.series ?? []).map((metric) => [metric, metric])),
   }
+  // `summary` (T5.4) supersedes `narrative`: both answer "what stands out",
+  // but `summary` already covers it — referenced, in the team's own words —
+  // so a spec placing both gets only `summary`. Declared on `summary`'s own
+  // `recipe.json` (`caveat`), enforced here because this is the one place
+  // that turns questions into the final panel list.
+  const resolvedPanels = panels.some((panel) => panel.recipe === 'summary') ? panels.filter((panel) => panel.recipe !== 'narrative') : panels
   return {
     ...input,
     chrome: template.chrome,
@@ -56,7 +62,7 @@ export function resolveSpec(input) {
     words: { ...defaultWords, ...(input.words ?? {}) },
     rules: { confidence_bar: '90%', min_bookers: 0, trim_quartile: true, compare_periods: 7, ...(input.rules ?? {}) },
     theme: { accent: 'blue', follow: 'system', ...(input.theme ?? {}) },
-    panels,
+    panels: resolvedPanels,
   }
 }
 

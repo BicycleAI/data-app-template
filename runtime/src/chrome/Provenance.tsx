@@ -14,7 +14,7 @@
  * fetches anything; it only reads what compose-time already baked in.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { buildFilterParams, useControls, type TimeState } from '../controls.js'
 import { loadQueries, measureById, type QueryParam, type QuerySpec, type Spec, word } from '../spec.js'
 import { usePanelMeta } from '../studio/contextRegistry.js'
@@ -161,19 +161,64 @@ function PopoverContent({ spec, provenance }: { spec: Spec; provenance: Provenan
   )
 }
 
-/** The "How is this computed?" affordance + its popover. Rendered by `Widget` (parts.tsx) inside a `position: relative` card. */
-export function Provenance({ spec, provenance }: { spec: Spec; provenance: ProvenanceSpec }) {
-  const [open, setOpen] = useState(false)
+/**
+ * Imperative escape hatch, keyed by panel id — for code outside a card's own
+ * click handler that wants to jump straight to its provenance popover. The
+ * `summary` recipe's `[n]` reference buttons are the one caller today (T5.4):
+ * a figure names the panel it came from, and clicking it should open that
+ * panel's "How is this computed?" card, not just describe it in prose.
+ *
+ * A plain module-level `Map` rather than a context or a message, matching
+ * `contextRegistry.ts`'s `onHighlight` registry right next to it — both are
+ * "point at a panel already on the page" primitives, just imperative instead
+ * of event-based, since there is exactly one popover per panel to open.
+ */
+const openers = new Map<string, () => void>()
+
+/**
+ * Opens a mounted panel's provenance popover. Returns `false` (a no-op)
+ * when that panel has no provenance affordance mounted right now — off
+ * screen, or a card with nothing worth explaining (`Widget` was never given
+ * a `provenance` prop) — so a caller can fall back to just pulsing the card
+ * via `contextRegistry.ts`'s highlight mechanism instead.
+ */
+export function openProvenance(panelId: string): boolean {
+  const open = openers.get(panelId)
+  if (open === undefined) return false
+  open()
+  return true
+}
+
+function sideFor(anchor: DOMRect | undefined): 'left' | 'right' {
   // The popover hangs from the card's top-right "?" and normally opens leftwards. On a narrow card
   // near the left edge of the viewport that would push it off-screen, so it opens rightwards instead.
+  if (anchor === undefined) return 'left'
+  return anchor.right - 420 < 8 && anchor.left + 420 < window.innerWidth - 8 ? 'right' : 'left'
+}
+
+/** The "How is this computed?" affordance + its popover. Rendered by `Widget` (parts.tsx) inside a `position: relative` card. */
+export function Provenance({ spec, provenance, panelId }: { spec: Spec; provenance: ProvenanceSpec; panelId?: string | undefined }) {
+  const [open, setOpen] = useState(false)
   const [side, setSide] = useState<'left' | 'right'>('left')
   const containerRef = useRef<HTMLDivElement>(null)
 
   const toggle = () => {
-    const anchor = containerRef.current?.getBoundingClientRect()
-    if (anchor !== undefined) setSide(anchor.right - 420 < 8 && anchor.left + 420 < window.innerWidth - 8 ? 'right' : 'left')
+    setSide(sideFor(containerRef.current?.getBoundingClientRect()))
     setOpen((current) => !current)
   }
+
+  const openImperatively = useCallback(() => {
+    setSide(sideFor(containerRef.current?.getBoundingClientRect()))
+    setOpen(true)
+  }, [])
+
+  useEffect(() => {
+    if (panelId === undefined) return
+    openers.set(panelId, openImperatively)
+    return () => {
+      if (openers.get(panelId) === openImperatively) openers.delete(panelId)
+    }
+  }, [panelId, openImperatively])
 
   useEffect(() => {
     if (!open) return

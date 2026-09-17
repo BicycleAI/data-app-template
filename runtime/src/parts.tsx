@@ -174,6 +174,15 @@ export type WidgetProps = {
   readonly spec?: Spec
   /** What to show in the provenance popover. Omit (with `spec`) for a card with nothing worth explaining; both must be present for the affordance to render. */
   readonly provenance?: ProvenanceSpec
+  /**
+   * What kind of panel this is, beyond its `recipe` id, and the chat thread
+   * its own answer came from — reported to the host's context message
+   * (`contextRegistry.ts`'s `PanelReport.kind`/`threadId`) so its ask
+   * overlay can continue that thread. Only the `summary` recipe (T5.4)
+   * passes these today; every other recipe leaves them unset.
+   */
+  readonly kind?: string | undefined
+  readonly threadId?: string | undefined
   readonly children: ReactNode
 }
 
@@ -189,10 +198,10 @@ export type WidgetProps = {
  * screen) — its `panelId` comes from `PanelMetaProvider` (App.tsx wraps every
  * resolved panel in one), so a recipe never has to know it exists.
  */
-export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, digest, spec, provenance, children }: WidgetProps) {
+export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, digest, spec, provenance, kind, threadId, children }: WidgetProps) {
   const refreshing = fetching && !pending
   const meta = usePanelMeta()
-  const { nodeRef, highlighted } = useRegisterPanelInstance(meta, digest)
+  const { nodeRef, highlighted } = useRegisterPanelInstance(meta, digest, { ...(kind === undefined ? {} : { kind }), ...(threadId === undefined ? {} : { threadId }) })
   const classes = [className, refreshing ? 'kit-card--refreshing' : '', highlighted ? 'kit-card--highlight' : ''].filter((part) => part.length > 0).join(' ')
   const showProvenance = spec !== undefined && provenance !== undefined
   // The affordance is `position: absolute`, so this wrapper needs `position:
@@ -201,7 +210,7 @@ export function Widget({ heading, pending, fetching = false, error = null, onRet
   const wrapperStyle = showProvenance ? { position: 'relative' as const, ...style } : style
   return (
     <div ref={nodeRef} className={classes} style={wrapperStyle} aria-busy={pending}>
-      {showProvenance ? <Provenance spec={spec} provenance={provenance} /> : null}
+      {showProvenance ? <Provenance spec={spec} provenance={provenance} panelId={meta?.panelId} /> : null}
       {heading}
       {error !== null ? <WidgetError error={error} onRetry={onRetry ?? (() => {})} /> : pending ? <SkeletonFor spec={skeleton} /> : children}
     </div>

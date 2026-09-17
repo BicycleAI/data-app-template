@@ -59,6 +59,10 @@
   ],
   "questions": [
     {
+      "say": "What's the takeaway here, with every number checked?",
+      "recipe": "summary"
+    },
+    {
       "say": "How many orders come in, and which way is it moving?",
       "recipe": "kpis"
     },

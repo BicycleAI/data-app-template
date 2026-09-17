@@ -32,6 +32,15 @@ export type PanelReport = {
   readonly bind: Readonly<Record<string, unknown>>
   readonly selection?: unknown
   readonly digest?: unknown
+  /**
+   * What kind of panel this is, when a recipe is more than its `recipe` id
+   * says — today just `'summary'` (T5.4), so the host's ask overlay can tell
+   * the summary panel apart from a plain recipe card without special-casing
+   * `recipe === 'summary'` itself.
+   */
+  readonly kind?: string
+  /** The chat thread this panel's own answer came from (`summary`'s `thread_id`), so a follow-up in the host's ask overlay can continue it instead of starting a new one. */
+  readonly threadId?: string
   readonly rect: PanelRect
 }
 
@@ -119,6 +128,8 @@ type Instance = {
   readonly bind: Readonly<Record<string, unknown>>
   readonly digest: unknown
   readonly node: Element
+  readonly kind?: string
+  readonly threadId?: string
 }
 
 type PanelState = {
@@ -193,6 +204,8 @@ function buildReport(): readonly PanelReport[] {
       bind: last.bind,
       ...(state.selection === undefined ? {} : { selection: state.selection }),
       ...(digest === undefined ? {} : { digest }),
+      ...(last.kind === undefined ? {} : { kind: last.kind }),
+      ...(last.threadId === undefined ? {} : { threadId: last.threadId }),
       rect: unionRect(instances),
     })
   }
@@ -203,6 +216,18 @@ function post(): void {
   if (typeof window === 'undefined' || window.parent === window) return
   const message: ContextMessage = { type: 'studio:sandbox:context', panels: buildReport(), tokens: readTokens() }
   window.parent.postMessage(message, '*')
+}
+
+/**
+ * The panels currently on screen, exactly as the host's own
+ * `studio:sandbox:context` message would report them. Used by the `summary`
+ * recipe (T5.4) to build the `context` array its own
+ * `studio:sandbox:summary` request sends — the same "panels as the context
+ * reporter sees them" shape the service's `/summary` and `/chat/threads`
+ * bodies both accept, not a new one invented for this request kind.
+ */
+export function currentPanelReports(): readonly PanelReport[] {
+  return buildReport()
 }
 
 /** Registry change: debounced 100ms. */
@@ -328,6 +353,17 @@ export type PanelMeta = {
   readonly say: string | undefined
   readonly bind: Readonly<Record<string, unknown>>
   readonly explain?: string
+  /**
+   * What kind of panel this is, beyond its `recipe` id — the `summary`
+   * recipe (T5.4) is the one case today. Static per panel, unlike
+   * `threadId` below (which a recipe only learns once its own response
+   * lands), so a recipe that knows it up front may pass it here; one that
+   * learns it later passes it straight to `Widget`'s own `kind`/`threadId`
+   * props instead (see `useRegisterPanelInstance`'s `extra` argument).
+   */
+  readonly kind?: string
+  /** See `PanelReport.threadId`. Usually left unset here — a recipe fills this in once its own answer lands, via `Widget`'s `threadId` prop, not through this static, composer-resolved metadata. */
+  readonly threadId?: string
 }
 
 const PanelMetaContext = createContext<PanelMeta | undefined>(undefined)
@@ -366,23 +402,38 @@ export function useSelection<T = unknown>(panelId: string | undefined): readonly
  * geometry fresh, and calls `onHighlight` back when the host points at it.
  * `Widget` (parts.tsx) is the only caller; a recipe never calls this itself.
  */
-export function useRegisterPanelInstance(meta: PanelMeta | undefined, digest: unknown): { readonly nodeRef: RefObject<HTMLDivElement | null>; readonly highlighted: boolean } {
+export function useRegisterPanelInstance(
+  meta: PanelMeta | undefined,
+  digest: unknown,
+  /** Overrides `meta.kind`/`meta.threadId` — how `Widget`'s own `kind`/`threadId` props (dynamic, learned after the recipe's own data lands) reach the registry, since `PanelMeta` itself is static per render. */
+  extra?: { readonly kind?: string | undefined; readonly threadId?: string | undefined },
+): { readonly nodeRef: RefObject<HTMLDivElement | null>; readonly highlighted: boolean } {
   const nodeRef = useRef<HTMLDivElement>(null)
   const instanceId = useId()
   const [highlighted, setHighlighted] = useState(false)
+  const kind = extra?.kind ?? meta?.kind
+  const threadId = extra?.threadId ?? meta?.threadId
 
   useEffect(() => {
     if (meta === undefined) return
     const node = nodeRef.current
     if (node === null) return
-    registerInstance(meta.panelId, instanceId, { recipe: meta.recipe, say: meta.say, bind: meta.bind, digest, node })
+    registerInstance(meta.panelId, instanceId, {
+      recipe: meta.recipe,
+      say: meta.say,
+      bind: meta.bind,
+      digest,
+      node,
+      ...(kind === undefined ? {} : { kind }),
+      ...(threadId === undefined ? {} : { threadId }),
+    })
     const observer = new ResizeObserver(() => notifyGeometryChange())
     observer.observe(node)
     return () => {
       observer.disconnect()
       unregisterInstance(meta.panelId, instanceId)
     }
-  }, [meta, instanceId, digest])
+  }, [meta, instanceId, digest, kind, threadId])
 
   // A pulse the host asked for: scroll the card into view and hold
   // `kit-card--highlight` for 1.6s (the CSS-only pulse is in theme.css).

@@ -23,6 +23,7 @@ import { Render as Heatmap } from '../../recipes/heatmap/Render.js'
 import { Render as Kpis } from '../../recipes/kpis/Render.js'
 import { Render as Narrative } from '../../recipes/narrative/Render.js'
 import { Render as Ranking } from '../../recipes/ranking/Render.js'
+import { Render as Summary } from '../../recipes/summary/Render.js'
 import { Render as Table } from '../../recipes/table/Render.js'
 import { Render as Trend } from '../../recipes/trend/Render.js'
 import { Render as Verdict } from '../../recipes/verdict/Render.js'
@@ -45,6 +46,7 @@ export const CORE: Record<string, ComponentType<CoreProps>> = {
   heatmap: Heatmap,
   table: Table,
   narrative: Narrative,
+  summary: Summary,
 }
 
 /** Exported for evals/loading.test.tsx. */
