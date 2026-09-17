@@ -164,7 +164,16 @@ function PopoverContent({ spec, provenance }: { spec: Spec; provenance: Provenan
 /** The "How is this computed?" affordance + its popover. Rendered by `Widget` (parts.tsx) inside a `position: relative` card. */
 export function Provenance({ spec, provenance }: { spec: Spec; provenance: ProvenanceSpec }) {
   const [open, setOpen] = useState(false)
+  // The popover hangs from the card's top-right "?" and normally opens leftwards. On a narrow card
+  // near the left edge of the viewport that would push it off-screen, so it opens rightwards instead.
+  const [side, setSide] = useState<'left' | 'right'>('left')
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const toggle = () => {
+    const anchor = containerRef.current?.getBoundingClientRect()
+    if (anchor !== undefined) setSide(anchor.right - 420 < 8 && anchor.left + 420 < window.innerWidth - 8 ? 'right' : 'left')
+    setOpen((current) => !current)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -184,10 +193,14 @@ export function Provenance({ spec, provenance }: { spec: Spec; provenance: Prove
 
   return (
     <div className="kit-provenance" ref={containerRef}>
-      <button type="button" className="kit-provenance__trigger" aria-label="How is this computed?" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+      <button type="button" className="kit-provenance__trigger" aria-label="How is this computed?" aria-expanded={open} onClick={toggle}>
         <span aria-hidden="true">?</span>
       </button>
-      {open ? <PopoverContent spec={spec} provenance={provenance} /> : null}
+      {open ? (
+        <div className={side === 'right' ? 'kit-provenance__side kit-provenance__side--right' : 'kit-provenance__side'}>
+          <PopoverContent spec={spec} provenance={provenance} />
+        </div>
+      ) : null}
     </div>
   )
 }

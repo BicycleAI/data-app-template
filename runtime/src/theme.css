@@ -361,6 +361,9 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
 @media (prefers-reduced-motion: reduce) {
   .kit-provenance__trigger { transition: none; }
 }
+.kit-provenance__side { position: absolute; top: 0; right: 0; }
+.kit-provenance__side--right { right: auto; left: 0; }
+.kit-provenance__side--right .kit-provenance__popover { right: auto; left: 0; }
 .kit-provenance__popover {
   position: absolute;
   top: 28px;
