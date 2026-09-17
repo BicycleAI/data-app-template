@@ -13,5 +13,6 @@
   ],
   "bind": {},
   "caveat": null,
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "Displays the experiment hypothesis or description recorded at test setup."
 }

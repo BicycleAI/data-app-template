@@ -28,5 +28,6 @@
     }
   },
   "caveat": "Bookers per value are distinct counts per leaf; sums across leaves are an upper bound.",
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "Horizontal bars per dimension showing metric lift for each value; colored green for positive and red for negative lift."
 }

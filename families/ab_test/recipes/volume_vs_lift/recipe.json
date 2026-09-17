@@ -18,5 +18,6 @@
     }
   },
   "caveat": "Points outlined in red gain bookings but lose net commerce.",
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "Scatter plot with variant bookers on the x-axis (log scale) and metric lift on the y-axis, colored by Z-test confidence; points outlined in red gain bookers but lose net value."
 }

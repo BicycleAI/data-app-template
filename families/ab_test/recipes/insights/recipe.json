@@ -19,5 +19,6 @@
     }
   },
   "caveat": "Insights are deterministic patterns over segments, not a model's opinion.",
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "Segment-level analysis: shows what percentage of segments show positive lift and highlights specific segments that are working or need attention."
 }

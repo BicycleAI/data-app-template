@@ -25,5 +25,6 @@
     }
   },
   "caveat": null,
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "KPI tiles for the selected variant showing NIBPD, NIBrPD, NICPD, and CVR with sparklines and confidence badges."
 }

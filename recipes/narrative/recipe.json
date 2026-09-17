@@ -1,2 +1,20 @@
-{ "id": "narrative", "family": "core", "name": "What stands out", "answers": "So what?", "shape": "movement per measure; concentration and outliers per cut",
-  "needs": ["totals", "by_time", "by_dimension"], "slots": 0, "fits": ["biz", "pm"], "bind": {}, "caveat": "Deterministic findings over the data, not a model's opinion." }
+{
+  "id": "narrative",
+  "family": "core",
+  "name": "What stands out",
+  "answers": "So what?",
+  "shape": "movement per measure; concentration and outliers per cut",
+  "needs": [
+    "totals",
+    "by_time",
+    "by_dimension"
+  ],
+  "slots": 0,
+  "fits": [
+    "biz",
+    "pm"
+  ],
+  "bind": {},
+  "caveat": "Deterministic findings over the data, not a model's opinion.",
+  "explain": "Automatically generated insights in plain language: how each measure trended and where dimensions concentrate or diverge."
+}

@@ -106,7 +106,22 @@ switch (command) {
   }
   case 'catalogue': {
     const { recipes, templates, families } = loadCatalogue()
-    process.stdout.write(`${JSON.stringify({ recipes, templates, families }, null, 2)}\n`)
+    if (flags['json']) {
+      process.stdout.write(`${JSON.stringify({ recipes, templates, families }, null, 2)}\n`)
+    } else {
+      // Print recipes with explains
+      for (const [family, familyRecipes] of Object.entries(recipes)) {
+        process.stdout.write(`\n${family.toUpperCase()}\n`)
+        process.stdout.write(`${'='.repeat(40)}\n`)
+        for (const [id, recipe] of Object.entries(familyRecipes)) {
+          process.stdout.write(`\n${recipe.name} (${id})\n`)
+          if (recipe.explain) {
+            process.stdout.write(`  ${recipe.explain}\n`)
+          }
+        }
+      }
+      process.stdout.write(`\n`)
+    }
     break
   }
   default:

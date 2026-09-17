@@ -25,5 +25,6 @@
     }
   },
   "caveat": "Participants are cumulative snapshots; bookers, orders and value are summed from the start.",
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "Cumulative lift over time for the selected metric; CVR shows both variant and control lines, others show variant lift only."
 }

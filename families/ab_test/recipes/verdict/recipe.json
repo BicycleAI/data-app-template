@@ -21,5 +21,6 @@
     }
   },
   "caveat": "A verdict below the confidence bar says 'keep running', never 'lost'.",
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "One-sentence verdict: whether the variant is winning, losing, or lacks sufficient evidence based on the metric's `confidence_bar` threshold."
 }
