@@ -31,7 +31,8 @@ import {
   type VariantOverall,
 } from './analysis.js'
 import { buildSeries, buildTotals, type Period, rollup, type Slice, type Totals } from './core.js'
-import { type AbFamily, isAb, QUERY, resolveTo, type Spec, toAbSpec } from './spec.js'
+import { baseParams, buildFilterParams, filterRows, useControls } from './controls.js'
+import { type AbFamily, isAb, QUERY, type Spec, toAbSpec } from './spec.js'
 import { toObjects } from './studio/client.js'
 import { useAppQuery } from './studio/hooks.js'
 import type { BdaError, QueryResult, Scalar } from './studio/types.js'
@@ -48,7 +49,8 @@ export type EntityOption = {
 
 export function useEntityList(spec: Spec): { options: EntityOption[]; loading: boolean; error: BdaError | null } {
   const entity = spec.entity
-  const list = useAppQuery(QUERY.entityList, { parameters: { from: spec.time.from, to: resolveTo(spec.time.to) }, enabled: entity !== undefined })
+  const { time } = useControls()
+  const list = useAppQuery(QUERY.entityList, { parameters: { from: time.from, to: time.to }, enabled: entity !== undefined })
   const options = useMemo<EntityOption[]>(() => {
     if (list.data === undefined || entity === undefined) return []
     const cfg = entity.list
@@ -72,12 +74,6 @@ export function useEntityList(spec: Spec): { options: EntityOption[]; loading: b
     return [...byId.values()].sort((a, b) => b.rank - a.rank)
   }, [list.data, entity])
   return { options, loading: entity !== undefined && list.isPending, error: list.error }
-}
-
-function entityParameters(spec: Spec, entityId: string | undefined): Record<string, Scalar> {
-  const base: Record<string, Scalar> = { from: spec.time.from, to: resolveTo(spec.time.to) }
-  if (spec.entity !== undefined && entityId !== undefined) base.entity = (spec.entity.type ?? 'number') === 'number' ? Number(entityId) : entityId
-  return base
 }
 
 const rows = (result: QueryResult | undefined) => (result === undefined ? undefined : toObjects(result))
@@ -142,24 +138,35 @@ export function trendDims(spec: Spec): string[] {
 }
 
 export function useCoreDataset(spec: Spec, entityId: string | undefined): CoreData {
+  const { filters, time } = useControls()
   const ready = spec.entity === undefined || entityId !== undefined
-  const parameters = entityParameters(spec, entityId)
-  const totalsQ = useAppQuery(QUERY.totals, { parameters, enabled: ready })
-  const byTimeQ = useAppQuery(QUERY.byTime, { parameters, limit: 5000, enabled: ready })
+  const base = baseParams(spec, time, entityId)
+  const { params: filterSlots } = buildFilterParams(spec, filters)
+  // `totals`/`by_time` are the datasets the composer declared `filters: true` on — the only ones
+  // whose SQL carries the `<slug>_i` slots these params fill. `by_dimension`/`by_time_<dim>` keep
+  // the dimension, so the query stays unfiltered and the pick is applied to their rows below.
+  const filteredParameters: Record<string, Scalar> = { ...base, ...filterSlots }
+  const totalsQ = useAppQuery(QUERY.totals, { parameters: filteredParameters, enabled: ready })
+  const byTimeQ = useAppQuery(QUERY.byTime, { parameters: filteredParameters, limit: 5000, enabled: ready })
   const hasDims = spec.dimensions.length > 0
-  const byDimQ = useAppQuery(QUERY.byDimension, { parameters, limit: 10000, enabled: ready && hasDims })
+  const byDimQ = useAppQuery(QUERY.byDimension, { parameters: base, limit: 10000, enabled: ready && hasDims })
   const dims = trendDims(spec)
   // Hooks must be called unconditionally; the composer caps trend dims at 3.
-  const bt0 = useAppQuery(QUERY.byTimeDim(dims[0] ?? ''), { parameters, limit: 5000, enabled: ready && dims[0] !== undefined })
-  const bt1 = useAppQuery(QUERY.byTimeDim(dims[1] ?? ''), { parameters, limit: 5000, enabled: ready && dims[1] !== undefined })
-  const bt2 = useAppQuery(QUERY.byTimeDim(dims[2] ?? ''), { parameters, limit: 5000, enabled: ready && dims[2] !== undefined })
+  const bt0 = useAppQuery(QUERY.byTimeDim(dims[0] ?? ''), { parameters: base, limit: 5000, enabled: ready && dims[0] !== undefined })
+  const bt1 = useAppQuery(QUERY.byTimeDim(dims[1] ?? ''), { parameters: base, limit: 5000, enabled: ready && dims[1] !== undefined })
+  const bt2 = useAppQuery(QUERY.byTimeDim(dims[2] ?? ''), { parameters: base, limit: 5000, enabled: ready && dims[2] !== undefined })
 
   const totalRows = useMemo(() => rows(totalsQ.data), [totalsQ.data])
   const timeRows = useMemo(() => rows(byTimeQ.data), [byTimeQ.data])
-  const dimRows = useMemo(() => rows(byDimQ.data), [byDimQ.data])
-  const bt0Rows = useMemo(() => rows(bt0.data), [bt0.data])
-  const bt1Rows = useMemo(() => rows(bt1.data), [bt1.data])
-  const bt2Rows = useMemo(() => rows(bt2.data), [bt2.data])
+  // `by_dimension`/`by_time_<dim>` are not narrowed by the query — filter their rows in memory.
+  const dimRowsRaw = useMemo(() => rows(byDimQ.data), [byDimQ.data])
+  const dimRows = useMemo(() => (dimRowsRaw === undefined ? undefined : filterRows(dimRowsRaw, filters)), [dimRowsRaw, filters])
+  const bt0RowsRaw = useMemo(() => rows(bt0.data), [bt0.data])
+  const bt0Rows = useMemo(() => (bt0RowsRaw === undefined ? undefined : filterRows(bt0RowsRaw, filters)), [bt0RowsRaw, filters])
+  const bt1RowsRaw = useMemo(() => rows(bt1.data), [bt1.data])
+  const bt1Rows = useMemo(() => (bt1RowsRaw === undefined ? undefined : filterRows(bt1RowsRaw, filters)), [bt1RowsRaw, filters])
+  const bt2RowsRaw = useMemo(() => rows(bt2.data), [bt2.data])
+  const bt2Rows = useMemo(() => (bt2RowsRaw === undefined ? undefined : filterRows(bt2RowsRaw, filters)), [bt2RowsRaw, filters])
 
   const totalsBuilt = useMemo(() => (totalRows === undefined ? undefined : buildTotals(spec, totalRows)), [spec, totalRows])
   const seriesBuilt = useMemo(() => (timeRows === undefined ? undefined : buildSeries(spec, timeRows)), [spec, timeRows])
@@ -211,15 +218,21 @@ export type Dataset = {
 
 export function useAbDataset(spec: Spec & { family: AbFamily }, entityId: string): Dataset {
   const ab = useMemo(() => toAbSpec(spec), [spec])
-  const parameters = entityParameters(spec, entityId)
-  const metaQ = useAppQuery(QUERY.meta, { parameters })
-  const totalsQ = useAppQuery(QUERY.armTotals, { parameters })
-  const wideQ = useAppQuery(QUERY.segments, { parameters, limit: 10000 })
-  const dailyQ = useAppQuery(QUERY.trend, { parameters, limit: 5000 })
+  const { filters, time } = useControls()
+  const base = baseParams(spec, time, entityId)
+  const { params: filterSlots } = buildFilterParams(spec, filters)
+  // `arm_totals`/`daily_trend` are declared `filters: true`; `experiment_meta`/`segments` keep the
+  // dimension (or have none to narrow), so they run unfiltered and `segments`' rows are narrowed below.
+  const filteredParameters: Record<string, Scalar> = { ...base, ...filterSlots }
+  const metaQ = useAppQuery(QUERY.meta, { parameters: base })
+  const totalsQ = useAppQuery(QUERY.armTotals, { parameters: filteredParameters })
+  const wideQ = useAppQuery(QUERY.segments, { parameters: base, limit: 10000 })
+  const dailyQ = useAppQuery(QUERY.trend, { parameters: filteredParameters, limit: 5000 })
 
   const metaRows = useMemo(() => rows(metaQ.data), [metaQ.data])
   const totalRows = useMemo(() => rows(totalsQ.data), [totalsQ.data])
-  const wideRows = useMemo(() => rows(wideQ.data), [wideQ.data])
+  const wideRowsRaw = useMemo(() => rows(wideQ.data), [wideQ.data])
+  const wideRows = useMemo(() => (wideRowsRaw === undefined ? undefined : filterRows(wideRowsRaw, filters)), [wideRowsRaw, filters])
   const dailyRows = useMemo(() => rows(dailyQ.data), [dailyQ.data])
 
   const metaBuilt = useMemo(() => {

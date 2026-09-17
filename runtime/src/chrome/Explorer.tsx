@@ -4,6 +4,7 @@ import { type ReactNode, useMemo, useState } from 'react'
 import { type EntityOption, useEntityList } from '../data.js'
 import { controlEnabled, type Spec } from '../spec.js'
 import { DepthPills, DimensionChecks, MeasureSelect } from '../ui.js'
+import { FilterBar } from './FilterBar.js'
 
 type Props = { spec: Spec; entityId: string | undefined; onEntity: (id: string) => void; children: ReactNode }
 
@@ -61,6 +62,7 @@ export function ExplorerChrome({ spec, entityId, onEntity, children }: Props) {
         <div className="kit-side__foot">Powered by Bicycle AI</div>
       </aside>
       <main className="kit-main">
+        <FilterBar spec={spec} />
         {entity !== undefined && entityId === undefined ? (
           <div className="kit-empty">
             <h1 className="kit-h1">{spec.decision ?? spec.title}</h1>
