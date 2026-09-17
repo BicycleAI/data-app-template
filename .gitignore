@@ -1,6 +1,4 @@
-node_modules/
-dist/
-.env
-.env.local
-*.log
+node_modules
+build/
+runtime/dist/index.html
 .DS_Store

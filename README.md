@@ -1,47 +1,91 @@
-# data-app-ui
+# Data app kit
 
-The template an agent starts from to build a **Bicycle data app**: a small
-React app that renders one question about one semantic model, ships as a zip,
-and is hosted by the Bicycle Studio service.
+The way Bicycle data apps are created. Two paths exist: **compose from a spec** (default—no code required) or **hand-build from `template/`** (when a recipe cannot express what you need).
 
-**If you are an agent, read [README-FOR-AGENTS.md](README-FOR-AGENTS.md) first.**
-It is the contract, and most of it cannot be discovered by reading the code.
+## Two ways to build a data app
 
-## What you get
+**Compose from a spec (recommended).** Load `skills/ask-show-ship/SKILL.md`, interview a user to produce a `DataAppSpec`, validate and compose it with `kit compose` or the `design_*` tools on the bicycle-studio MCP. The runtime reads the spec; no per-app code.
+
+**Hand-build from `template/`** (escape hatch). Engineers who need something the recipes cannot express start here. Rules and patterns are in `template/README-FOR-AGENTS.md`.
+
+## Repository layout
 
 ```
-bda.manifest.json     the declared-query contract — the only way data reaches the app
-src/studio/           the host contract: context, query client, hooks, theming
-src/components/        Chart (Observable Plot) and DataTable
-src/theme.css          the --bda-* tokens, light and dark
-src/App.tsx            replace this
+spec/             dataapp-spec.v2.schema.json + examples (retail-orders-health, checkout-test-report)
+recipes/          core recipes: recipe.json + Render.tsx (work on any model)
+recipes/datasets.json         core queries, declared (no SQL in code)
+families/         analysis families (ab_test): family.json + recipes + datasets.json
+families/*/datasets.json      queries for each family
+templates/        recipe lists per persona (core/ + family overrides)
+profiles/         example tenant profiles (fixtures only; real profiles in the API)
+runtime/          data-driven app: spec.ts, core.ts, analysis.ts, ui.tsx, App.tsx
+runtime/dist/     build output: app.js, app.css (vendored by bicycle-studio-api)
+compose/          CLI tool: validate, resolve, render, bundle
+compose/cli.mjs   kit commands: validate, compose, brief, manifest, extract, catalogue
+evals/            golden manifests + transcript fixtures
+skills/           ask-show-ship SKILL.md (published by MCP as prompt + resource)
+template/         hand-build starter (React boilerplate; see template/README-FOR-AGENTS.md)
+scripts/          no-real-ids.sh (guards against real customer data)
 ```
+
+## kit CLI commands
+
+- `kit validate <spec.json>...` — schema + semantic checks
+- `kit compose <spec.json> [--out DIR]` — produce bundle.zip
+- `kit brief <spec.json> [--out DIR]` — derive exec brief spec and compose it
+- `kit manifest <spec.json>` — print the derived bda.manifest.json
+- `kit extract <app.js>` — print the spec embedded in a bundle
+- `kit catalogue` — list recipes, templates, families as JSON
+
+## npm scripts (root)
 
 ```bash
-npm install
-npm run build     # typechecks, then emits exactly dist/app.js and dist/app.css
-npm test
+npm run build      # typecheck + vite build runtime/dist + assert output names
+npm run typecheck  # tsc --noEmit
+npm run check      # typecheck + validate specs + dry-run compose one example
+npm run compose    # alias for node compose/cli.mjs
+npm run dev        # vite watch (runtime only, for development)
 ```
 
-## The two service contracts
+## How bicycle-studio-api vendors this kit
 
-An app bundle is portable, but the API you submit it to is not. Know which one
-you are targeting:
+The API reads this repository's release tag (e.g. `v1.0.0`) and:
 
-| | `bicycle-studio-api` (remote / MCP) | `bicycle-studio-ui` server (local) |
-| --- | --- | --- |
-| Submit | zip -> signed GCS upload -> `complete` with sha256 | JSON body with inline file contents |
-| Create | `POST /api/data-apps` | `POST /api/data-apps/apps` |
-| Queries | **semantic SQL** against one bound model | SQL over the dataset |
-| Agent access | MCP tools at `/mcp` (`dataapp_*`, `query_*`) | REST only |
+1. Copies `runtime/dist/` (app.js, app.css) into its bundles
+2. Flattens `recipes/` and `families/*/` into JSON catalogues
+3. Embeds `spec/dataapp-spec.v2.schema.json`, templates, and `skills/ask-show-ship/SKILL.md`
+4. Uses `compose/datasets.mjs` (the dataset renderer) to substitute query parameters
 
-`README-FOR-AGENTS.md` documents the **semantic-SQL / MCP** path, because that
-is where metrics, models and availability windows live.
+**Release rule:** Tag the kit repo → re-vendor into the API from that tag → publish the MCP skill from the same tag. They are one release unit.
 
-## Constraints you cannot work around
+## Invariants and rules
 
-The embed page sets `script-src 'self'` and `connect-src 'self'`: no CDN
-scripts, no external fetches, no web fonts. The frame has an opaque origin, so
-`localStorage`, `sessionStorage` and cookies throw. Charting is Observable
-Plot, already installed, and nothing else. Build output must stay `app.js` and
-`app.css`.
+Before changing anything here, read `AGENTS.md` for the full rules. Quick version:
+
+- The spec is a public contract (`spec/dataapp-spec.v2.schema.json`).
+- No SQL in code — queries live in `recipes/datasets.json` and `families/*/datasets.json`.
+- Model-agnostic — nothing in recipes, templates, runtime, or compose may name a model, metric, or dimension.
+- Public repo — no real customer data anywhere (`scripts/no-real-ids.sh` guards it).
+- Query ids are derived, not authored. Core: `entity_list`, `totals`, `by_time`, `by_dimension`, `by_time_<dim>`. `ab_test`: `entity_list`, `experiment_meta`, `arm_totals`, `segments`, `daily_trend`.
+- The runtime emits exactly `app.js` and `app.css` (other names cause validation to fail).
+- Components use `--bda-*` CSS tokens only; colours live in `runtime/src/theme.css`.
+- Specs compose to ≤32 queries. Core specs use 2–6; `ab_test` specs use 5.
+
+See `AGENTS.md` for the full list and details.
+
+## Running checks locally
+
+```bash
+# At the root
+npm ci
+npm run build
+npm run check
+node evals/run.mjs
+scripts/no-real-ids.sh
+
+# For the hand-build starter
+cd template
+npm ci
+npm run build
+npm test
+```

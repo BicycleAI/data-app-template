@@ -1,3 +1,5 @@
+> **Start with compose.** Most apps should not be hand-built. Load `skills/ask-show-ship/SKILL.md` and compose a spec with `kit compose` (or the `design_*` MCP tools). Use this template only when a recipe cannot express what you need.
+
 # Building a Bicycle data app
 
 You are modifying this template into an app that answers one question about a
@@ -118,45 +120,16 @@ Max 32 queries per manifest.
 
 ### What semantic SQL allows
 
-The shape is always the same:
+The grammar, the `query_*` loop, the errors and a worked example of every query shape
+the kit uses are in **`../skills/semantic-query/SKILL.md`** — that file is the single
+statement of this; load it before you write a query. The shape, as a reminder:
 
 ```
 SELECT <metric column>[, <dimension>...]
 FROM <the app's model>
 WHERE <time column> >= :from AND <time column> < :to
-[GROUP BY is implicit]
+[GROUP BY is implicit — do not write one]
 [ORDER BY <metric> DESC] [LIMIT n]
-```
-
-- **`FROM` is the model id**, e.g. `FROM QxGTe8DD`. Never a table name.
-- **Metrics are columns, already aggregated.** `total_channel_revenue` is
-  defined as a sum by the semantic layer. Write
-  `SELECT brand_tier, total_channel_revenue`, *not*
-  `SELECT brand_tier, sum(revenue)`.
-- **A bounded time range is required.** Both ends. An open-ended
-  `WHERE ts >= :since` will not compile.
-- **Time series:** `date_trunc('day', <time column>)` — also `'week'`,
-  `'month'`.
-- **Top-n:** `ORDER BY <metric> DESC LIMIT n`.
-- **No JOINs and no subqueries.** Dimensions of the metric's event type are
-  already available as columns; `query_search_fields` gives you their exact
-  names.
-
-So this, from an older version of this document, is **wrong** and will not
-compile:
-
-```sql
--- WRONG: a table, a raw aggregate, an unbounded range
-select sales_region, sum(revenue) as total_revenue
-from orders where order_date >= :since group by sales_region
-```
-
-and this is the same intent, correctly:
-
-```sql
--- RIGHT: the model, a declared metric, a closed range
-SELECT sales_region, total_revenue FROM <model>
-WHERE order_date >= :from AND order_date < :to
 ```
 
 ## Fetching data
@@ -530,6 +503,61 @@ Common marks: `Plot.barY` / `Plot.barX` (categorical), `Plot.lineY` +
 `Plot.areaY` (time series), `Plot.dot` (scatter), `Plot.cell` (heatmap),
 `Plot.ruleY([0])` (a baseline). For a share-of-total, prefer a sorted
 `Plot.barX` over a pie — it is easier to read and Plot has no pie mark.
+
+## Report your panels
+
+The host page owns chat for every data app — one implementation, living
+there, never in your bundle. Do not build an ask box, a drawer or any chat UI
+here; that would duplicate the host's and drift from it. What your app has to
+do instead is **report what is on screen**, so the host's chat can see it. A
+composed app gets this for free from its `Widget` wrapper; a hand-built app
+gets it by calling `studio/contextRegistry.ts` directly — the same protocol,
+without the composer's panel registry to hang it off of. (It is a separate
+file from `studio/context.ts`, which is your app's identity — token, app id,
+theme — an unrelated concern.)
+
+Wrap every card your app renders:
+
+```tsx
+import { useEffect, useRef } from 'react'
+import { registerPanel, unregisterPanel } from './studio/contextRegistry.js'
+
+function RevenueCard({ rows }: { rows: Row[] | undefined }) {
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (el === null) return
+    registerPanel(el, {
+      panelId: 'revenue_by_month', // stable across renders — a query id is a good choice
+      recipe: 'custom',
+      say: 'Monthly revenue',
+      digest: rows?.slice(0, 10), // top rows, last points, current values — whatever is cheap; ≤ 2 KB, or it is trimmed
+    })
+    return () => unregisterPanel('revenue_by_month')
+  }, [rows])
+
+  return (
+    <div ref={cardRef} className="bda-card" aria-busy={rows === undefined}>
+      {/* … */}
+    </div>
+  )
+}
+```
+
+That call does three things, all automatic once it is in place: it reports
+the card's position on screen (re-measured on scroll and resize), it reports
+`digest` whenever you pass a new one, and it listens for the host asking to
+point at this panel (`onHighlight`) so you can scroll it into view and add a
+highlight class. If a card has a row, point or cell a viewer can pick, report
+that too with `setSelection(panelId, value)` from its click handler — the
+host's chat can then ask about "the selected one" instead of you re-describing
+it in words.
+
+None of this needs a server round trip or changes what you render — it is a
+handful of `postMessage` calls to `window.parent`, which the host is already
+listening for. Full API, including the highlight handler, is documented at
+the top of `studio/contextRegistry.ts`.
 
 ## Submitting
 

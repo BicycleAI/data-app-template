@@ -1,0 +1,139 @@
+{
+  "version": 2,
+  "model": "m_checkout_demo",
+  "title": "Is my checkout test winning?",
+  "decision": "Tell me in one line whether the treatment is winning, and which market is carrying it.",
+  "persona": "biz",
+  "template": "scorecard",
+  "time": {
+    "from": "2026-02-01",
+    "to": "tomorrow"
+  },
+  "entity": {
+    "field": "test_id",
+    "label": "Test",
+    "type": "number",
+    "list": {
+      "label": "test_name",
+      "description": "test_desc",
+      "status": "test_status",
+      "group": "test_group",
+      "end": "test_end",
+      "rank": "unique_bookers"
+    }
+  },
+  "measures": [
+    {
+      "id": "bookers",
+      "column": "unique_bookers",
+      "label": "Bookers",
+      "format": "number",
+      "good": "up",
+      "role": "primary"
+    },
+    {
+      "id": "orders",
+      "column": "order_count",
+      "label": "Orders",
+      "format": "number",
+      "good": "up"
+    },
+    {
+      "id": "value",
+      "column": "order_value",
+      "label": "Net value",
+      "format": "currency",
+      "good": "up"
+    },
+    {
+      "id": "participants_arm",
+      "column": "arm_participants",
+      "label": "Variant participants"
+    },
+    {
+      "id": "participants_control",
+      "column": "control_participants",
+      "label": "Control participants"
+    },
+    {
+      "id": "participants_total",
+      "column": "total_participants",
+      "label": "Total participants"
+    }
+  ],
+  "dimensions": [
+    {
+      "field": "device",
+      "label": "Device"
+    },
+    {
+      "field": "market",
+      "label": "Market"
+    }
+  ],
+  "family": {
+    "kind": "ab_test",
+    "arms": {
+      "field": "variant_name",
+      "control": "CONTROL"
+    },
+    "roles": {
+      "bookers": "bookers",
+      "orders": "orders",
+      "value": "value",
+      "participants": {
+        "arm": "participants_arm",
+        "control": "participants_control",
+        "total": "participants_total"
+      }
+    },
+    "context": {
+      "description": "test_desc",
+      "status": "test_status",
+      "end": "test_end",
+      "as_of": "data_as_of",
+      "group": "test_group"
+    }
+  },
+  "questions": [
+    {
+      "say": "Is the treatment beating control on extra bookings a day?",
+      "recipe": "verdict",
+      "bind": {
+        "measure": "NIBPD"
+      }
+    },
+    {
+      "say": "Which market carries it?",
+      "recipe": "lift_by_dimension",
+      "bind": {
+        "dims": "first",
+        "limit": 8
+      }
+    },
+    {
+      "say": "Has it settled?",
+      "recipe": "cumulative_trend",
+      "bind": {
+        "measures": [
+          "NIBPD"
+        ]
+      }
+    }
+  ],
+  "words": {
+    "NIBPD": "Extra bookings / day",
+    "NIBrPD": "Extra bookers / day",
+    "NICPD": "Extra net value / day",
+    "CVR": "Conversion"
+  },
+  "rules": {
+    "confidence_bar": "90%",
+    "min_bookers": 2500,
+    "trim_quartile": true
+  },
+  "theme": {
+    "accent": "teal",
+    "follow": "system"
+  }
+}

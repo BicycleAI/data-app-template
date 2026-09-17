@@ -1,0 +1,102 @@
+{
+  "family": "ab_test",
+  "note": "An experiment is read per arm, so the family replaces the core datasets rather than adding to them.",
+  "replaces_core": true,
+  "datasets": [
+    {
+      "id": "entity_list",
+      "when": "entity",
+      "select": ["{{entity}}", "{{entity_fields}}", "{{entity_rank}}"],
+      "where": "range",
+      "params": "range",
+      "order": "{{entity_rank}} DESC",
+      "limit": 1000,
+      "columns": [
+        { "token": "entity", "type": "entity" },
+        { "list": "entity_fields", "type": "string" },
+        { "token": "entity_rank", "type": "number" }
+      ],
+      "maxLimit": 1000
+    },
+    {
+      "id": "experiment_meta",
+      "select": ["{{arm}}", "{{context}}", "{{role:bookers}}"],
+      "where": "entity",
+      "params": "entity",
+      "columns": [
+        { "token": "arm", "type": "string" },
+        { "list": "context", "type": "string" },
+        { "token": "role:bookers", "type": "number" }
+      ],
+      "maxLimit": 2000
+    },
+    {
+      "id": "arm_totals",
+      "filters": true,
+      "select": [
+        "{{arm}}",
+        "{{role:participants.arm}}",
+        "{{role:participants.control}}",
+        "{{role:participants.total}}",
+        "{{role:bookers}}",
+        "{{role:orders}}",
+        "{{role:value}}"
+      ],
+      "where": "entity",
+      "params": "entity",
+      "columns": [
+        { "token": "arm", "type": "string" },
+        { "token": "role:participants.arm", "type": "number" },
+        { "token": "role:participants.control", "type": "number" },
+        { "token": "role:participants.total", "type": "number" },
+        { "token": "role:bookers", "type": "number" },
+        { "token": "role:orders", "type": "number" },
+        { "token": "role:value", "type": "number" }
+      ],
+      "maxLimit": 100
+    },
+    {
+      "id": "segments",
+      "select": ["{{arm}}", "{{dimensions}}", "{{role:bookers}}", "{{role:orders}}", "{{role:value}}"],
+      "where": "entity",
+      "params": "entity",
+      "order": "{{role:bookers}} DESC",
+      "limit": 10000,
+      "columns": [
+        { "token": "arm", "type": "string" },
+        { "list": "dimensions", "type": "string" },
+        { "token": "role:bookers", "type": "number" },
+        { "token": "role:orders", "type": "number" },
+        { "token": "role:value", "type": "number" }
+      ],
+      "maxLimit": 10000
+    },
+    {
+      "id": "daily_trend",
+      "filters": true,
+      "select": [
+        "date_trunc('day', {{time}}) AS day",
+        "{{arm}}",
+        "{{role:bookers}}",
+        "{{role:orders}}",
+        "{{role:value}}",
+        "{{role:participants.arm}}",
+        "{{role:participants.control}}",
+        "{{role:participants.total}}"
+      ],
+      "where": "entity",
+      "params": "entity",
+      "columns": [
+        { "name": "day", "type": "string" },
+        { "token": "arm", "type": "string" },
+        { "token": "role:bookers", "type": "number" },
+        { "token": "role:orders", "type": "number" },
+        { "token": "role:value", "type": "number" },
+        { "token": "role:participants.arm", "type": "number" },
+        { "token": "role:participants.control", "type": "number" },
+        { "token": "role:participants.total", "type": "number" }
+      ],
+      "maxLimit": 5000
+    }
+  ]
+}

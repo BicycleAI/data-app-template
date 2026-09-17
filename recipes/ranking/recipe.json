@@ -1,0 +1,31 @@
+{
+  "id": "ranking",
+  "family": "core",
+  "name": "Ranking",
+  "answers": "Which values are best and worst?",
+  "shape": "top and bottom [n] [cut] values by [measure]",
+  "needs": [
+    "by_dimension"
+  ],
+  "slots": 0,
+  "fits": [
+    "pm",
+    "analyst"
+  ],
+  "bind": {
+    "dim": {
+      "type": "dim",
+      "default": "ui"
+    },
+    "measure": {
+      "type": "measure",
+      "default": "ui"
+    },
+    "count": {
+      "type": "int",
+      "default": 8
+    }
+  },
+  "caveat": null,
+  "explain": "Displays top and bottom values of a dimension by the selected measure, largest first for tops and smallest for bottoms."
+}

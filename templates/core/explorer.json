@@ -1,0 +1,60 @@
+{
+  "id": "explorer",
+  "family": "core",
+  "name": "Explorer",
+  "chrome": "explorer",
+  "persona_default": [
+    "analyst"
+  ],
+  "description": "A surface to operate: sparkline tiles, breakdown per dimension, a composable heatmap, trend by dimension, ranking, table.",
+  "controls": [
+    {
+      "kind": "entity"
+    },
+    {
+      "kind": "measure"
+    },
+    {
+      "kind": "dimensions"
+    },
+    {
+      "kind": "heatmap_axes"
+    },
+    {
+      "kind": "time"
+    }
+  ],
+  "slots": [
+    {
+      "recipe": "verdict"
+    },
+    {
+      "recipe": "kpis",
+      "always": true,
+      "bind": {
+        "style": "spark"
+      }
+    },
+    {
+      "recipe": "breakdown",
+      "bind": {
+        "dims": "all",
+        "limit": 12
+      }
+    },
+    {
+      "recipe": "trend",
+      "width": "half"
+    },
+    {
+      "recipe": "heatmap",
+      "width": "half"
+    },
+    {
+      "recipe": "ranking"
+    },
+    {
+      "recipe": "table"
+    }
+  ]
+}

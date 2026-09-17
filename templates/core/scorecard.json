@@ -1,0 +1,44 @@
+{
+  "id": "scorecard",
+  "family": "core",
+  "name": "Scorecard",
+  "chrome": "report",
+  "persona_default": [
+    "biz"
+  ],
+  "description": "The answer first: a verdict on the primary measure, tiles for every measure, one breakdown, one trend.",
+  "controls": [
+    {
+      "kind": "entity"
+    },
+    {
+      "kind": "time"
+    }
+  ],
+  "slots": [
+    {
+      "recipe": "verdict",
+      "always": true
+    },
+    {
+      "recipe": "kpis",
+      "always": true,
+      "bind": {
+        "style": "row"
+      }
+    },
+    {
+      "recipe": "breakdown",
+      "bind": {
+        "dims": "first",
+        "limit": 8
+      }
+    },
+    {
+      "recipe": "trend",
+      "bind": {
+        "measures": "primary"
+      }
+    }
+  ]
+}

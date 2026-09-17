@@ -1,0 +1,26 @@
+{
+  "id": "verdict",
+  "name": "Verdict banner",
+  "answers": "Is it winning?",
+  "shape": "Is [arm] beating [control] on [measure]?",
+  "needs": [
+    "arm_totals",
+    "experiment_meta",
+    "daily_trend"
+  ],
+  "slots": 0,
+  "fits": [
+    "biz",
+    "exec",
+    "pm"
+  ],
+  "bind": {
+    "measure": {
+      "type": "measure",
+      "default": "NIBPD"
+    }
+  },
+  "caveat": "A verdict below the confidence bar says 'keep running', never 'lost'.",
+  "family": "ab_test",
+  "explain": "One-sentence verdict: whether the variant is winning, losing, or lacks sufficient evidence based on the metric's `confidence_bar` threshold."
+}

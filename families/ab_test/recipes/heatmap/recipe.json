@@ -1,0 +1,32 @@
+{
+  "id": "heatmap",
+  "name": "Composable heatmap",
+  "answers": "What happens where two cuts meet?",
+  "shape": "[measure] for [cut] x [cut]",
+  "needs": [
+    "segments",
+    "arm_totals"
+  ],
+  "slots": 0,
+  "fits": [
+    "analyst",
+    "pm"
+  ],
+  "bind": {
+    "rows": {
+      "type": "dim",
+      "default": "ui"
+    },
+    "cols": {
+      "type": "dim",
+      "default": "ui"
+    },
+    "measure": {
+      "type": "measure",
+      "default": "ui"
+    }
+  },
+  "caveat": null,
+  "family": "ab_test",
+  "explain": "Two-dimensional grid of metric lift by dimension pair; uses diverging color scale centered at zero to show positive and negative effects."
+}

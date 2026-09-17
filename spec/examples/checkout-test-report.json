@@ -1,0 +1,145 @@
+{
+  "version": 2,
+  "model": "m_checkout_demo",
+  "title": "Checkout Test Analysis",
+  "decision": "Ship or hold a checkout test, and learn which cohorts it helps or hurts.",
+  "persona": "pm",
+  "template": "report",
+  "time": {
+    "column": "timestamp",
+    "from": "2026-02-01",
+    "to": "tomorrow"
+  },
+  "entity": {
+    "field": "test_id",
+    "label": "Test",
+    "type": "number",
+    "list": {
+      "label": "test_name",
+      "description": "test_desc",
+      "status": "test_status",
+      "group": "test_group",
+      "end": "test_end",
+      "rank": "unique_bookers"
+    }
+  },
+  "measures": [
+    {
+      "id": "bookers",
+      "column": "unique_bookers",
+      "label": "Bookers",
+      "format": "number",
+      "good": "up",
+      "role": "primary"
+    },
+    {
+      "id": "orders",
+      "column": "order_count",
+      "label": "Orders",
+      "format": "number",
+      "good": "up"
+    },
+    {
+      "id": "value",
+      "column": "order_value",
+      "label": "Net value",
+      "format": "currency",
+      "good": "up"
+    },
+    {
+      "id": "participants_arm",
+      "column": "arm_participants",
+      "label": "Variant participants"
+    },
+    {
+      "id": "participants_control",
+      "column": "control_participants",
+      "label": "Control participants"
+    },
+    {
+      "id": "participants_total",
+      "column": "total_participants",
+      "label": "Total participants"
+    }
+  ],
+  "dimensions": [
+    {
+      "field": "device",
+      "label": "Device"
+    },
+    {
+      "field": "market",
+      "label": "Market"
+    },
+    {
+      "field": "customer_tier",
+      "label": "Customer tier"
+    }
+  ],
+  "family": {
+    "kind": "ab_test",
+    "arms": {
+      "field": "variant_name",
+      "control": "CONTROL",
+      "exclude": [
+        "CONTROL"
+      ]
+    },
+    "roles": {
+      "bookers": "bookers",
+      "orders": "orders",
+      "value": "value",
+      "participants": {
+        "arm": "participants_arm",
+        "control": "participants_control",
+        "total": "participants_total"
+      }
+    },
+    "context": {
+      "description": "test_desc",
+      "status": "test_status",
+      "start": "test_start",
+      "end": "test_end",
+      "as_of": "data_as_of",
+      "group": "test_group"
+    }
+  },
+  "questions": [
+    {
+      "say": "Is TREATMENT beating CONTROL on incremental bookings, bookers and net commerce per day?",
+      "recipe": "kpi_tiles"
+    },
+    {
+      "say": "What is the common thread across the segments that help and hurt?",
+      "recipe": "insights"
+    },
+    {
+      "say": "Which exact segments help and hurt, across every three-way cut?",
+      "recipe": "lifters_draggers",
+      "bind": {
+        "count": 10
+      }
+    },
+    {
+      "say": "Has the lift settled since test start?",
+      "recipe": "cumulative_trend",
+      "bind": {
+        "measures": [
+          "NIBPD",
+          "NIBrPD",
+          "NICPD",
+          "CVR"
+        ]
+      }
+    }
+  ],
+  "rules": {
+    "confidence_bar": "90%",
+    "min_bookers": 0,
+    "trim_quartile": true
+  },
+  "theme": {
+    "accent": "blue",
+    "follow": "system"
+  }
+}

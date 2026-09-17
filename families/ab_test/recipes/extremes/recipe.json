@@ -1,0 +1,28 @@
+{
+  "id": "extremes",
+  "name": "Extremes",
+  "answers": "Which few segments matter most?",
+  "shape": "strongest lift and drag on [measure]",
+  "needs": [
+    "segments",
+    "arm_totals"
+  ],
+  "slots": 0,
+  "fits": [
+    "analyst",
+    "pm"
+  ],
+  "bind": {
+    "measure": {
+      "type": "measure",
+      "default": "ui"
+    },
+    "count": {
+      "type": "int",
+      "default": 6
+    }
+  },
+  "caveat": null,
+  "family": "ab_test",
+  "explain": "Top positive and negative lift segments from two-dimensional combinations; filtered by `min_bookers` and `trim_quartile` if enabled."
+}

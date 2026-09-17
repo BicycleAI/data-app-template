@@ -1,0 +1,30 @@
+{
+  "id": "kpi_tiles",
+  "name": "KPI tiles",
+  "answers": "How big, and which way is it going?",
+  "shape": "[measures] for [arm] vs [control]",
+  "needs": [
+    "arm_totals",
+    "daily_trend"
+  ],
+  "slots": 0,
+  "fits": [
+    "biz",
+    "pm",
+    "analyst",
+    "exec"
+  ],
+  "bind": {
+    "style": {
+      "type": "enum",
+      "options": [
+        "row",
+        "spark"
+      ],
+      "default": "row"
+    }
+  },
+  "caveat": null,
+  "family": "ab_test",
+  "explain": "The selected arm's NIBPD, NIBrPD and NICPD (net incremental bookings, bookers and value per participating day, each weighted by that arm's share of participants) and CVR (bookers / participants) with sparklines; the badge is a two-proportion Z-test on CVR against the `confidence_bar`."
+}

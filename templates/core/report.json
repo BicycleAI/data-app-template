@@ -1,0 +1,58 @@
+{
+  "id": "report",
+  "family": "core",
+  "name": "Report",
+  "chrome": "report",
+  "persona_default": [
+    "pm"
+  ],
+  "description": "A document to read: tiles, narrative, trends per measure, breakdown per dimension, rankings, table.",
+  "controls": [
+    {
+      "kind": "entity"
+    },
+    {
+      "kind": "measure"
+    },
+    {
+      "kind": "dimensions"
+    },
+    {
+      "kind": "time"
+    }
+  ],
+  "slots": [
+    {
+      "recipe": "verdict"
+    },
+    {
+      "recipe": "kpis",
+      "always": true,
+      "bind": {
+        "style": "row"
+      }
+    },
+    {
+      "recipe": "narrative"
+    },
+    {
+      "recipe": "trend",
+      "bind": {
+        "measures": "all"
+      }
+    },
+    {
+      "recipe": "breakdown",
+      "bind": {
+        "dims": "all",
+        "limit": 10
+      }
+    },
+    {
+      "recipe": "ranking"
+    },
+    {
+      "recipe": "table"
+    }
+  ]
+}

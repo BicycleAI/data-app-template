@@ -1,0 +1,30 @@
+{
+  "id": "cumulative_trend",
+  "name": "Cumulative trend",
+  "answers": "Has it settled?",
+  "shape": "How has [measure] moved since [start]?",
+  "needs": [
+    "daily_trend",
+    "arm_totals"
+  ],
+  "slots": 0,
+  "fits": [
+    "pm",
+    "analyst",
+    "biz"
+  ],
+  "bind": {
+    "measures": {
+      "type": "measures",
+      "default": [
+        "NIBPD",
+        "NIBrPD",
+        "NICPD",
+        "CVR"
+      ]
+    }
+  },
+  "caveat": "Participants are cumulative snapshots; bookers, orders and value are summed from the start.",
+  "family": "ab_test",
+  "explain": "Cumulative lift over time for the selected metric; CVR shows both variant and control lines, others show variant lift only."
+}

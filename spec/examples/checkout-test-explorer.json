@@ -1,0 +1,132 @@
+{
+  "version": 2,
+  "model": "m_checkout_demo",
+  "title": "Checkout Test Explorer",
+  "decision": "Where does the lift live?",
+  "persona": "analyst",
+  "template": "explorer",
+  "time": {
+    "column": "timestamp",
+    "from": "2026-02-01",
+    "to": "tomorrow"
+  },
+  "entity": {
+    "field": "test_id",
+    "label": "Test",
+    "type": "number",
+    "list": {
+      "label": "test_name",
+      "description": "test_desc",
+      "status": "test_status",
+      "group": "test_group",
+      "end": "test_end",
+      "rank": "unique_bookers"
+    }
+  },
+  "measures": [
+    {
+      "id": "bookers",
+      "column": "unique_bookers",
+      "label": "Bookers",
+      "format": "number",
+      "good": "up",
+      "role": "primary"
+    },
+    {
+      "id": "orders",
+      "column": "order_count",
+      "label": "Orders",
+      "format": "number",
+      "good": "up"
+    },
+    {
+      "id": "value",
+      "column": "order_value",
+      "label": "Net value",
+      "format": "currency",
+      "good": "up"
+    },
+    {
+      "id": "participants_arm",
+      "column": "arm_participants",
+      "label": "Variant participants"
+    },
+    {
+      "id": "participants_control",
+      "column": "control_participants",
+      "label": "Control participants"
+    },
+    {
+      "id": "participants_total",
+      "column": "total_participants",
+      "label": "Total participants"
+    }
+  ],
+  "dimensions": [
+    {
+      "field": "device",
+      "label": "Device"
+    },
+    {
+      "field": "market",
+      "label": "Market"
+    },
+    {
+      "field": "customer_tier",
+      "label": "Customer tier"
+    }
+  ],
+  "family": {
+    "kind": "ab_test",
+    "arms": {
+      "field": "variant_name",
+      "control": "CONTROL",
+      "exclude": [
+        "CONTROL"
+      ]
+    },
+    "roles": {
+      "bookers": "bookers",
+      "orders": "orders",
+      "value": "value",
+      "participants": {
+        "arm": "participants_arm",
+        "control": "participants_control",
+        "total": "participants_total"
+      }
+    },
+    "context": {
+      "description": "test_desc",
+      "status": "test_status",
+      "start": "test_start",
+      "end": "test_end",
+      "as_of": "data_as_of",
+      "group": "test_group"
+    }
+  },
+  "questions": [
+    {
+      "say": "Which dimension values carry the lift?",
+      "recipe": "lift_by_dimension",
+      "bind": {
+        "dims": "all"
+      }
+    },
+    {
+      "say": "Is the effect real or thin?",
+      "recipe": "volume_vs_lift"
+    },
+    {
+      "say": "What happens where two cuts meet?",
+      "recipe": "heatmap"
+    },
+    {
+      "say": "Which few segments matter most?",
+      "recipe": "extremes"
+    }
+  ],
+  "theme": {
+    "accent": "teal",
+    "follow": "system"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "id": "report",
+  "name": "Report",
+  "chrome": "report",
+  "persona_default": [
+    "pm"
+  ],
+  "description": "A document to read top to bottom: verdict row, hypothesis, insights, lifter/dragger tables, trends, overview.",
+  "family": "ab_test",
+  "controls": [
+    {
+      "kind": "entity"
+    },
+    {
+      "kind": "measure",
+      "options": [
+        "NIBPD",
+        "NIBrPD",
+        "NICPD"
+      ],
+      "default": "NIBPD"
+    },
+    {
+      "kind": "depth",
+      "options": [
+        1,
+        2,
+        3
+      ],
+      "default": 3
+    },
+    {
+      "kind": "dimensions"
+    },
+    {
+      "kind": "variant"
+    }
+  ],
+  "slots": [
+    {
+      "recipe": "kpi_tiles",
+      "always": true,
+      "bind": {
+        "style": "row"
+      }
+    },
+    {
+      "recipe": "hypothesis",
+      "always": true
+    },
+    {
+      "recipe": "insights"
+    },
+    {
+      "recipe": "lifters_draggers"
+    },
+    {
+      "recipe": "cumulative_trend",
+      "bind": {
+        "measures": [
+          "NIBPD",
+          "NIBrPD",
+          "NICPD",
+          "CVR"
+        ]
+      }
+    },
+    {
+      "recipe": "overview",
+      "always": true
+    }
+  ]
+}

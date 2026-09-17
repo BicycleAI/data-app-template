@@ -1,0 +1,28 @@
+{
+  "id": "trend",
+  "family": "core",
+  "name": "Trend",
+  "answers": "How has it moved over time?",
+  "shape": "How has [measure] moved since [from]? (optionally by [cut])",
+  "needs": [
+    "by_time"
+  ],
+  "slots": "1 per `by` dimension",
+  "fits": [
+    "biz",
+    "pm",
+    "analyst"
+  ],
+  "bind": {
+    "measures": {
+      "type": "measures",
+      "default": "ui"
+    },
+    "by": {
+      "type": "dim",
+      "default": null
+    }
+  },
+  "caveat": "With `by`, only the top 6 values are drawn.",
+  "explain": "Line charts over time for each measure; use `by` to show the top 6 dimension values for the selected measure."
+}

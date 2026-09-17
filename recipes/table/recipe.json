@@ -1,0 +1,26 @@
+{
+  "id": "table",
+  "family": "core",
+  "name": "Table",
+  "answers": "Give me the numbers.",
+  "shape": "every [measure] for every [cuts] combination",
+  "needs": [
+    "by_dimension"
+  ],
+  "slots": 0,
+  "fits": [
+    "analyst"
+  ],
+  "bind": {
+    "dims": {
+      "type": "dims",
+      "default": "ui"
+    },
+    "limit": {
+      "type": "int",
+      "default": 25
+    }
+  },
+  "caveat": null,
+  "explain": "All combinations of selected dimensions with every measure, sorted by clicking a measure header."
+}

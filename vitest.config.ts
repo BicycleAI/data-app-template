@@ -1,14 +1,15 @@
-import { defineConfig, mergeConfig } from 'vitest/config'
-import viteConfig from './vite.config.js'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vitest/config'
 
-// Kept separate from vite.config.ts: `defineConfig` there has no `test` key,
-// and the dev/build config should not carry test settings anyway.
-export default mergeConfig(
-  viteConfig,
-  defineConfig({
-    test: {
-      environment: 'happy-dom',
-      include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    },
-  }),
-)
+/**
+ * Kept separate from `runtime/vite.config.ts`: that config scopes `root` to
+ * `runtime/` for the app build, but tests span `evals/`, `recipes/` and
+ * `families/` too, and the test runner needs no `root` at all.
+ */
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: 'happy-dom',
+    include: ['evals/**/*.test.tsx', 'runtime/src/**/*.test.ts', 'runtime/src/**/*.test.tsx'],
+  },
+})

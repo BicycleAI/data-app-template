@@ -1,0 +1,28 @@
+{
+  "id": "lifters_draggers",
+  "name": "Lifters and draggers",
+  "answers": "Which exact segments help and hurt?",
+  "shape": "top and bottom [n] segments across [depth]-way cuts on [measure]",
+  "needs": [
+    "segments",
+    "arm_totals"
+  ],
+  "slots": 0,
+  "fits": [
+    "pm",
+    "analyst"
+  ],
+  "bind": {
+    "depth": {
+      "type": "int",
+      "default": "ui"
+    },
+    "count": {
+      "type": "int",
+      "default": 10
+    }
+  },
+  "caveat": "Segments in the thinnest quartile by bookers are dropped so per-day extremes are not noise.",
+  "family": "ab_test",
+  "explain": "Segments ranked by lift, top N positive and top N negative, with booker counts and all three metrics; segments under `min_bookers` are dropped, the thinnest quartile is trimmed when `trim_quartile` is on, and each row's Z-test says whether its lift clears the `confidence_bar`."
+}

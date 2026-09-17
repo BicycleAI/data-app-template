@@ -1,0 +1,131 @@
+{
+  "version": 2,
+  "appId": "app_1234567890abcdef1234",
+  "model": "m_retail_demo",
+  "title": "Retail Orders Health",
+  "decision": "Are retail orders healthy, and where are refunds concentrated?",
+  "persona": "pm",
+  "template": "report",
+  "time": {
+    "column": "event_time",
+    "from": "2026-08-01",
+    "to": "tomorrow",
+    "grain": "day"
+  },
+  "measures": [
+    {
+      "id": "orders",
+      "column": "orders_total",
+      "label": "Orders",
+      "format": "number",
+      "good": "up",
+      "role": "primary"
+    },
+    {
+      "id": "revenue",
+      "column": "revenue_total",
+      "label": "Revenue",
+      "format": "currency",
+      "good": "up"
+    },
+    {
+      "id": "refund_rate",
+      "column": "refund_rate_pct",
+      "label": "Refund rate",
+      "format": "rate",
+      "good": "down"
+    },
+    {
+      "id": "aov",
+      "column": "avg_order_value",
+      "label": "Average order value",
+      "format": "currency",
+      "good": "up"
+    }
+  ],
+  "dimensions": [
+    {
+      "field": "region",
+      "label": "Region"
+    },
+    {
+      "field": "channel",
+      "label": "Channel"
+    },
+    {
+      "field": "category",
+      "label": "Category"
+    }
+  ],
+  "questions": [
+    {
+      "say": "How many orders come in, and which way is it moving?",
+      "recipe": "kpis"
+    },
+    {
+      "say": "What stands out this week?",
+      "recipe": "narrative"
+    },
+    {
+      "say": "How have orders and the refund rate moved since August?",
+      "recipe": "trend",
+      "bind": {
+        "measures": [
+          "orders",
+          "refund_rate"
+        ]
+      }
+    },
+    {
+      "say": "Which regions and channels carry the volume?",
+      "recipe": "breakdown",
+      "bind": {
+        "dims": [
+          "region",
+          "channel"
+        ],
+        "limit": 10
+      }
+    },
+    {
+      "say": "Which regions have the best and worst refund rate?",
+      "recipe": "ranking",
+      "bind": {
+        "dim": "region",
+        "measure": "refund_rate"
+      }
+    },
+    {
+      "say": "Give me the numbers by region and category.",
+      "recipe": "table",
+      "bind": {
+        "dims": [
+          "region",
+          "category"
+        ],
+        "limit": 30
+      }
+    }
+  ],
+  "controls": [
+    {
+      "kind": "measure"
+    },
+    {
+      "kind": "dimensions"
+    }
+  ],
+  "words": {
+    "orders": "Orders",
+    "revenue": "Revenue",
+    "refund_rate": "Refund rate",
+    "aov": "Average order value"
+  },
+  "rules": {
+    "compare_periods": 7
+  },
+  "theme": {
+    "accent": "purple",
+    "follow": "system"
+  }
+}
