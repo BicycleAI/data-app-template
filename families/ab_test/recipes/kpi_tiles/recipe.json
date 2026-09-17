@@ -25,5 +25,6 @@
     }
   },
   "caveat": null,
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "The selected arm's NIBPD, NIBrPD and NICPD (net incremental bookings, bookers and value per participating day, each weighted by that arm's share of participants) and CVR (bookers / participants) with sparklines; the badge is a two-proportion Z-test on CVR against the `confidence_bar`."
 }

@@ -14,5 +14,6 @@
   ],
   "bind": {},
   "caveat": "States the distinct-count roll-up caveat in the footer.",
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "Test metadata: start/end dates, effective test length in days, traffic split, total participants, and counts of combination dimensions and segments analyzed (trimmed by `trim_quartile` and `min_bookers`)."
 }

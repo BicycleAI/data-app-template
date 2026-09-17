@@ -23,5 +23,6 @@
     }
   },
   "caveat": null,
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "Top positive and negative lift segments from two-dimensional combinations; filtered by `min_bookers` and `trim_quartile` if enabled."
 }

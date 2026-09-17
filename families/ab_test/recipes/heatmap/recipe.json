@@ -27,5 +27,6 @@
     }
   },
   "caveat": null,
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "Two-dimensional grid of metric lift by dimension pair; uses diverging color scale centered at zero to show positive and negative effects."
 }

@@ -28,5 +28,6 @@
     }
   },
   "caveat": "Bookers per value are distinct counts per leaf; sums across leaves are an upper bound.",
-  "family": "ab_test"
+  "family": "ab_test",
+  "explain": "Per dimension value, the arm's net incremental bookings per participating day minus control's, each side weighted by its share of participants (participants_arm / participants_total); positive lift is green, negative red, and a two-proportion Z-test on conversion decides whether it clears the `confidence_bar`."
 }
