@@ -106,7 +106,7 @@ function panelId(index: number, recipe: string): string {
 function CorePanel({ spec, core, panel, index }: { spec: Spec; core: CoreData; panel: Panel; index: number }) {
   const Recipe = CORE[panel.recipe]
   if (Recipe === undefined) return <div className="bda-state">Unknown recipe “{panel.recipe}”.</div>
-  const meta = { panelId: panelId(index, panel.recipe), recipe: panel.recipe, say: panel.say, bind: panel.bind ?? {} }
+  const meta = { panelId: panelId(index, panel.recipe), recipe: panel.recipe, say: panel.say, bind: panel.bind ?? {}, ...(panel.explain === undefined ? {} : { explain: panel.explain }) }
   return (
     <PanelMetaProvider value={meta}>
       <Recipe spec={spec} core={core} bind={panel.bind ?? {}} />
@@ -117,7 +117,7 @@ function CorePanel({ spec, core, panel, index }: { spec: Spec; core: CoreData; p
 function AbPanel({ spec, data, panel, index }: { spec: Spec; data: Dataset; panel: Panel; index: number }) {
   const Recipe = AB[panel.recipe]
   if (Recipe === undefined) return <div className="bda-state">Unknown recipe “{panel.recipe}”.</div>
-  const meta = { panelId: panelId(index, panel.recipe), recipe: panel.recipe, say: panel.say, bind: panel.bind ?? {} }
+  const meta = { panelId: panelId(index, panel.recipe), recipe: panel.recipe, say: panel.say, bind: panel.bind ?? {}, ...(panel.explain === undefined ? {} : { explain: panel.explain }) }
   return (
     <PanelMetaProvider value={meta}>
       <Recipe spec={spec} data={data} bind={panel.bind ?? {}} />

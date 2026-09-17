@@ -1,10 +1,11 @@
 import * as Plot from '@observablehq/plot'
 import { useMemo } from 'react'
+import { provenanceSpec } from '../../../../runtime/src/chrome/Provenance.js'
 import { Chart } from '../../../../runtime/src/components/Chart.js'
 import { mergeQueries } from '../../../../runtime/src/data.js'
 import { fmtCompact, fmtCompactMoney, fmtInt, fmtSigned } from '../../../../runtime/src/format.js'
 import { type RecipeProps, SectionHead, Widget, widgetState } from '../../../../runtime/src/parts.js'
-import { dimensionLabel, type Metric, word } from '../../../../runtime/src/spec.js'
+import { abRoleMeasureIds, dimensionLabel, type Metric, QUERY, word } from '../../../../runtime/src/spec.js'
 import { activeVariant, HeatmapAxes, useUi } from '../../../../runtime/src/ui.js'
 
 /** Waits on `data.overall` + `data.segmentsAt`. */
@@ -58,6 +59,8 @@ export function Render({ spec, data, bind }: RecipeProps) {
       className="bda-card kit-panel"
       heading={<SectionHead title={`${dimensionLabel(spec, rowsDim)} × ${dimensionLabel(spec, colsDim)}`} right={<HeatmapAxes spec={spec} />} />}
       skeleton={{ kind: 'chart', height: 320 }}
+      spec={spec}
+      provenance={provenanceSpec({ queries: [QUERY.armTotals, QUERY.segments], measures: abRoleMeasureIds(spec), rowCount: cells.length || undefined })}
       {...widgetState(query)}
     >
       {rowsDim === colsDim ? (

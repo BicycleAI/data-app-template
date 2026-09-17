@@ -30,6 +30,7 @@ export function resolveSpec(input) {
     const panel = { recipe: slot.recipe, bind: { ...(slot.bind ?? {}), ...(question?.bind ?? {}) } }
     if (question?.say) panel.say = question.say
     if (slot.width) panel.width = slot.width
+    if (recipes[slot.recipe]?.explain !== undefined) panel.explain = recipes[slot.recipe].explain
     panels.push(panel)
   }
   for (const question of input.questions) {
@@ -38,7 +39,9 @@ export function resolveSpec(input) {
     const already = panels.filter((panel) => panel.recipe === question.recipe)
     if (used.has(question.recipe) && already.some((panel) => JSON.stringify(panel.bind) === JSON.stringify({ ...(template.slots.find((slot) => slot.recipe === question.recipe)?.bind ?? {}), ...(question.bind ?? {}) }))) continue
     used.add(question.recipe)
-    panels.push({ recipe: question.recipe, bind: { ...(question.bind ?? {}) }, say: question.say })
+    const panel = { recipe: question.recipe, bind: { ...(question.bind ?? {}) }, say: question.say }
+    if (recipes[question.recipe]?.explain !== undefined) panel.explain = recipes[question.recipe].explain
+    panels.push(panel)
   }
 
   // A measure is named by its label; a metric a family derives is named by itself until the interview renames it.

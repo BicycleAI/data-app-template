@@ -23,6 +23,10 @@ export type MeasureSpec = {
   readonly format?: Format
   readonly good?: 'up' | 'down'
   readonly role?: 'primary' | 'secondary'
+  /** The semantic layer's plain-language definition of this measure, for the "How is this computed?" provenance popover. */
+  readonly definition?: string
+  /** The semantic layer's expression for this measure (e.g. a metric formula), for the provenance popover. */
+  readonly expression?: string
 }
 
 export type DimensionSpec = { readonly field: string; readonly label: string }
@@ -56,6 +60,8 @@ export type Panel = {
   readonly bind?: Readonly<Record<string, unknown>>
   readonly say?: string
   readonly width?: 'full' | 'half' | 'third'
+  /** The recipe's `explain` sentence (T3.6, `recipe.json`), threaded through by the composer — the Method a provenance popover shows. */
+  readonly explain?: string
 }
 
 export type EntitySpec = {
@@ -141,9 +147,31 @@ export type Spec = {
   readonly chat?: { readonly enabled: boolean; readonly anchors?: readonly ('panel' | 'selection' | 'none')[] }
 }
 
+/** One parameter a declared query takes — see `compose/datasets.mjs`'s `render()`. */
+export type QueryParam = {
+  readonly name: string
+  readonly type: 'string' | 'number' | 'boolean' | 'date'
+  readonly required: boolean
+  readonly default?: string | number | boolean
+}
+
+/**
+ * A declared query as the composer rendered it, carried alongside the spec
+ * (`window.__DATA_APP_QUERIES`) so the "How is this computed?" provenance
+ * popover can show the exact semantic SQL a panel's data came from. This is
+ * a read-only copy for display — the runtime still issues every query
+ * through `studio/hooks.ts`'s `useAppQuery`, never through this.
+ */
+export type QuerySpec = {
+  readonly id: string
+  readonly sql: string
+  readonly parameters: readonly QueryParam[]
+}
+
 declare global {
   interface Window {
     __DATA_APP_SPEC?: Spec
+    __DATA_APP_QUERIES?: readonly QuerySpec[]
   }
 }
 
@@ -165,6 +193,11 @@ export function loadSpec(): Spec {
   const injected = window.__DATA_APP_SPEC
   if (injected !== undefined) return injected
   throw new Error('No spec was injected into this bundle. Compose the app with `kit compose <spec.json>`.')
+}
+
+/** The declared queries the composer baked in alongside the spec (line 2 of `app.js`) — `[]` for a bundle composed before this existed. */
+export function loadQueries(): readonly QuerySpec[] {
+  return window.__DATA_APP_QUERIES ?? []
 }
 
 /** Display name for a measure id or derived metric id, from the interview's words or the spec's label. */
@@ -218,6 +251,19 @@ export function isAb(spec: Spec): spec is Spec & { family: AbFamily } {
 
 export function armsOf(spec: Spec): AbFamily['arms'] {
   return isAb(spec) ? spec.family.arms : { field: '', control: 'DEFAULT' }
+}
+
+/**
+ * Every role measure id an `ab_test` family declares (bookers, orders,
+ * value, participants arm/control/total) — for provenance popovers, where
+ * working out a derived metric's exact subset of role measures is more
+ * effort than it is worth: showing every role measure with a real
+ * definition beats a minimal but harder-to-derive list.
+ */
+export function abRoleMeasureIds(spec: Spec): readonly string[] {
+  if (!isAb(spec)) return []
+  const roles = spec.family.roles
+  return [roles.bookers, roles.orders, roles.value, roles.participants.arm, roles.participants.control, roles.participants.total]
 }
 
 /**

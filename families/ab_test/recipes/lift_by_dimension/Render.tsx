@@ -1,11 +1,12 @@
 import * as Plot from '@observablehq/plot'
 import { useMemo } from 'react'
 import type { Segment } from '../../../../runtime/src/analysis.js'
+import { provenanceSpec } from '../../../../runtime/src/chrome/Provenance.js'
 import { Chart } from '../../../../runtime/src/components/Chart.js'
 import { mergeQueries } from '../../../../runtime/src/data.js'
 import { fmtCompact, fmtCompactMoney, fmtInt, fmtSigned } from '../../../../runtime/src/format.js'
 import { type RecipeProps, SectionHead, Widget, widgetState } from '../../../../runtime/src/parts.js'
-import { armsOf, dimensionLabel, type Metric, type Spec, word } from '../../../../runtime/src/spec.js'
+import { abRoleMeasureIds, armsOf, dimensionLabel, type Metric, QUERY, type Spec, word } from '../../../../runtime/src/spec.js'
 import { activeVariant, MetricChips, useUi } from '../../../../runtime/src/ui.js'
 
 /** One small horizontal bar chart per dimension: the selected metric for every value, positives green, negatives red. Waits on `data.overall` + `data.segmentsAt`. */
@@ -79,6 +80,8 @@ function DimensionBars({ spec, dim, metric, limit, segments, query }: { spec: Sp
         </div>
       }
       skeleton={{ kind: 'chart', height: Math.max(90, 18 + limit * 22) }}
+      spec={spec}
+      provenance={provenanceSpec({ queries: [QUERY.armTotals, QUERY.segments], measures: abRoleMeasureIds(spec), rowCount: rows.length || undefined })}
       {...widgetState(query)}
     >
       {rows.length === 0 ? <div className="bda-state">No paired values.</div> : <Chart options={options} height={Math.max(90, 18 + rows.length * 22)} title={`${metric} by ${dimensionLabel(spec, dim)}`} />}

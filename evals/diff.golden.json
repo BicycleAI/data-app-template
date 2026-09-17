@@ -76,7 +76,8 @@
           "bind": {
             "measure": "refund_rate"
           },
-          "say": "Is the refund rate within target?"
+          "say": "Is the refund rate within target?",
+          "explain": "One-sentence verdict: the primary measure against its `targets` if set, otherwise against the prior `compare_periods` periods."
         },
         "text": "added \"Verdict\" - \"Is the refund rate within target?\""
       },
@@ -122,7 +123,8 @@
             "by": "region"
           },
           "say": "How has it moved, split by region?",
-          "width": "half"
+          "width": "half",
+          "explain": "Line charts over time for each measure; use `by` to show the top 6 dimension values for the selected measure."
         },
         "text": "added \"Trend\" - \"How has it moved, split by region?\""
       },
@@ -136,7 +138,8 @@
             "cols": "category"
           },
           "say": "What happens where region meets category?",
-          "width": "half"
+          "width": "half",
+          "explain": "Two-dimensional grid showing measure values; keeps top 12 rows and 10 columns by participant volume, drops the rest."
         },
         "text": "added \"Heatmap\" - \"What happens where region meets category?\""
       },
@@ -148,7 +151,8 @@
           "bind": {
             "by": "category"
           },
-          "say": "How has it moved, split by category?"
+          "say": "How has it moved, split by category?",
+          "explain": "Line charts over time for each measure; use `by` to show the top 6 dimension values for the selected measure."
         },
         "text": "added \"Trend\" - \"How has it moved, split by category?\""
       },
@@ -158,7 +162,8 @@
         "before": {
           "recipe": "narrative",
           "bind": {},
-          "say": "What stands out this week?"
+          "say": "What stands out this week?",
+          "explain": "Automatically generated insights in plain language: how each measure trended and where dimensions concentrate or diverge."
         },
         "text": "removed \"What stands out\" - \"What stands out this week?\""
       },
@@ -173,7 +178,8 @@
               "refund_rate"
             ]
           },
-          "say": "How have orders and the refund rate moved since August?"
+          "say": "How have orders and the refund rate moved since August?",
+          "explain": "Line charts over time for each measure; use `by` to show the top 6 dimension values for the selected measure."
         },
         "text": "removed \"Trend\" - \"How have orders and the refund rate moved since August?\""
       },
@@ -186,7 +192,8 @@
             "dim": "region",
             "measure": "refund_rate"
           },
-          "say": "Which regions have the best and worst refund rate?"
+          "say": "Which regions have the best and worst refund rate?",
+          "explain": "Displays top and bottom values of a dimension by the selected measure, largest first for tops and smallest for bottoms."
         },
         "text": "removed \"Ranking\" - \"Which regions have the best and worst refund rate?\""
       },
@@ -202,7 +209,8 @@
             ],
             "limit": 30
           },
-          "say": "Give me the numbers by region and category."
+          "say": "Give me the numbers by region and category.",
+          "explain": "All combinations of selected dimensions with every measure, sorted by clicking a measure header."
         },
         "text": "removed \"Table\" - \"Give me the numbers by region and category.\""
       },
@@ -375,7 +383,8 @@
           "bind": {
             "dims": "all"
           },
-          "say": "Which dimension values carry the lift?"
+          "say": "Which dimension values carry the lift?",
+          "explain": "Per dimension value, the arm's net incremental bookings per participating day minus control's, each side weighted by its share of participants (participants_arm / participants_total); positive lift is green, negative red, and a two-proportion Z-test on conversion decides whether it clears the `confidence_bar`."
         },
         "text": "added \"Lift by dimension\" - \"Which dimension values carry the lift?\""
       },
@@ -386,7 +395,8 @@
           "recipe": "volume_vs_lift",
           "bind": {},
           "say": "Is the effect real or thin?",
-          "width": "half"
+          "width": "half",
+          "explain": "Scatter plot with variant bookers on the x-axis (log scale) and metric lift on the y-axis, colored by Z-test confidence; points outlined in red gain bookers but lose net value."
         },
         "text": "added \"Volume vs lift\" - \"Is the effect real or thin?\""
       },
@@ -397,7 +407,8 @@
           "recipe": "heatmap",
           "bind": {},
           "say": "What happens where two cuts meet?",
-          "width": "half"
+          "width": "half",
+          "explain": "Two-dimensional grid of metric lift by dimension pair; uses diverging color scale centered at zero to show positive and negative effects."
         },
         "text": "added \"Composable heatmap\" - \"What happens where two cuts meet?\""
       },
@@ -407,7 +418,8 @@
         "after": {
           "recipe": "extremes",
           "bind": {},
-          "say": "Which few segments matter most?"
+          "say": "Which few segments matter most?",
+          "explain": "Top positive and negative lift segments from two-dimensional combinations; filtered by `min_bookers` and `trim_quartile` if enabled."
         },
         "text": "added \"Extremes\" - \"Which few segments matter most?\""
       },
@@ -416,7 +428,8 @@
         "path": "/panels/1",
         "before": {
           "recipe": "hypothesis",
-          "bind": {}
+          "bind": {},
+          "explain": "Displays the experiment hypothesis or description recorded at test setup."
         },
         "text": "removed \"Hypothesis\""
       },
@@ -426,7 +439,8 @@
         "before": {
           "recipe": "insights",
           "bind": {},
-          "say": "What is the common thread across the segments that help and hurt?"
+          "say": "What is the common thread across the segments that help and hurt?",
+          "explain": "Segment-level analysis: shows what percentage of segments show positive lift and highlights specific segments that are working or need attention."
         },
         "text": "removed \"Narrative insights\" - \"What is the common thread across the segments that help and hurt?\""
       },
@@ -438,7 +452,8 @@
           "bind": {
             "count": 10
           },
-          "say": "Which exact segments help and hurt, across every three-way cut?"
+          "say": "Which exact segments help and hurt, across every three-way cut?",
+          "explain": "Segments ranked by lift, top N positive and top N negative, with booker counts and all three metrics; segments under `min_bookers` are dropped, the thinnest quartile is trimmed when `trim_quartile` is on, and each row's Z-test says whether its lift clears the `confidence_bar`."
         },
         "text": "removed \"Lifters and draggers\" - \"Which exact segments help and hurt, across every three-way cut?\""
       },
@@ -455,7 +470,8 @@
               "CVR"
             ]
           },
-          "say": "Has the lift settled since test start?"
+          "say": "Has the lift settled since test start?",
+          "explain": "Cumulative lift over time for the selected metric; CVR shows both variant and control lines, others show variant lift only."
         },
         "text": "removed \"Cumulative trend\" - \"Has the lift settled since test start?\""
       },
@@ -464,7 +480,8 @@
         "path": "/panels/5",
         "before": {
           "recipe": "overview",
-          "bind": {}
+          "bind": {},
+          "explain": "Test metadata: start/end dates, effective test length in days, traffic split, total participants, and counts of combination dimensions and segments analyzed (trimmed by `trim_quartile` and `min_bookers`)."
         },
         "text": "removed \"Experiment overview\""
       },
@@ -545,7 +562,8 @@
           "bind": {
             "measure": "NIBPD"
           },
-          "say": "Is the treatment beating control on extra bookings a day?"
+          "say": "Is the treatment beating control on extra bookings a day?",
+          "explain": "One-sentence verdict: whether the variant is winning, losing, or lacks sufficient evidence based on the metric's `confidence_bar` threshold."
         },
         "text": "added \"Verdict banner\" - \"Is the treatment beating control on extra bookings a day?\""
       },
@@ -586,7 +604,8 @@
               "NIBPD"
             ]
           },
-          "say": "Has it settled?"
+          "say": "Has it settled?",
+          "explain": "Cumulative lift over time for the selected metric; CVR shows both variant and control lines, others show variant lift only."
         },
         "text": "added \"Cumulative trend\" - \"Has it settled?\""
       },
@@ -597,7 +616,8 @@
           "recipe": "volume_vs_lift",
           "bind": {},
           "say": "Is the effect real or thin?",
-          "width": "half"
+          "width": "half",
+          "explain": "Scatter plot with variant bookers on the x-axis (log scale) and metric lift on the y-axis, colored by Z-test confidence; points outlined in red gain bookers but lose net value."
         },
         "text": "removed \"Volume vs lift\" - \"Is the effect real or thin?\""
       },
@@ -608,7 +628,8 @@
           "recipe": "heatmap",
           "bind": {},
           "say": "What happens where two cuts meet?",
-          "width": "half"
+          "width": "half",
+          "explain": "Two-dimensional grid of metric lift by dimension pair; uses diverging color scale centered at zero to show positive and negative effects."
         },
         "text": "removed \"Composable heatmap\" - \"What happens where two cuts meet?\""
       },
@@ -618,7 +639,8 @@
         "before": {
           "recipe": "extremes",
           "bind": {},
-          "say": "Which few segments matter most?"
+          "say": "Which few segments matter most?",
+          "explain": "Top positive and negative lift segments from two-dimensional combinations; filtered by `min_bookers` and `trim_quartile` if enabled."
         },
         "text": "removed \"Extremes\" - \"Which few segments matter most?\""
       },

@@ -1,11 +1,12 @@
 import * as Plot from '@observablehq/plot'
 import { useMemo } from 'react'
 import type { TrendPoint, VariantOverall } from '../../../../runtime/src/analysis.js'
+import { provenanceSpec, type ProvenanceSpec } from '../../../../runtime/src/chrome/Provenance.js'
 import { Chart } from '../../../../runtime/src/components/Chart.js'
 import { mergeQueries } from '../../../../runtime/src/data.js'
 import { fmtPct, fmtSigned } from '../../../../runtime/src/format.js'
 import { Badge, Card, METRIC_COLOR, METRIC_TITLE, type RecipeProps, statusTone, Widget, widgetState } from '../../../../runtime/src/parts.js'
-import { armsOf, controlEnabled, type Metric, METRICS, type Spec, word } from '../../../../runtime/src/spec.js'
+import { abRoleMeasureIds, armsOf, controlEnabled, type Metric, METRICS, QUERY, type Spec, word } from '../../../../runtime/src/spec.js'
 import { activeVariant, useUi } from '../../../../runtime/src/ui.js'
 
 /**
@@ -24,12 +25,13 @@ export function Render({ spec, data, bind }: RecipeProps) {
     const query = mergeQueries(data.meta, data.overall, data.trend)
     if (!query.isPending && variant === undefined) return null
     const trend = data.trend.rows?.filter((point) => point.variant === variant?.name) ?? []
+    const provenance = provenanceSpec({ queries: [QUERY.meta, QUERY.armTotals, QUERY.trend], measures: abRoleMeasureIds(spec), rowCount: trend.length || undefined, asOf: data.meta.rows?.window.dataAsOf })
     return (
       <section className="kit-kpis">
         {METRICS.map((metric) => (
-          <SparkTile key={metric} spec={spec} metric={metric} variant={variant} trend={trend} active={metric === ui.metric && controlEnabled(spec, 'measure')} query={query} />
+          <SparkTile key={metric} spec={spec} metric={metric} variant={variant} trend={trend} active={metric === ui.metric && controlEnabled(spec, 'measure')} query={query} provenance={provenance} />
         ))}
-        <CvrSparkTile spec={spec} variant={variant} trend={trend} query={query} />
+        <CvrSparkTile spec={spec} variant={variant} trend={trend} query={query} provenance={provenance} />
       </section>
     )
   }
@@ -38,10 +40,11 @@ export function Render({ spec, data, bind }: RecipeProps) {
   if (!query.isPending && variant === undefined) return null
   const meta = data.meta.rows
   const next = variant === undefined ? 0 : (ui.variantIndex + 1) % overall.length
+  const provenance = provenanceSpec({ queries: [QUERY.meta, QUERY.armTotals], measures: abRoleMeasureIds(spec), rowCount: overall.length || undefined, asOf: meta?.window.dataAsOf })
   return (
     <section className="kit-section">
       <div className="kit-sh">Overview</div>
-      <Widget className="kit-ovrow" heading={null} skeleton={{ kind: 'metric' }} {...widgetState(query)}>
+      <Widget className="kit-ovrow" heading={null} skeleton={{ kind: 'metric' }} spec={spec} provenance={provenance} {...widgetState(query)}>
         <Card label={spec.entity?.label ?? 'Entity'} value={meta?.entityId ?? '—'} {...(meta !== undefined && meta.tag.length > 0 ? { hint: meta.tag } : {})} />
         {meta !== undefined && meta.group.length > 0 ? <Card label="Primary product" value={meta.group} /> : null}
         <Card label="Status" value={meta?.status || 'Unknown'} tone={statusTone(meta?.status ?? '')} />
@@ -76,7 +79,23 @@ export function Render({ spec, data, bind }: RecipeProps) {
 
 const SPARK = { marginLeft: 4, marginRight: 4, marginTop: 4, marginBottom: 4, x: { axis: null }, y: { axis: null, grid: false } }
 
-function SparkTile({ spec, metric, variant, trend, active, query }: { spec: Spec; metric: Metric; variant: VariantOverall | undefined; trend: readonly TrendPoint[]; active: boolean; query: ReturnType<typeof mergeQueries> }) {
+function SparkTile({
+  spec,
+  metric,
+  variant,
+  trend,
+  active,
+  query,
+  provenance,
+}: {
+  spec: Spec
+  metric: Metric
+  variant: VariantOverall | undefined
+  trend: readonly TrendPoint[]
+  active: boolean
+  query: ReturnType<typeof mergeQueries>
+  provenance: ProvenanceSpec
+}) {
   const value = variant?.kpis[metric] ?? null
   const series = useMemo(() => trend.flatMap((point) => (point[metric] === null ? [] : [{ day: point.day, value: point[metric] as number }])), [trend, metric])
   const options = useMemo(
@@ -96,6 +115,8 @@ function SparkTile({ spec, metric, variant, trend, active, query }: { spec: Spec
       style={{ borderTopColor: METRIC_COLOR[metric] }}
       heading={<div className="kit-kpi__label">{word(spec, metric)}</div>}
       skeleton={{ kind: 'metric' }}
+      spec={spec}
+      provenance={provenance}
       {...widgetState(query)}
     >
       <div className="kit-kpi__value" style={{ color: value === null ? undefined : value >= 0 ? 'var(--bda-positive)' : 'var(--bda-negative)' }}>
@@ -107,7 +128,19 @@ function SparkTile({ spec, metric, variant, trend, active, query }: { spec: Spec
   )
 }
 
-function CvrSparkTile({ spec, variant, trend, query }: { spec: Spec; variant: VariantOverall | undefined; trend: readonly TrendPoint[]; query: ReturnType<typeof mergeQueries> }) {
+function CvrSparkTile({
+  spec,
+  variant,
+  trend,
+  query,
+  provenance,
+}: {
+  spec: Spec
+  variant: VariantOverall | undefined
+  trend: readonly TrendPoint[]
+  query: ReturnType<typeof mergeQueries>
+  provenance: ProvenanceSpec
+}) {
   const series = useMemo(
     () =>
       trend.flatMap((point) => [
@@ -131,7 +164,15 @@ function CvrSparkTile({ spec, variant, trend, query }: { spec: Spec; variant: Va
   const cvrDefault = kpis?.cvrDefault ?? null
   const delta = cvrVariant === null || cvrDefault === null ? null : (cvrVariant - cvrDefault) * 10_000
   return (
-    <Widget className="bda-card kit-kpi" style={{ borderTopColor: METRIC_COLOR.CVR }} heading={<div className="kit-kpi__label">{word(spec, 'CVR')}</div>} skeleton={{ kind: 'metric' }} {...widgetState(query)}>
+    <Widget
+      className="bda-card kit-kpi"
+      style={{ borderTopColor: METRIC_COLOR.CVR }}
+      heading={<div className="kit-kpi__label">{word(spec, 'CVR')}</div>}
+      skeleton={{ kind: 'metric' }}
+      spec={spec}
+      provenance={provenance}
+      {...widgetState(query)}
+    >
       <div className="kit-kpi__value" style={{ color: METRIC_COLOR.CVR }}>
         {cvrVariant === null ? '—' : fmtPct(cvrVariant)}
       </div>

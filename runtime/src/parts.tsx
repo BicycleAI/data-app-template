@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from 'react'
 import type { Confidence, VariantOverall } from './analysis.js'
+import { Provenance, type ProvenanceSpec } from './chrome/Provenance.js'
 import { SkeletonChart, SkeletonMetric, SkeletonTable, SkeletonText } from './components/Skeleton.js'
 import type { CoreData, Dataset, QueryState } from './data.js'
 import { fmtSigned } from './format.js'
@@ -169,6 +170,10 @@ export type WidgetProps = {
    * `digest`. See `studio/contextRegistry.ts`.
    */
   readonly digest?: unknown
+  /** The spec, when this card wants a "How is this computed?" affordance — pair with `provenance`. */
+  readonly spec?: Spec
+  /** What to show in the provenance popover. Omit (with `spec`) for a card with nothing worth explaining; both must be present for the affordance to render. */
+  readonly provenance?: ProvenanceSpec
   readonly children: ReactNode
 }
 
@@ -184,13 +189,19 @@ export type WidgetProps = {
  * screen) — its `panelId` comes from `PanelMetaProvider` (App.tsx wraps every
  * resolved panel in one), so a recipe never has to know it exists.
  */
-export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, digest, children }: WidgetProps) {
+export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, digest, spec, provenance, children }: WidgetProps) {
   const refreshing = fetching && !pending
   const meta = usePanelMeta()
   const { nodeRef, highlighted } = useRegisterPanelInstance(meta, digest)
   const classes = [className, refreshing ? 'kit-card--refreshing' : '', highlighted ? 'kit-card--highlight' : ''].filter((part) => part.length > 0).join(' ')
+  const showProvenance = spec !== undefined && provenance !== undefined
+  // The affordance is `position: absolute`, so this wrapper needs `position:
+  // relative` — merged into `style` rather than a new class, since callers
+  // pass many different `className`s (`bda-card`, `kit-kpi`, `kit-panel`…).
+  const wrapperStyle = showProvenance ? { position: 'relative' as const, ...style } : style
   return (
-    <div ref={nodeRef} className={classes} style={style} aria-busy={pending}>
+    <div ref={nodeRef} className={classes} style={wrapperStyle} aria-busy={pending}>
+      {showProvenance ? <Provenance spec={spec} provenance={provenance} /> : null}
       {heading}
       {error !== null ? <WidgetError error={error} onRetry={onRetry ?? (() => {})} /> : pending ? <SkeletonFor spec={skeleton} /> : children}
     </div>

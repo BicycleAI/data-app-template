@@ -312,12 +312,22 @@ export function resetRegistryForTests(): void {
 
 /* ------------------------------------------------------------ React glue */
 
-/** What a panel is, as the composer resolved it — carried down to `Widget` and to a recipe's own click handlers. */
+/**
+ * What a panel is, as the composer resolved it — carried down to `Widget`
+ * and to a recipe's own click handlers.
+ *
+ * `explain` is carried here for the in-frame Provenance popover's Method
+ * section only. It deliberately does NOT flow into `PanelReport`/
+ * `ContextMessage` above — the host's context reporter wire protocol is
+ * pinned by `evals/context.test.tsx` and this repo's default is to keep that
+ * message exactly as-is unless there's a specific reason to grow it.
+ */
 export type PanelMeta = {
   readonly panelId: string
   readonly recipe: string
   readonly say: string | undefined
   readonly bind: Readonly<Record<string, unknown>>
+  readonly explain?: string
 }
 
 const PanelMetaContext = createContext<PanelMeta | undefined>(undefined)

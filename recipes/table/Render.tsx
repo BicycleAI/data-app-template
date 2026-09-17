@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
+import { provenanceSpec } from '../../runtime/src/chrome/Provenance.js'
 import { fmtMeasure, type Slice } from '../../runtime/src/core.js'
 import { type CoreProps, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
-import { dimensionLabel, primaryMeasure, word } from '../../runtime/src/spec.js'
+import { dimensionLabel, primaryMeasure, QUERY, word } from '../../runtime/src/spec.js'
 import { usePanelId, useSelection } from '../../runtime/src/studio/contextRegistry.js'
 import { useUi } from '../../runtime/src/ui.js'
 
@@ -26,7 +27,15 @@ export function Render({ spec, core, bind }: CoreProps) {
   return (
     <section className="kit-section">
       <SectionHead title="Table" right={<span className="bda-subtle">{dims.map((dim) => dimensionLabel(spec, dim)).join(' × ')} · top {rows.length}</span>} />
-      <Widget className="bda-card kit-tcard" heading={null} skeleton={{ kind: 'table', rows: Math.min(limit, 10) }} digest={digest} {...widgetState(core.dims)}>
+      <Widget
+        className="bda-card kit-tcard"
+        heading={null}
+        skeleton={{ kind: 'table', rows: Math.min(limit, 10) }}
+        digest={digest}
+        spec={spec}
+        provenance={provenanceSpec({ queries: [QUERY.byDimension], measures: spec.measures.map((measure) => measure.id), rowCount: rows.length || undefined })}
+        {...widgetState(core.dims)}
+      >
         <div className="kit-scroll">
           <table className="bda-table kit-table">
             <thead>

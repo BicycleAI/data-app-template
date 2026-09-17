@@ -1,7 +1,9 @@
+import { isoDay } from '../../runtime/src/analysis.js'
+import { provenanceSpec } from '../../runtime/src/chrome/Provenance.js'
 import { fmtDelta, fmtMeasure, isGood, periodChange } from '../../runtime/src/core.js'
 import { mergeQueries } from '../../runtime/src/data.js'
 import { type CoreProps, Widget, widgetState } from '../../runtime/src/parts.js'
-import { measureById, primaryMeasure, word } from '../../runtime/src/spec.js'
+import { measureById, primaryMeasure, QUERY, word } from '../../runtime/src/spec.js'
 import { useBlobJson } from '../../runtime/src/studio/storeHooks.js'
 
 /** `{measure_id: target}`; a per-segment shape may also appear (`{measure_id: {"<dim>=<value>": target}}`) but this recipe only reads the flat number. */
@@ -53,8 +55,10 @@ export function Render({ spec, core, bind }: CoreProps) {
     }
   }
 
+  const lastPeriod = series[series.length - 1]
+  const provenance = provenanceSpec({ queries: [QUERY.totals, QUERY.byTime], measures: [measure.id], rowCount: series.length || undefined, asOf: lastPeriod === undefined ? undefined : isoDay(lastPeriod.period) })
   return (
-    <Widget className={`kit-verdict kit-verdict--${tone}`} heading={<div className="kit-sh">Verdict</div>} skeleton={{ kind: 'text', lines: 2 }} {...widgetState(query)}>
+    <Widget className={`kit-verdict kit-verdict--${tone}`} heading={<div className="kit-sh">Verdict</div>} skeleton={{ kind: 'text', lines: 2 }} spec={spec} provenance={provenance} {...widgetState(query)}>
       <div className="kit-verdict__head">
         <span className="kit-verdict__title">{headline}</span>
       </div>
