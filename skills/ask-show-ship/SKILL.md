@@ -154,7 +154,7 @@ Never propose either for: raw event data (that is what queries are for), anythin
   "title": "<short, the app's name>",
   "decision": "<the user's decision, their words>",
   "persona": "biz | pm | analyst",
-  "template": "scorecard | report | explorer",
+  "template": "scorecard | report | explorer | brief | monitor",
   "time":     { "...bindings.time" },
   "entity":   { "...bindings.entity — omit for a whole-model view" },
   "measures": [ { "id": "successful", "column": "<metric column>", "label": "Successful bookings", "format": "number", "good": "up", "role": "primary" } ],

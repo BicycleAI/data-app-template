@@ -13,7 +13,7 @@
     "title": { "type": "string", "minLength": 1, "maxLength": 80 },
     "decision": { "type": "string", "maxLength": 300 },
     "persona": { "enum": ["biz", "pm", "analyst", "exec"] },
-    "template": { "enum": ["scorecard", "report", "explorer", "brief"] },
+    "template": { "enum": ["scorecard", "report", "explorer", "brief", "monitor"] },
     "time": {
       "type": "object",
       "additionalProperties": false,
