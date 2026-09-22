@@ -110,7 +110,7 @@ capability is a `postMessage` to the parent. This is the whole wire.
 | host -> frame | `studio:sandbox:store-result` | `requestId`, `ok`, `result` \| `error` | `runtime/src/studio/store.ts` |
 | frame -> host | `studio:sandbox:context` | `panels[]` (`panelId`, `recipe`, `say`, `bind`, `selection?`, `digest?`, `kind?`, `threadId?`, **`status`**, `rect`), `tokens` | `runtime/src/studio/contextRegistry.ts` |
 | host -> frame | `studio:sandbox:highlight` | `panelId` | `runtime/src/studio/contextRegistry.ts` |
-| frame -> host | **`studio:sandbox:state`** | `state` (`asOf?`, `time?`, `filters`, `section?`), `dropped[]` | `runtime/src/studio/contextRegistry.ts` |
+| frame -> host | **`studio:sandbox:state`** | `state` (`asOf?`, `time?`, `filters`, `section?` — only what differs from the defaults), `dropped[]` (`{ id, reason }`) | `runtime/src/studio/contextRegistry.ts` |
 
 Note `studio:sandbox:state` uses `kind:` where the others use `type:` — it is a
 state announcement, not one half of a request/response pair.
@@ -160,8 +160,14 @@ state?: {
   kit's spec. Values are checked against that control's `options`.
 - **`asOf` reaches the queries as the time window's upper bound.** The composer
   declares `:from` and `:to` and nothing else, so an extra `as_of` parameter
-  would be refused; clamping `to` pins every query the app issues, including
-  the ones a control changes later, and the FilterBar shows the clamped range.
+  would be refused. A **preset** (the host's, the spec's default, or one a
+  viewer picks later) is computed relative to the as-of — its window ends at
+  the as-of day, so `t=30d&asof=2026-06-01` is 2026-05-02..2026-06-01 whenever
+  it is opened. An **explicit range** is clamped to the as-of. Either way no
+  query reads past it, and the FilterBar shows the window actually queried.
+- **Dates must be real calendar days.** `asOf`, `from` and `to` are
+  `YYYY-MM-DD` and are validated by round-trip, so `2026-02-31` is dropped
+  (`invalid_date`) rather than rolled over into March.
 - **`section` is carried, not rendered.** This kit's spec declares no sections
   yet; it round-trips in `studio:sandbox:state` so a host that does declare
   them keeps its link intact.
@@ -169,13 +175,37 @@ state?: {
   applied, and each one is named in `dropped` — a bad link says so instead of
   quietly showing a different app.
 
+`dropped` entries name the deep-link parameter and why; the host writes its own
+sentence from the pair. One entry per `id` + `reason`, however many values
+tripped it:
+
+| `id` | `reason` | When |
+| --- | --- | --- |
+| `f.<dim>` | `unknown_filter` | no `filter` control narrows `<dim>` |
+| `f.<dim>` | `invalid_value` | a value the filter does not offer, or a second value for a single-select filter |
+| `t` | `undeclared_preset` | a preset id the `time` control does not declare |
+| `t` | `invalid_date` | a range missing an end, or an end that is not a real `YYYY-MM-DD` day |
+| `asof` | `invalid_date` | not a real `YYYY-MM-DD` day |
+| `s` | — | reserved; `section` is carried, not checked, so nothing drops it today |
+
 What the frame actually adopted comes straight back:
 
 ```ts
 { kind: "studio:sandbox:state",
   state: { asOf?: string; time?: { preset?: string; from: string; to: string }; filters: Record<string, string[]>; section?: string },
-  dropped: string[] }   // e.g. ["channel: unknown filter", "region=Mars: not an allowed value"]
+  dropped: { id: string; reason: "unknown_filter" | "invalid_value" | "undeclared_preset" | "invalid_date" }[] }
+// e.g. dropped: [{ id: "f.channel", reason: "unknown_filter" }, { id: "t", reason: "undeclared_preset" }]
 ```
+
+**Defaults are not state.** `state` carries only what differs from the app's
+defaults, so the host can write it straight into the URL and an untouched view
+stays the bare URL: a filter equal to its seed (the control's `default`, or all
+its options) is left out of `filters` (compared as a set); `time` is left out
+when it is the default window (the `time` control's default preset — computed
+relative to `asOf` when there is one — or the spec's own range when it
+declares none); `asOf` and `section` appear whenever they are set. An untouched
+view reports `{ filters: {} }` — the message is always sent, so the host knows
+the state was applied.
 
 Sent once after the initial state is applied — before the first (debounced)
 context report — and again on every change a person makes in the FilterBar, the

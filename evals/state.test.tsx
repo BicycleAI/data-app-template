@@ -22,11 +22,11 @@ import { act } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App, CORE } from '../runtime/src/App.js'
 import { FilterBar } from '../runtime/src/chrome/FilterBar.js'
-import { applyRenderState, ControlsProvider } from '../runtime/src/controls.js'
+import { applyRenderState, ControlsProvider, isoDay, presetRange } from '../runtime/src/controls.js'
 import type { CoreData, QueryState } from '../runtime/src/data.js'
 import { Widget } from '../runtime/src/parts.js'
 import type { FilterControl, Spec } from '../runtime/src/spec.js'
-import { PanelMetaProvider, resetRegistryForTests } from '../runtime/src/studio/contextRegistry.js'
+import { mergeStatus, PanelMetaProvider, resetRegistryForTests } from '../runtime/src/studio/contextRegistry.js'
 import { initContext } from '../runtime/src/studio/context.js'
 import { SNAPSHOT_CLASS } from '../runtime/src/studio/hostState.js'
 import { createQueryClient } from '../runtime/src/studio/hooks.js'
@@ -62,6 +62,16 @@ const SPEC: Spec = {
 }
 
 const NOW = new Date('2026-09-16T12:00:00Z')
+
+/** The same app with a rolling window (`to: tomorrow`) and every preset — the shape a live report has. */
+const ROLLING: Spec = {
+  ...SPEC,
+  time: { from: '2026-01-01', to: 'tomorrow', grain: 'day' },
+  controls: [
+    ...(SPEC.controls ?? []).filter((entry) => entry.kind !== 'time'),
+    { kind: 'time', presets: ['7d', '30d', '90d', 'quarter', 'ytd'], default: '30d' },
+  ],
+}
 
 function ready<T>(rows: T): QueryState<T> {
   return { rows, isPending: false, isFetching: false, error: null, refetch: () => {} }
@@ -222,6 +232,12 @@ describe('contract 1 — every panel reports a status', () => {
     expect(latestStatus(postMessage, 'p0:trend')).toBe('error')
   })
 
+  it('a panel with no card yet merges to loading, as documented', () => {
+    expect(mergeStatus([])).toBe('loading')
+    expect(mergeStatus([{ status: 'ready' }])).toBe('ready')
+    expect(mergeStatus([{ status: 'ready' }, { status: 'empty' }])).toBe('empty')
+  })
+
   describe('worst-of across the cards one recipe rendered for one panel', () => {
     /** Two cards, one panel id — exactly the shape `kpis` and `ranking` produce. */
     function mountTwoCards(left: Parameters<typeof Widget>[0], right: Parameters<typeof Widget>[0]) {
@@ -283,32 +299,32 @@ describe('contract 2 — applyRenderState checks the host state against the spec
 
   it('drops an unknown filter id and says so', () => {
     const applied = applyRenderState(SPEC, { filters: { market: ['emea'] } }, NOW)
-    expect(applied.dropped).toEqual(['market: unknown filter'])
+    expect(applied.dropped).toEqual([{ id: 'f.market', reason: 'unknown_filter' }])
     // The spec's own seed survives untouched.
     expect(applied.filters).toEqual({ region: ['emea', 'amer'], channel: ['web'] })
   })
 
   it('drops a value the filter does not offer and says so', () => {
     const applied = applyRenderState(SPEC, { filters: { channel: ['Mars'] } }, NOW)
-    expect(applied.dropped).toEqual(['channel=Mars: not an allowed value'])
+    expect(applied.dropped).toEqual([{ id: 'f.channel', reason: 'invalid_value' }])
     expect(applied.filters.channel).toEqual(['web'])
   })
 
   it('keeps the good values of a filter and drops only the bad ones', () => {
     const applied = applyRenderState(SPEC, { filters: { region: ['apac', 'Mars'] } }, NOW)
     expect(applied.filters.region).toEqual(['apac'])
-    expect(applied.dropped).toEqual(['region=Mars: not an allowed value'])
+    expect(applied.dropped).toEqual([{ id: 'f.region', reason: 'invalid_value' }])
   })
 
   it('a single-select filter takes the first value and reports the rest', () => {
     const applied = applyRenderState(SPEC, { filters: { channel: ['web', 'app'] } }, NOW)
     expect(applied.filters.channel).toEqual(['web'])
-    expect(applied.dropped).toEqual(['channel=app: single-select takes one value'])
+    expect(applied.dropped).toEqual([{ id: 'f.channel', reason: 'invalid_value' }])
   })
 
   it('drops a preset the time control does not declare', () => {
     const applied = applyRenderState(SPEC, { time: { preset: 'ytd' } }, NOW)
-    expect(applied.dropped).toEqual(['time.preset=ytd: not a declared preset'])
+    expect(applied.dropped).toEqual([{ id: 't', reason: 'undeclared_preset' }])
     expect(applied.time.preset).toBe('30d')
   })
 
@@ -320,7 +336,7 @@ describe('contract 2 — applyRenderState checks the host state against the spec
 
   it('drops a half-stated range', () => {
     const applied = applyRenderState(SPEC, { time: { from: '2026-03-01' } }, NOW)
-    expect(applied.dropped).toEqual(['time=2026-03-01..: needs a valid ISO from and to'])
+    expect(applied.dropped).toEqual([{ id: 't', reason: 'invalid_date' }])
   })
 
   it('asOf pins the window: the upper bound never reaches past it', () => {
@@ -332,7 +348,47 @@ describe('contract 2 — applyRenderState checks the host state against the spec
   it('drops an asOf that is not an ISO date', () => {
     const applied = applyRenderState(SPEC, { asOf: 'yesterday' }, NOW)
     expect(applied.asOf).toBeUndefined()
-    expect(applied.dropped).toEqual(['asOf=yesterday: not an ISO date'])
+    expect(applied.dropped).toEqual([{ id: 'asof', reason: 'invalid_date' }])
+  })
+
+  it('dedupes dropped entries by id + reason', () => {
+    const applied = applyRenderState(SPEC, { filters: { region: ['Mars', 'Pluto', 'apac'], market: ['x', 'y'] } }, NOW)
+    expect(applied.dropped).toEqual([
+      { id: 'f.region', reason: 'invalid_value' },
+      { id: 'f.market', reason: 'unknown_filter' },
+    ])
+    expect(applied.filters.region).toEqual(['apac'])
+  })
+
+  it('computes a preset relative to asOf instead of collapsing it to one day', () => {
+    // A link cut on 2026-06-01, opened in September: the 30 days up to the as-of.
+    const applied = applyRenderState(ROLLING, { asOf: '2026-06-01', time: { preset: '30d' } }, NOW)
+    expect(applied.time).toEqual({ from: '2026-05-02', to: '2026-06-01', preset: '30d' })
+    expect(applyRenderState(ROLLING, { asOf: '2026-06-01', time: { preset: 'quarter' } }, NOW).time).toEqual({ from: '2026-04-01', to: '2026-06-01', preset: 'quarter' })
+    expect(applyRenderState(ROLLING, { asOf: '2026-06-01', time: { preset: 'ytd' } }, NOW).time).toEqual({ from: '2026-01-01', to: '2026-06-01', preset: 'ytd' })
+    expect(presetRange('7d', ROLLING, NOW, '2026-06-01')).toEqual({ from: '2026-05-25', to: '2026-06-01' })
+  })
+
+  it('the default preset is also computed relative to asOf', () => {
+    const applied = applyRenderState(ROLLING, { asOf: '2026-06-01' }, NOW)
+    expect(applied.time).toEqual({ from: '2026-05-02', to: '2026-06-01', preset: '30d' })
+  })
+
+  it('an explicit range is clamped to asOf, not recomputed', () => {
+    const applied = applyRenderState(ROLLING, { asOf: '2026-06-01', time: { from: '2026-05-20', to: '2026-07-01' } }, NOW)
+    expect(applied.time).toEqual({ from: '2026-05-20', to: '2026-06-01' })
+  })
+
+  it('rejects impossible calendar dates', () => {
+    expect(isoDay('2026-02-31')).toBeUndefined()
+    expect(isoDay('2026-13-01')).toBeUndefined()
+    expect(isoDay('2025-02-29')).toBeUndefined()
+    expect(isoDay('2024-02-29')).toBe('2024-02-29')
+    expect(isoDay('2026-02-28')).toBe('2026-02-28')
+    expect(applyRenderState(SPEC, { asOf: '2026-02-31' }, NOW).dropped).toEqual([{ id: 'asof', reason: 'invalid_date' }])
+    const range = applyRenderState(SPEC, { time: { from: '2026-02-01', to: '2026-02-30' } }, NOW)
+    expect(range.dropped).toEqual([{ id: 't', reason: 'invalid_date' }])
+    expect(range.time.preset).toBe('30d')
   })
 
   it('carries a section through untouched', () => {
@@ -390,12 +446,64 @@ describe('contract 3 — studio:sandbox:state', () => {
 
     const messages = stateMessages(postMessage)
     expect(messages.length).toBeGreaterThan(0)
-    const first = messages[0] as { kind: string; state: { filters: Record<string, string[]>; asOf?: string; time?: { to: string } }; dropped: string[] }
+    const first = messages[0] as { kind: string; state: { filters: Record<string, string[]>; asOf?: string; time?: { to: string } }; dropped: unknown[] }
     expect(first.kind).toBe('studio:sandbox:state')
-    expect(first.state.filters).toEqual({ region: ['apac'], channel: ['web'] })
+    // Only what differs from the defaults: channel is at its seed, so it is not here.
+    expect(first.state.filters).toEqual({ region: ['apac'] })
     expect(first.state.asOf).toBe('2026-01-20')
-    expect(first.state.time?.to).toBe('2026-01-20')
-    expect(first.dropped).toEqual(['market: unknown filter'])
+    // The default preset, computed relative to the as-of, is the default window: no `time`.
+    expect(first.state.time).toBeUndefined()
+    expect(first.dropped).toEqual([{ id: 'f.market', reason: 'unknown_filter' }])
+  })
+
+  it('an untouched view reports an empty state, and still reports it', async () => {
+    const postMessage = mockHostFrame()
+    mountBar()
+    await settle()
+    const messages = stateMessages(postMessage)
+    expect(messages.length).toBeGreaterThan(0)
+    expect(messages[0]).toEqual({ kind: 'studio:sandbox:state', state: { filters: {} }, dropped: [] })
+  })
+
+  it('a filter equal to its seed is omitted, whatever order the host sent it in', async () => {
+    const postMessage = mockHostFrame()
+    injectState({ filters: { region: ['amer', 'emea'], channel: ['web'] }, time: { preset: '30d' } })
+    mountBar()
+    await settle()
+    expect((stateMessages(postMessage)[0] as { state: unknown }).state).toEqual({ filters: {} })
+  })
+
+  it('an explicit range is reported; going back to the default preset drops time again', async () => {
+    const postMessage = mockHostFrame()
+    injectState({ time: { from: '2026-03-01', to: '2026-04-01' } })
+    mountBar()
+    await settle()
+    expect((stateMessages(postMessage)[0] as { state: unknown }).state).toEqual({ filters: {}, time: { from: '2026-03-01', to: '2026-04-01' } })
+
+    act(() => {
+      screen.getByRole('button', { name: 'Last 30 days' }).click()
+    })
+    await settle()
+    expect((stateMessages(postMessage).at(-1) as { state: unknown }).state).toEqual({ filters: {} })
+  })
+
+  it('a preset picked under an asOf ends at the asOf, not one clamped day', async () => {
+    const postMessage = mockHostFrame()
+    injectState({ asOf: '2026-06-01' })
+    render(
+      <UiProvider spec={ROLLING}>
+        <ControlsProvider spec={ROLLING}>
+          <FilterBar spec={ROLLING} />
+        </ControlsProvider>
+      </UiProvider>,
+    )
+    await settle()
+    act(() => {
+      screen.getByRole('button', { name: 'Last 7 days' }).click()
+    })
+    await settle()
+    const latest = stateMessages(postMessage).at(-1) as { state: unknown }
+    expect(latest.state).toEqual({ asOf: '2026-06-01', time: { preset: '7d', from: '2026-05-25', to: '2026-06-01' }, filters: {} })
   })
 
   it('is sent again when a person changes a filter in the FilterBar', async () => {
@@ -412,7 +520,7 @@ describe('contract 3 — studio:sandbox:state', () => {
     const messages = stateMessages(postMessage)
     expect(messages.length).toBeGreaterThan(before)
     const latest = messages[messages.length - 1] as { state: { filters: Record<string, string[]> } }
-    expect(latest.state.filters.region).toEqual(['emea', 'amer', 'apac'])
+    expect(latest.state.filters).toEqual({ region: ['emea', 'amer', 'apac'] })
   })
 
   it('is sent again when a person changes the time preset', async () => {

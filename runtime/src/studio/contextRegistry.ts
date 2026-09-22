@@ -15,7 +15,7 @@
  */
 
 import { createContext, type RefObject, useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { type AppliedState, type PanelStatus, type StateMessage, worstStatus } from './types.js'
+import { type AppliedState, type DroppedParam, type PanelStatus, type StateMessage, worstStatus } from './types.js'
 
 export type PanelRect = {
   readonly x: number
@@ -63,7 +63,7 @@ export type HighlightMessage = {
   readonly panelId: string
 }
 
-export type { AppliedState, PanelStatus, StateMessage }
+export type { AppliedState, DroppedParam, PanelStatus, StateMessage }
 
 /**
  * The `--bda-*` custom properties declared on `:root` in `theme.css`.
@@ -188,7 +188,8 @@ function unionRect(instances: readonly Instance[]): PanelRect {
 }
 
 /** Worst-of across a panel's cards (`error` > `loading` > `empty` > `ready`); `loading` for a panel with no card yet. */
-function mergeStatus(instances: readonly Instance[]): PanelStatus {
+export function mergeStatus(instances: readonly Pick<Instance, 'status'>[]): PanelStatus {
+  if (instances.length === 0) return 'loading'
   return instances.reduce<PanelStatus>((worst, instance) => worstStatus(worst, instance.status), 'ready')
 }
 
@@ -244,7 +245,7 @@ function post(): void {
  * state: once when the host's initial state has been applied, then on every
  * change a person makes.
  */
-export function reportState(state: AppliedState, dropped: readonly string[]): void {
+export function reportState(state: AppliedState, dropped: readonly DroppedParam[]): void {
   if (typeof window === 'undefined' || window.parent === window) return
   const message: StateMessage = { kind: 'studio:sandbox:state', state, dropped }
   window.parent.postMessage(message, '*')

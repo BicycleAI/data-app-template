@@ -18,7 +18,7 @@
 
 import type { ReactNode } from 'react'
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import type { AppliedState, RenderState, Scalar } from './studio/types.js'
+import type { AppliedState, DropReason, DroppedParam, RenderState, Scalar } from './studio/types.js'
 import { reportState } from './studio/contextRegistry.js'
 import { renderState } from './studio/hostState.js'
 import { control, filterControls, type FilterControl, type Spec, type TimePreset } from './spec.js'
@@ -146,14 +146,22 @@ function resolveToNow(to: string, now: Date): string {
  * end at the spec's own `to` (so a spec fixed to a past window stays
  * self-consistent); `quarter`/`ytd` are genuinely "to date" — anchored on
  * the viewer's clock, not the spec's.
+ *
+ * With an `asOf` (E9 contract 5) the preset is computed relative to it
+ * instead: every preset's window ends AT the as-of day — `30d` is the 30
+ * days up to it, `quarter`/`ytd` are "to date" as of that day. Clamping a
+ * preset resolved against today would collapse it to a single day once the
+ * link is older than the window (`t=30d&asof=2026-06-01` opened in
+ * September would read 2026-06-01..2026-06-01).
  */
-export function presetRange(preset: TimePreset, spec: Spec, now: Date = new Date()): TimeRange {
+export function presetRange(preset: TimePreset, spec: Spec, now: Date = new Date(), asOf?: string): TimeRange {
+  if (asOf !== undefined) now = new Date(`${asOf}T00:00:00Z`)
   switch (preset) {
     case '7d':
     case '30d':
     case '90d': {
       const days = preset === '7d' ? 7 : preset === '30d' ? 30 : 90
-      const to = resolveToNow(spec.time.to, now)
+      const to = asOf ?? resolveToNow(spec.time.to, now)
       const from = isoDate(new Date(new Date(`${to}T00:00:00Z`).getTime() - days * DAY_MS))
       return { from, to }
     }
@@ -171,28 +179,40 @@ export function timePresets(spec: Spec): readonly TimePreset[] {
   return control(spec, 'time')?.presets ?? ['7d', '30d', '90d']
 }
 
-/** The starting time state: the `time` control's default preset resolved, or the spec's own range. */
-export function initialTime(spec: Spec, now: Date = new Date()): TimeState {
+/**
+ * The starting time state: the `time` control's default preset resolved, or
+ * the spec's own range. With an `asOf`, the default preset is computed
+ * relative to it (contract 5) and the spec's own range is clamped to it.
+ */
+export function initialTime(spec: Spec, now: Date = new Date(), asOf?: string): TimeState {
   const preset = control(spec, 'time')?.default as TimePreset | undefined
-  if (preset === undefined) return { from: spec.time.from, to: resolveToNow(spec.time.to, now) }
-  return { ...presetRange(preset, spec, now), preset }
+  if (preset === undefined) return clampToAsOf({ from: spec.time.from, to: resolveToNow(spec.time.to, now) }, asOf)
+  return { ...presetRange(preset, spec, now, asOf), preset }
 }
 
 /* --------------------------------------------- host state (T9.0, deep link) */
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
-/** An ISO date's day part, or `undefined` when the value is not a date at all. */
-function isoDay(value: unknown): string | undefined {
+/**
+ * An ISO date's day part, or `undefined` when the value is not a real
+ * calendar date. Validated by round-trip: `Date` quietly rolls an impossible
+ * day over (`2026-02-31` parses as 2026-03-03), so the parsed date must
+ * print back as exactly the day it was given.
+ */
+export function isoDay(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
   const day = value.slice(0, 10)
-  if (!ISO_DATE.test(day) || Number.isNaN(new Date(`${day}T00:00:00Z`).getTime())) return undefined
+  if (!ISO_DATE.test(day)) return undefined
+  const parsed = new Date(`${day}T00:00:00Z`)
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== day) return undefined
   return day
 }
 
 /**
- * The window an as-of pins: the same range, never reaching past the as-of
- * date. This is how `asOf` reaches the queries — the composer declares
+ * The window an as-of pins an EXPLICIT range to: the same range, never
+ * reaching past the as-of date. Presets are not clamped — they are computed
+ * relative to the as-of in the first place (`presetRange`'s `asOf`). This is how `asOf` reaches the queries — the composer declares
  * `:from`/`:to` and nothing else, so an extra `as_of` parameter would be
  * refused (`missing_param`'s mirror image); clamping the declared upper
  * bound pins every query the app issues, including the ones a control
@@ -206,14 +226,19 @@ export function clampToAsOf(time: TimeState, asOf: string | undefined): TimeStat
   return from === time.from && to === time.to ? time : { ...time, from, to }
 }
 
+/** The app's own defaults, with the as-of folded in: what "untouched" means (E9 contract 6). */
+export type ControlDefaults = { readonly filters: FiltersState; readonly time: TimeState }
+
 /** Everything `applyRenderState` resolved, ready to seed `ControlsProvider`'s state. */
 export type AppliedControls = {
   readonly filters: FiltersState
   readonly time: TimeState
   readonly asOf: string | undefined
   readonly section: string | undefined
-  /** What the host asked for and the spec could not honour, one human-readable line each. */
-  readonly dropped: readonly string[]
+  /** What the host asked for and the spec could not honour, deduped by `id` + `reason`. */
+  readonly dropped: readonly DroppedParam[]
+  /** What the state is compared against before it is reported. */
+  readonly defaults: ControlDefaults
 }
 
 /**
@@ -231,7 +256,10 @@ export type AppliedControls = {
  * so instead of quietly showing a different app.
  */
 export function applyRenderState(spec: Spec, state: RenderState, now: Date = new Date()): AppliedControls {
-  const dropped: string[] = []
+  const dropped: DroppedParam[] = []
+  const drop = (id: string, reason: DropReason): void => {
+    if (!dropped.some((entry) => entry.id === id && entry.reason === reason)) dropped.push({ id, reason })
+  }
   const byDim = new Map(filterControls(spec).map((filterControl) => [filterControl.dim, filterControl]))
 
   // Filters. The spec's own seed stays in place for every filter the host
@@ -240,22 +268,33 @@ export function applyRenderState(spec: Spec, state: RenderState, now: Date = new
   for (const [id, raw] of Object.entries(state.filters ?? {})) {
     const filterControl = byDim.get(id)
     if (filterControl === undefined) {
-      dropped.push(`${id}: unknown filter`)
+      drop(`f.${id}`, 'unknown_filter')
       continue
     }
     const allowed = (filterControl.options ?? []).map((value) => String(value))
     const wanted = (Array.isArray(raw) ? raw : []).map((value) => String(value))
     const kept: string[] = []
     for (const value of wanted) {
-      if (allowed.length > 0 && !allowed.includes(value)) dropped.push(`${id}=${value}: not an allowed value`)
-      else if (filterControl.multi !== true && kept.length === 1) dropped.push(`${id}=${value}: single-select takes one value`)
+      // A value the filter does not offer, or a second value for a
+      // single-select filter: both are values this filter cannot take.
+      if (allowed.length > 0 && !allowed.includes(value)) drop(`f.${id}`, 'invalid_value')
+      else if (filterControl.multi !== true && kept.length === 1) drop(`f.${id}`, 'invalid_value')
       else kept.push(value)
     }
     if (kept.length > 0) filters[id] = kept
   }
 
+  // asOf first: every preset below is computed relative to it.
+  let asOf: string | undefined
+  if (state.asOf !== undefined) {
+    asOf = isoDay(state.asOf)
+    if (asOf === undefined) drop('asof', 'invalid_date')
+  }
+
   // Time: a declared preset wins; an explicit ISO range is the fallback.
-  let time = initialTime(spec, now)
+  // Only an explicit range is clamped to the as-of (contract 5).
+  const defaultTime = initialTime(spec, now, asOf)
+  let time = defaultTime
   const wantedTime = state.time
   if (wantedTime !== undefined) {
     const declared = timePresets(spec)
@@ -263,18 +302,12 @@ export function applyRenderState(spec: Spec, state: RenderState, now: Date = new
     const from = isoDay(wantedTime.from)
     const to = isoDay(wantedTime.to)
     if (preset !== undefined && declared.includes(preset as TimePreset)) {
-      time = { ...presetRange(preset as TimePreset, spec, now), preset: preset as TimePreset }
+      time = { ...presetRange(preset as TimePreset, spec, now, asOf), preset: preset as TimePreset }
     } else {
-      if (preset !== undefined) dropped.push(`time.preset=${preset}: not a declared preset`)
-      if (from !== undefined && to !== undefined) time = { from, to }
-      else if (wantedTime.from !== undefined || wantedTime.to !== undefined) dropped.push(`time=${wantedTime.from ?? ''}..${wantedTime.to ?? ''}: needs a valid ISO from and to`)
+      if (preset !== undefined) drop('t', 'undeclared_preset')
+      if (from !== undefined && to !== undefined) time = clampToAsOf({ from, to }, asOf)
+      else if (wantedTime.from !== undefined || wantedTime.to !== undefined) drop('t', 'invalid_date')
     }
-  }
-
-  let asOf: string | undefined
-  if (state.asOf !== undefined) {
-    asOf = isoDay(state.asOf)
-    if (asOf === undefined) dropped.push(`asOf=${String(state.asOf)}: not an ISO date`)
   }
 
   // `section` is carried, not checked: this kit's spec declares no sections
@@ -283,16 +316,48 @@ export function applyRenderState(spec: Spec, state: RenderState, now: Date = new
   // declare them keeps its link intact.
   const section = typeof state.section === 'string' && state.section.length > 0 ? state.section : undefined
 
-  return { filters, time: clampToAsOf(time, asOf), asOf, section, dropped }
+  return { filters, time, asOf, section, dropped, defaults: { filters: initialFilters(spec), time: defaultTime } }
 }
 
-/** The controls state as the `studio:sandbox:state` message carries it. */
-export function appliedState(current: { readonly filters: FiltersState; readonly time: TimeState; readonly asOf: string | undefined; readonly section: string | undefined }): AppliedState {
+/** Same picks, order aside — a filter is a set. */
+function sameValues(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) return false
+  const set = new Set(left)
+  return right.every((value) => set.has(value)) && new Set(right).size === set.size
+}
+
+/**
+ * The default window, per contract 6: the same preset, or — when neither
+ * side is a preset — the same explicit range. An explicit range that merely
+ * happens to equal today's resolution of the default preset is NOT the
+ * default: it stays fixed while the preset moves with the clock.
+ */
+function sameWindow(time: TimeState, defaults: TimeState): boolean {
+  if (time.preset !== undefined || defaults.preset !== undefined) return time.preset === defaults.preset
+  return time.from === defaults.from && time.to === defaults.to
+}
+
+/**
+ * The controls state as the `studio:sandbox:state` message carries it — only
+ * what differs from the app's defaults (E9 contract 6), so an untouched view
+ * reports `{ filters: {} }` and the host keeps its URL bare. A filter equal
+ * to its seed is omitted; `time` is omitted when it is the default window.
+ * `asOf` and `section` are never defaults, so they appear whenever set.
+ */
+export function appliedState(
+  current: { readonly filters: FiltersState; readonly time: TimeState; readonly asOf: string | undefined; readonly section: string | undefined },
+  defaults: ControlDefaults,
+): AppliedState {
   const { filters, time, asOf, section } = current
+  const changed: Record<string, readonly string[]> = {}
+  for (const [dim, values] of Object.entries(filters)) {
+    const seed = defaults.filters[dim]
+    if (seed === undefined || !sameValues(values, seed)) changed[dim] = values
+  }
   return {
     ...(asOf === undefined ? {} : { asOf }),
-    time: { ...(time.preset === undefined ? {} : { preset: time.preset }), from: time.from, to: time.to },
-    filters,
+    ...(sameWindow(time, defaults.time) ? {} : { time: { ...(time.preset === undefined ? {} : { preset: time.preset }), from: time.from, to: time.to } }),
+    filters: changed,
     ...(section === undefined ? {} : { section }),
   }
 }
@@ -335,11 +400,13 @@ export function ControlsProvider({ spec, children }: { spec: Spec; children: Rea
   const asOf = applied.asOf
 
   // Contract 3: once after the initial state is applied, then on every
-  // change a person makes. `dropped` describes the initial state and does
-  // not change, so every message repeats it rather than the host having to
-  // remember the first one.
+  // change a person makes. Always sent — `filters: {}` when everything is
+  // the default — so the host knows the state was applied; only what
+  // differs from the defaults is in it. `dropped` describes the initial
+  // state and does not change, so every message repeats it rather than the
+  // host having to remember the first one.
   useEffect(() => {
-    reportState(appliedState({ filters, time, asOf, section }), applied.dropped)
+    reportState(appliedState({ filters, time, asOf, section }, applied.defaults), applied.dropped)
   }, [filters, time, asOf, section, applied])
 
   const controlsByDim = useMemo(() => {
@@ -372,8 +439,10 @@ export function ControlsProvider({ spec, children }: { spec: Spec; children: Rea
       setFilterValue: (dim, val) => setFilters((current) => ({ ...current, [dim]: [val] })),
       resetFilter: (dim) => setFilters((current) => ({ ...current, [dim]: optionsOf(dim) })),
       // The as-of the host pinned outlives a preset change: a viewer widening
-      // the window still never sees past the date the link was cut at.
-      setPreset: (preset) => setTime(clampToAsOf({ ...presetRange(preset, spec), preset }, asOf)),
+      // the window still never sees past the date the link was cut at, and
+      // the new preset is computed relative to it (ends at the as-of) rather
+      // than resolved against today and clamped down to one day.
+      setPreset: (preset) => setTime({ ...presetRange(preset, spec, new Date(), asOf), preset }),
       setSection,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

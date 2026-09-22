@@ -110,11 +110,14 @@ when every card it drew is done. Wait for `ready`, or say the panel is still loa
 
 A deep link — or a scheduled capture — arrives as the host's `state`: filters, a time
 preset or explicit range, and an `asOf` that pins every query's upper bound. The frame
-reports what it actually adopted back as `studio:sandbox:state`, with a `dropped` list
-naming anything the spec could not honour (an unknown filter, a value the filter does
-not offer, an undeclared preset). If a panel looks wrong after a link, read `dropped`
-first — it usually says why in one line. The full shapes are in the kit README's
-protocol table.
+reports what it actually adopted back as `studio:sandbox:state` — only what differs
+from the app's defaults, so `{ filters: {} }` means "everything at its default" — with
+a `dropped` list naming anything the spec could not honour, one `{ id, reason }` per
+parameter: `id` is `f.<dim>`, `t`, `asof` or `s`; `reason` is `unknown_filter`,
+`invalid_value`, `undeclared_preset` or `invalid_date` (e.g. `{ id: "f.channel",
+reason: "unknown_filter" }`). A preset under an `asOf` ends at the as-of, not today.
+If a panel looks wrong after a link, read `dropped` first. The full shapes are in the
+kit README's protocol table.
 
 ## Shapes the kit uses
 

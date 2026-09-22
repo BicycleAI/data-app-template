@@ -95,9 +95,11 @@ export type RenderState = {
 }
 
 /**
- * What the frame actually adopted — the state a link would have to carry to
- * reproduce what is on screen. `filters` is always present (`{}` when the
- * spec declares none); the rest appear only when they apply.
+ * What the frame actually adopted, minus the app's defaults — the state a
+ * link has to carry to reproduce what is on screen (E9 contract 6).
+ * `filters` is always present and holds only filters that differ from their
+ * seed (`{}` when none do); `time` appears only when it is not the default
+ * window; `asOf` and `section` whenever set.
  */
 export type AppliedState = {
   readonly asOf?: string
@@ -106,12 +108,23 @@ export type AppliedState = {
   readonly section?: string
 }
 
+/** Why one deep-link parameter was not applied (E9 contract 7). */
+export type DropReason = 'unknown_filter' | 'invalid_value' | 'undeclared_preset' | 'invalid_date'
+
+/**
+ * One deep-link parameter the frame could not honour. `id` is the parameter
+ * it came from — `f.<dim>`, `t`, `asof` or `s`; the host renders its own
+ * sentence from `id` + `reason`. Deduped: one entry per `id` + `reason`.
+ */
+export type DroppedParam = { readonly id: string; readonly reason: DropReason }
+
 /**
  * Frame -> host: the state in effect, sent once after the initial state is
  * applied and again on every change a person makes in the FilterBar, the
- * time controls or the section. `dropped` carries what the host asked for
- * and the spec could not honour, e.g.
- * `["channel: unknown filter", "region=Mars: not an allowed value"]`.
+ * time controls or the section. Only what differs from the app's defaults
+ * is in `state` (E9 contract 6): an untouched view is `{ filters: {} }`.
+ * `dropped` carries what the host asked for and the spec could not honour,
+ * e.g. `[{ id: "f.channel", reason: "unknown_filter" }, { id: "t", reason: "undeclared_preset" }]`.
  *
  * `kind` rather than `type`, deliberately: this is a state announcement, not
  * a request/response pair like `studio:sandbox:query` — pinned by
@@ -120,7 +133,7 @@ export type AppliedState = {
 export type StateMessage = {
   readonly kind: 'studio:sandbox:state'
   readonly state: AppliedState
-  readonly dropped: readonly string[]
+  readonly dropped: readonly DroppedParam[]
 }
 
 export type FilterOp = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains'
