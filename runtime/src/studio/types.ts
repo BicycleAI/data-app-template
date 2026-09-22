@@ -28,6 +28,99 @@ export type BdaContext = {
    * `undefined` and falls back to following the system.
    */
   readonly themePreference?: 'system' | 'light' | 'dark'
+  /**
+   * Where a deep link lands (T9.0). The host turns a link — or a scheduled
+   * capture — into this, and injects it with the rest of the context before
+   * the bundle loads, so the runtime adopts it *before* the first query is
+   * issued rather than re-querying after a hydration pass.
+   *
+   * Optional, like `themePreference`: a bundle built against this field and
+   * framed by an older embed page reads `undefined` and starts from the
+   * spec's own defaults.
+   */
+  readonly state?: RenderState
+}
+
+/* -------------------------------------------------- deep link / readiness */
+
+/**
+ * How far along a panel's own data is (T9.0), reported on every entry of
+ * `studio:sandbox:context`. A host waiting to capture, to highlight or to
+ * ask a question about a panel reads this rather than guessing from the
+ * digest's presence.
+ *
+ * - `loading` — at least one of the panel's queries is still in flight.
+ * - `ready` — every query resolved and there is something to show.
+ * - `empty` — every query resolved and there are no rows.
+ * - `error` — a query failed.
+ */
+export type PanelStatus = 'loading' | 'ready' | 'empty' | 'error'
+
+/** Worst-first, so a recipe rendering several cards for one panel reports the worst of them. */
+export const PANEL_STATUS_ORDER: readonly PanelStatus[] = ['error', 'loading', 'empty', 'ready']
+
+/** The worse of two panel statuses, per `PANEL_STATUS_ORDER`. */
+export function worstStatus(left: PanelStatus, right: PanelStatus): PanelStatus {
+  return PANEL_STATUS_ORDER.indexOf(left) <= PANEL_STATUS_ORDER.indexOf(right) ? left : right
+}
+
+/** A time window as a deep link states it: a declared preset id, or an explicit ISO range. */
+export type RenderTimeState = {
+  /** A preset id the spec's `time` control declares (`7d`, `30d`, `90d`, `quarter`, `ytd`). */
+  readonly preset?: string
+  /** ISO date (`YYYY-MM-DD`). Both ends are needed; one on its own is dropped. */
+  readonly from?: string
+  readonly to?: string
+}
+
+/**
+ * The initial state the host hands the frame (T9.0). Everything is optional
+ * and everything is checked against the spec: an unknown filter id, a value
+ * a filter does not offer, an undeclared preset or an unparseable date is
+ * dropped and named in the `studio:sandbox:state` message's `dropped` list
+ * rather than silently narrowing the app to nothing.
+ */
+export type RenderState = {
+  /** ISO date. Pins every query's as-of by clamping the time window's upper bound to it. */
+  readonly asOf?: string
+  readonly time?: RenderTimeState
+  /** Filter id (this kit: the `filter` control's `dim`) -> selected values. */
+  readonly filters?: Readonly<Record<string, readonly string[]>>
+  /** Section/tab id, for apps that declare sections. Carried through untouched. */
+  readonly section?: string
+  /** Panel id to highlight once ready. The host owns the highlight (`studio:sandbox:highlight`); the runtime ignores this field. */
+  readonly panel?: string
+  /** Presentation-only: hide the interactive chrome the kit owns and stop animating, for a capture. */
+  readonly snapshot?: boolean
+}
+
+/**
+ * What the frame actually adopted — the state a link would have to carry to
+ * reproduce what is on screen. `filters` is always present (`{}` when the
+ * spec declares none); the rest appear only when they apply.
+ */
+export type AppliedState = {
+  readonly asOf?: string
+  readonly time?: RenderTimeState
+  readonly filters: Readonly<Record<string, readonly string[]>>
+  readonly section?: string
+}
+
+/**
+ * Frame -> host: the state in effect, sent once after the initial state is
+ * applied and again on every change a person makes in the FilterBar, the
+ * time controls or the section. `dropped` carries what the host asked for
+ * and the spec could not honour, e.g.
+ * `["channel: unknown filter", "region=Mars: not an allowed value"]`.
+ *
+ * `kind` rather than `type`, deliberately: this is a state announcement, not
+ * a request/response pair like `studio:sandbox:query` — pinned by
+ * `evals/state.test.tsx` and by the host's own reader.
+ */
+export type StateMessage = {
+  readonly kind: 'studio:sandbox:state'
+  readonly state: AppliedState
+  readonly dropped: readonly string[]
 }
 
 export type FilterOp = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains'

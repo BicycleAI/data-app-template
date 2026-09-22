@@ -23,7 +23,7 @@ export function Render({ spec, core }: CoreProps) {
         skeleton={{ kind: 'text', lines: 4 }}
         spec={spec}
         provenance={provenanceSpec({ queries: [QUERY.totals, QUERY.byTime, QUERY.byDimension], measures: spec.measures.map((measure) => measure.id) })}
-        {...widgetState(query)}
+        {...widgetState(query, findings.length)}
       >
         {findings.length === 0 ? (
           <div className="bda-state">Nothing stands out yet.</div>

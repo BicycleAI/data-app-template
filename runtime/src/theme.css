@@ -444,3 +444,21 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
 .kit-summary__method { font-size: 12px; font-style: italic; }
 .kit-summary__caveats ul, .kit-summary__followups ul { margin: var(--bda-space-1) 0 0; padding-left: 1.2em; font-size: 12px; line-height: 1.6; }
 .kit-summary__note { padding: var(--bda-space-2) 0; }
+
+/* Snapshot / capture mode (T9.0) — `kit-snapshot` on <html>, set by
+ * `studio/hostState.ts` when the host's render state asks for it.
+ *
+ * A capture is a still of what the data says, so the affordances that only
+ * mean something to a pair of hands go: the "How is this computed?" trigger
+ * and its popover, and the summary panel's expand toggle. Filters stay —
+ * a capture has to show what was applied — and so does every card, every
+ * number and every chart. Motion stops outright rather than being captured
+ * mid-transition. Nothing here is conditional rendering: the DOM is the same
+ * DOM a viewer sees, which is what keeps a capture honest. */
+.kit-snapshot .kit-provenance,
+.kit-snapshot .kit-summary__toggle { display: none; }
+.kit-snapshot *, .kit-snapshot *::before, .kit-snapshot *::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}

@@ -34,7 +34,7 @@ export function Render({ spec, core, bind }: CoreProps) {
         digest={digest}
         spec={spec}
         provenance={provenanceSpec({ queries: [QUERY.byDimension], measures: spec.measures.map((measure) => measure.id), rowCount: rows.length || undefined })}
-        {...widgetState(core.dims)}
+        {...widgetState(core.dims, rows.length)}
       >
         <div className="kit-scroll">
           <table className="bda-table kit-table">

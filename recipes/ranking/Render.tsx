@@ -36,7 +36,7 @@ export function Render({ spec, core, bind }: CoreProps) {
       digest={digest}
       spec={spec}
       provenance={provenanceSpec({ ...provenanceBase, rowCount: rows.length || undefined })}
-      {...widgetState(core.dims)}
+      {...widgetState(core.dims, rows.length)}
     >
       {rows.length === 0 ? (
         <div className="bda-state">None.</div>

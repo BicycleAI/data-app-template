@@ -54,7 +54,7 @@ function Bars({ spec, dim, measure, slices, query, limit }: { spec: Spec; dim: s
       skeleton={{ kind: 'chart', height: Math.max(90, 18 + limit * 22) }}
       spec={spec}
       provenance={provenance}
-      {...widgetState(query)}
+      {...widgetState(query, rows.length)}
     >
       {rows.length === 0 ? <div className="bda-state">No values.</div> : <Chart options={options} height={Math.max(90, 18 + rows.length * 22)} title={`${measure.label} by ${dimensionLabel(spec, dim)}`} />}
     </Widget>

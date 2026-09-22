@@ -6,7 +6,7 @@
  * the generic datasets; family recipes read the family's.
  */
 
-import { type ComponentType, type ReactElement, useState } from 'react'
+import { type ComponentType, type ReactElement, useEffect, useState } from 'react'
 import { Render as AbCumulativeTrend } from '../../families/ab_test/recipes/cumulative_trend/Render.js'
 import { Render as AbExtremes } from '../../families/ab_test/recipes/extremes/Render.js'
 import { Render as AbHeatmap } from '../../families/ab_test/recipes/heatmap/Render.js'
@@ -34,6 +34,7 @@ import { type CoreData, type Dataset, useAbDataset, useCoreDataset } from './dat
 import type { CoreProps, RecipeProps } from './parts.js'
 import { type AbFamily, isAb, type Panel, type Spec } from './spec.js'
 import { PanelMetaProvider } from './studio/contextRegistry.js'
+import { applySnapshotClass, renderState } from './studio/hostState.js'
 import { UiProvider } from './ui.js'
 
 /** Exported for evals/loading.test.tsx, which renders every recipe with its datasets pending. */
@@ -66,6 +67,11 @@ export const AB: Record<string, ComponentType<RecipeProps>> = {
 
 export function App({ spec }: { spec: Spec }) {
   const [entityId, setEntityId] = useState<string | undefined>(undefined)
+  // Capture mode (T9.0, contract 4): one class on the document root, and
+  // `theme.css` does the rest. Nothing is rendered differently, so a capture
+  // shows the same panels — and the same filters — a viewer would see.
+  const snapshot = renderState().snapshot === true
+  useEffect(() => applySnapshotClass(snapshot), [snapshot])
   const Chrome = (spec.chrome ?? (spec.template === 'explorer' ? 'explorer' : 'report')) === 'explorer' ? ExplorerChrome : ReportChrome
   const needsEntity = spec.entity !== undefined
   return (

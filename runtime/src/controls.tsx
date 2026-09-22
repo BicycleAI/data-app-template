@@ -17,8 +17,10 @@
  */
 
 import type { ReactNode } from 'react'
-import { createContext, useContext, useMemo, useState } from 'react'
-import type { Scalar } from './studio/types.js'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import type { AppliedState, RenderState, Scalar } from './studio/types.js'
+import { reportState } from './studio/contextRegistry.js'
+import { renderState } from './studio/hostState.js'
 import { control, filterControls, type FilterControl, type Spec, type TimePreset } from './spec.js'
 
 /** One filter control's current picks, keyed by the dimension it narrows. */
@@ -176,11 +178,134 @@ export function initialTime(spec: Spec, now: Date = new Date()): TimeState {
   return { ...presetRange(preset, spec, now), preset }
 }
 
+/* --------------------------------------------- host state (T9.0, deep link) */
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+/** An ISO date's day part, or `undefined` when the value is not a date at all. */
+function isoDay(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const day = value.slice(0, 10)
+  if (!ISO_DATE.test(day) || Number.isNaN(new Date(`${day}T00:00:00Z`).getTime())) return undefined
+  return day
+}
+
+/**
+ * The window an as-of pins: the same range, never reaching past the as-of
+ * date. This is how `asOf` reaches the queries — the composer declares
+ * `:from`/`:to` and nothing else, so an extra `as_of` parameter would be
+ * refused (`missing_param`'s mirror image); clamping the declared upper
+ * bound pins every query the app issues, including the ones a control
+ * changes later, and the FilterBar shows the clamped range rather than a
+ * range the data does not cover.
+ */
+export function clampToAsOf(time: TimeState, asOf: string | undefined): TimeState {
+  if (asOf === undefined) return time
+  const to = time.to > asOf ? asOf : time.to
+  const from = time.from > asOf ? asOf : time.from
+  return from === time.from && to === time.to ? time : { ...time, from, to }
+}
+
+/** Everything `applyRenderState` resolved, ready to seed `ControlsProvider`'s state. */
+export type AppliedControls = {
+  readonly filters: FiltersState
+  readonly time: TimeState
+  readonly asOf: string | undefined
+  readonly section: string | undefined
+  /** What the host asked for and the spec could not honour, one human-readable line each. */
+  readonly dropped: readonly string[]
+}
+
+/**
+ * The host's `state` checked against the spec (T9.0, contract 2).
+ *
+ * Pure, and called from `ControlsProvider`'s state initialisers, so the
+ * FilterBar and the time controls are already on the host's values when the
+ * first query is built — there is no "default window, then the real one"
+ * pass, and no query is issued for a state nobody asked for.
+ *
+ * Anything the spec cannot honour is dropped rather than applied: an unknown
+ * filter id, a value a filter does not offer, a preset the `time` control
+ * does not declare, an unparseable date. Each one is named in `dropped`, and
+ * that list travels to the host in `studio:sandbox:state` so a bad link says
+ * so instead of quietly showing a different app.
+ */
+export function applyRenderState(spec: Spec, state: RenderState, now: Date = new Date()): AppliedControls {
+  const dropped: string[] = []
+  const byDim = new Map(filterControls(spec).map((filterControl) => [filterControl.dim, filterControl]))
+
+  // Filters. The spec's own seed stays in place for every filter the host
+  // did not name, and for one whose values were all dropped.
+  const filters: Record<string, readonly string[]> = { ...initialFilters(spec) }
+  for (const [id, raw] of Object.entries(state.filters ?? {})) {
+    const filterControl = byDim.get(id)
+    if (filterControl === undefined) {
+      dropped.push(`${id}: unknown filter`)
+      continue
+    }
+    const allowed = (filterControl.options ?? []).map((value) => String(value))
+    const wanted = (Array.isArray(raw) ? raw : []).map((value) => String(value))
+    const kept: string[] = []
+    for (const value of wanted) {
+      if (allowed.length > 0 && !allowed.includes(value)) dropped.push(`${id}=${value}: not an allowed value`)
+      else if (filterControl.multi !== true && kept.length === 1) dropped.push(`${id}=${value}: single-select takes one value`)
+      else kept.push(value)
+    }
+    if (kept.length > 0) filters[id] = kept
+  }
+
+  // Time: a declared preset wins; an explicit ISO range is the fallback.
+  let time = initialTime(spec, now)
+  const wantedTime = state.time
+  if (wantedTime !== undefined) {
+    const declared = timePresets(spec)
+    const preset = wantedTime.preset
+    const from = isoDay(wantedTime.from)
+    const to = isoDay(wantedTime.to)
+    if (preset !== undefined && declared.includes(preset as TimePreset)) {
+      time = { ...presetRange(preset as TimePreset, spec, now), preset: preset as TimePreset }
+    } else {
+      if (preset !== undefined) dropped.push(`time.preset=${preset}: not a declared preset`)
+      if (from !== undefined && to !== undefined) time = { from, to }
+      else if (wantedTime.from !== undefined || wantedTime.to !== undefined) dropped.push(`time=${wantedTime.from ?? ''}..${wantedTime.to ?? ''}: needs a valid ISO from and to`)
+    }
+  }
+
+  let asOf: string | undefined
+  if (state.asOf !== undefined) {
+    asOf = isoDay(state.asOf)
+    if (asOf === undefined) dropped.push(`asOf=${String(state.asOf)}: not an ISO date`)
+  }
+
+  // `section` is carried, not checked: this kit's spec declares no sections
+  // yet (see README's protocol table), so there is nothing to check it
+  // against and nothing that renders it — it round-trips so a host that does
+  // declare them keeps its link intact.
+  const section = typeof state.section === 'string' && state.section.length > 0 ? state.section : undefined
+
+  return { filters, time: clampToAsOf(time, asOf), asOf, section, dropped }
+}
+
+/** The controls state as the `studio:sandbox:state` message carries it. */
+export function appliedState(current: { readonly filters: FiltersState; readonly time: TimeState; readonly asOf: string | undefined; readonly section: string | undefined }): AppliedState {
+  const { filters, time, asOf, section } = current
+  return {
+    ...(asOf === undefined ? {} : { asOf }),
+    time: { ...(time.preset === undefined ? {} : { preset: time.preset }), from: time.from, to: time.to },
+    filters,
+    ...(section === undefined ? {} : { section }),
+  }
+}
+
 /* ------------------------------------------------------------- provider */
 
 export type ControlsState = {
   readonly filters: FiltersState
   readonly time: TimeState
+  /** The as-of the host pinned, if any. Already folded into `time`; exposed so a card can say what it is showing. */
+  readonly asOf: string | undefined
+  /** The section/tab the host asked for, if any. Carried, not rendered — this kit's spec declares no sections. */
+  readonly section: string | undefined
 }
 
 export type ControlsActions = {
@@ -191,13 +316,31 @@ export type ControlsActions = {
   /** The "All" chip: reset a filter to every option. */
   resetFilter(dim: string): void
   setPreset(preset: TimePreset): void
+  /** Move to another section/tab. Reported to the host like any other change. */
+  setSection(section: string | undefined): void
 }
 
 const ControlsContext = createContext<(ControlsState & ControlsActions) | undefined>(undefined)
 
 export function ControlsProvider({ spec, children }: { spec: Spec; children: ReactNode }) {
-  const [filters, setFilters] = useState<FiltersState>(() => initialFilters(spec))
-  const [time, setTime] = useState<TimeState>(() => initialTime(spec))
+  // Resolved once, before the first render of any child, so the first query
+  // this app issues already carries the host's filters and its pinned as-of.
+  const seed = useRef<AppliedControls | undefined>(undefined)
+  if (seed.current === undefined) seed.current = applyRenderState(spec, renderState())
+  const applied = seed.current
+
+  const [filters, setFilters] = useState<FiltersState>(applied.filters)
+  const [time, setTime] = useState<TimeState>(applied.time)
+  const [section, setSection] = useState<string | undefined>(applied.section)
+  const asOf = applied.asOf
+
+  // Contract 3: once after the initial state is applied, then on every
+  // change a person makes. `dropped` describes the initial state and does
+  // not change, so every message repeats it rather than the host having to
+  // remember the first one.
+  useEffect(() => {
+    reportState(appliedState({ filters, time, asOf, section }), applied.dropped)
+  }, [filters, time, asOf, section, applied])
 
   const controlsByDim = useMemo(() => {
     const map = new Map<string, FilterControl>()
@@ -215,6 +358,8 @@ export function ControlsProvider({ spec, children }: { spec: Spec; children: Rea
     () => ({
       filters,
       time,
+      asOf,
+      section,
       toggleFilterValue: (dim, val) => {
         setFilters((current) => {
           const options = optionsOf(dim)
@@ -226,10 +371,13 @@ export function ControlsProvider({ spec, children }: { spec: Spec; children: Rea
       },
       setFilterValue: (dim, val) => setFilters((current) => ({ ...current, [dim]: [val] })),
       resetFilter: (dim) => setFilters((current) => ({ ...current, [dim]: optionsOf(dim) })),
-      setPreset: (preset) => setTime({ ...presetRange(preset, spec), preset }),
+      // The as-of the host pinned outlives a preset change: a viewer widening
+      // the window still never sees past the date the link was cut at.
+      setPreset: (preset) => setTime(clampToAsOf({ ...presetRange(preset, spec), preset }, asOf)),
+      setSection,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filters, time, controlsByDim, spec],
+    [filters, time, asOf, section, controlsByDim, spec],
   )
 
   return <ControlsContext.Provider value={value}>{children}</ControlsContext.Provider>

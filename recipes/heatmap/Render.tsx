@@ -69,7 +69,7 @@ export function Render({ spec, core, bind }: CoreProps) {
       digest={digest}
       spec={spec}
       provenance={provenance}
-      {...widgetState(core.dims)}
+      {...widgetState(core.dims, cells.length)}
     >
       {rowsDim === colsDim ? (
         <div className="bda-state">Pick two different dimensions.</div>

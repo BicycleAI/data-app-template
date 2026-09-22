@@ -76,7 +76,7 @@ function TrendChart({ spec, measure, series }: { spec: Spec; measure: MeasureSpe
       digest={digest}
       spec={spec}
       provenance={provenance}
-      {...widgetState(series)}
+      {...widgetState(series, points.length)}
     >
       {points.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={220} title={`${measure.label} trend`} onPointer={onPointer} />}
       {selected?.measureId === measure.id ? (
@@ -148,7 +148,7 @@ function ByDimension({ spec, core, by, measure }: { spec: Spec; core: CoreProps[
       digest={digest}
       spec={spec}
       provenance={provenance}
-      {...widgetState(query)}
+      {...widgetState(query, data.length)}
     >
       {data.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={280} title={`${measure.label} by ${dimensionLabel(spec, by)}`} onPointer={onPointer} />}
       {selected !== undefined ? (

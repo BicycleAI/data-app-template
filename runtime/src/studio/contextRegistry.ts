@@ -15,6 +15,7 @@
  */
 
 import { createContext, type RefObject, useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { type AppliedState, type PanelStatus, type StateMessage, worstStatus } from './types.js'
 
 export type PanelRect = {
   readonly x: number
@@ -41,6 +42,13 @@ export type PanelReport = {
   readonly kind?: string
   /** The chat thread this panel's own answer came from (`summary`'s `thread_id`), so a follow-up in the host's ask overlay can continue it instead of starting a new one. */
   readonly threadId?: string
+  /**
+   * How far along this panel's own data is (T9.0). A recipe rendering
+   * several cards for one panel reports the worst of them — error over
+   * loading over empty over ready — so a host waiting on "is this panel
+   * ready" never sees `ready` while one of its cards is still a skeleton.
+   */
+  readonly status: PanelStatus
   readonly rect: PanelRect
 }
 
@@ -54,6 +62,8 @@ export type HighlightMessage = {
   readonly type: 'studio:sandbox:highlight'
   readonly panelId: string
 }
+
+export type { AppliedState, PanelStatus, StateMessage }
 
 /**
  * The `--bda-*` custom properties declared on `:root` in `theme.css`.
@@ -124,6 +134,7 @@ function withinBudget(value: unknown): unknown {
 
 type Instance = {
   readonly recipe: string
+  readonly status: PanelStatus
   readonly say: string | undefined
   readonly bind: Readonly<Record<string, unknown>>
   readonly digest: unknown
@@ -176,6 +187,11 @@ function unionRect(instances: readonly Instance[]): PanelRect {
   return { x: left, y: top, width: right - left, height: bottom - top, scrollX: first.scrollX, scrollY: first.scrollY }
 }
 
+/** Worst-of across a panel's cards (`error` > `loading` > `empty` > `ready`); `loading` for a panel with no card yet. */
+function mergeStatus(instances: readonly Instance[]): PanelStatus {
+  return instances.reduce<PanelStatus>((worst, instance) => worstStatus(worst, instance.status), 'ready')
+}
+
 /**
  * More than one card can share a panel id — `kpis` renders one `Widget` per
  * measure, `ranking` renders a top and a bottom table. One card's digest is
@@ -206,6 +222,7 @@ function buildReport(): readonly PanelReport[] {
       ...(digest === undefined ? {} : { digest }),
       ...(last.kind === undefined ? {} : { kind: last.kind }),
       ...(last.threadId === undefined ? {} : { threadId: last.threadId }),
+      status: mergeStatus(instances),
       rect: unionRect(instances),
     })
   }
@@ -215,6 +232,21 @@ function buildReport(): readonly PanelReport[] {
 function post(): void {
   if (typeof window === 'undefined' || window.parent === window) return
   const message: ContextMessage = { type: 'studio:sandbox:context', panels: buildReport(), tokens: readTokens() }
+  window.parent.postMessage(message, '*')
+}
+
+/**
+ * Frame -> host: the filter/time/section state in effect (T9.0, contract 3).
+ *
+ * Same channel and the same origin rule as the context report above — one
+ * `postMessage` to the parent, and nothing at all when this frame is not
+ * embedded. Sent by `ControlsProvider` (controls.tsx), which owns that
+ * state: once when the host's initial state has been applied, then on every
+ * change a person makes.
+ */
+export function reportState(state: AppliedState, dropped: readonly string[]): void {
+  if (typeof window === 'undefined' || window.parent === window) return
+  const message: StateMessage = { kind: 'studio:sandbox:state', state, dropped }
   window.parent.postMessage(message, '*')
 }
 
@@ -405,6 +437,8 @@ export function useSelection<T = unknown>(panelId: string | undefined): readonly
 export function useRegisterPanelInstance(
   meta: PanelMeta | undefined,
   digest: unknown,
+  /** This card's own readiness, derived by `Widget` from its query props. Re-registering on a change is what makes a status move re-report, not only a digest move (T9.0, contract 1). */
+  status: PanelStatus,
   /** Overrides `meta.kind`/`meta.threadId` — how `Widget`'s own `kind`/`threadId` props (dynamic, learned after the recipe's own data lands) reach the registry, since `PanelMeta` itself is static per render. */
   extra?: { readonly kind?: string | undefined; readonly threadId?: string | undefined },
 ): { readonly nodeRef: RefObject<HTMLDivElement | null>; readonly highlighted: boolean } {
@@ -420,6 +454,7 @@ export function useRegisterPanelInstance(
     if (node === null) return
     registerInstance(meta.panelId, instanceId, {
       recipe: meta.recipe,
+      status,
       say: meta.say,
       bind: meta.bind,
       digest,
@@ -433,7 +468,7 @@ export function useRegisterPanelInstance(
       observer.disconnect()
       unregisterInstance(meta.panelId, instanceId)
     }
-  }, [meta, instanceId, digest, kind, threadId])
+  }, [meta, instanceId, digest, status, kind, threadId])
 
   // A pulse the host asked for: scroll the card into view and hold
   // `kit-card--highlight` for 1.6s (the CSS-only pulse is in theme.css).
