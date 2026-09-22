@@ -97,6 +97,101 @@ One example `text` each. Marked rows are produced by one of the five pairs in `e
 
 Object-keyed sections sort their keys for determinism: `words`, `rules.targets`, `store.blobs` (by name), and a panel's or control's changed bind/field keys.
 
+## The frame <-> host protocol
+
+The frame is sandboxed without `allow-same-origin`, so it never fetches: every
+capability is a `postMessage` to the parent. This is the whole wire.
+
+| Direction | Message | Carries | Declared in |
+| --- | --- | --- | --- |
+| frame -> host | `studio:sandbox:query` | `requestId`, `queryId`, `options` (parameters, filters, sort, limit) | `runtime/src/studio/client.ts` |
+| host -> frame | `studio:sandbox:query-result` | `requestId`, `ok`, `result` \| `error` | `runtime/src/studio/client.ts` |
+| frame -> host | `studio:sandbox:store` | `requestId`, `op` (`cache.get`/`set`/`delete`, `blob.get`/`list`), `key`/`name`/`value` | `runtime/src/studio/store.ts` |
+| host -> frame | `studio:sandbox:store-result` | `requestId`, `ok`, `result` \| `error` | `runtime/src/studio/store.ts` |
+| frame -> host | `studio:sandbox:context` | `panels[]` (`panelId`, `recipe`, `say`, `bind`, `selection?`, `digest?`, `kind?`, `threadId?`, **`status`**, `rect`), `tokens` | `runtime/src/studio/contextRegistry.ts` |
+| host -> frame | `studio:sandbox:highlight` | `panelId` | `runtime/src/studio/contextRegistry.ts` |
+| frame -> host | **`studio:sandbox:state`** | `state` (`asOf?`, `time?`, `filters`, `section?`), `dropped[]` | `runtime/src/studio/contextRegistry.ts` |
+
+Note `studio:sandbox:state` uses `kind:` where the others use `type:` — it is a
+state announcement, not one half of a request/response pair.
+
+### Panel `status` (T9.0)
+
+Every entry of `studio:sandbox:context` says how far along that panel's own
+data is, so a host waiting to capture, highlight or ask about a panel never has
+to guess from whether a `digest` turned up:
+
+| `status` | When |
+| --- | --- |
+| `loading` | at least one of the panel's queries is still in flight |
+| `ready` | every query resolved and there is something to show |
+| `empty` | every query resolved and there are no rows |
+| `error` | a query failed |
+
+A recipe that renders several cards for one panel (`kpis`' tile per measure,
+`ranking`'s top and bottom tables) reports the **worst** of them — `error` over
+`loading` over `empty` over `ready`. A context report is sent whenever a
+panel's status changes, not only when its digest does. A card reports `empty`
+only when its recipe told `widgetState(...)` how many rows it is about to draw;
+one that cannot say cheaply reports `ready`, which is the safer default (a host
+waits for nothing).
+
+### Where a deep link lands (T9.0)
+
+The host turns a link, or a scheduled capture, into one `state` object and
+injects it with the rest of the embed context (`window.__BDA_CONTEXT.state`)
+before the bundle loads. The runtime adopts it in `ControlsProvider`'s state
+initialisers, so the **first** query already carries it — there is no "defaults
+first, then the real window" pass.
+
+```ts
+state?: {
+  asOf?: string                                        // ISO date; pins every query's as-of
+  time?: { preset?: string; from?: string; to?: string } // a declared preset id, or an explicit ISO range
+  filters?: Record<string, string[]>                   // filter id -> selected values
+  section?: string                                     // section/tab id, if the app declares sections
+  panel?: string                                       // panel to highlight once ready — the HOST does this; the runtime ignores it
+  snapshot?: boolean                                   // presentation-only: hide the kit's interactive chrome, stop animating
+}
+```
+
+- **A filter id is the `filter` control's `dim`** — the declared dimension it
+  narrows (`spec.controls[].dim`), which is the only id a filter has in this
+  kit's spec. Values are checked against that control's `options`.
+- **`asOf` reaches the queries as the time window's upper bound.** The composer
+  declares `:from` and `:to` and nothing else, so an extra `as_of` parameter
+  would be refused; clamping `to` pins every query the app issues, including
+  the ones a control changes later, and the FilterBar shows the clamped range.
+- **`section` is carried, not rendered.** This kit's spec declares no sections
+  yet; it round-trips in `studio:sandbox:state` so a host that does declare
+  them keeps its link intact.
+- **Unknown filter ids and values a filter does not offer are dropped**, never
+  applied, and each one is named in `dropped` — a bad link says so instead of
+  quietly showing a different app.
+
+What the frame actually adopted comes straight back:
+
+```ts
+{ kind: "studio:sandbox:state",
+  state: { asOf?: string; time?: { preset?: string; from: string; to: string }; filters: Record<string, string[]>; section?: string },
+  dropped: string[] }   // e.g. ["channel: unknown filter", "region=Mars: not an allowed value"]
+```
+
+Sent once after the initial state is applied — before the first (debounced)
+context report — and again on every change a person makes in the FilterBar, the
+time controls or the section. `dropped` describes the initial state and does
+not change, so every message repeats it rather than the host having to remember
+the first one.
+
+`snapshot: true` adds `kit-snapshot` to the document root, and `theme.css` does
+the rest: the provenance "How is this computed?" affordance and the summary
+panel's expand toggle are hidden, and transitions and animations stop. Nothing
+is rendered conditionally — the DOM a capture sees is the DOM a viewer sees —
+and the filters stay on screen, because a capture has to show what was applied.
+
+For `npm run dev`, where there is no embed page, set
+`window.__BDA_RENDER_STATE` in `runtime/public/dev-spec.js` instead.
+
 ## npm scripts (root)
 
 ```bash

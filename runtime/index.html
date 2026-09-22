@@ -4,6 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Bicycle data app runtime</title>
+    <!--
+      `runtime/public/dev-spec.js` (gitignored, yours) sets
+      `window.__DATA_APP_SPEC` — and, to exercise a T9.0 deep link without a
+      host page, `window.__BDA_RENDER_STATE = { filters, time, asOf, section,
+      snapshot }`. Hosted, the embed page injects the same object as
+      `__BDA_CONTEXT.state`; see the protocol table in README.md.
+    -->
     <script src="/dev-spec.js"></script>
   </head>
   <body>
