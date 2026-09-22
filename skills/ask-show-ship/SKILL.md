@@ -31,6 +31,8 @@ Never call `dataapp_upload_url`, `dataapp_complete_upload` or write a manifest. 
 
 You never put SQL in a spec — the composer derives every query. When you do need to read the model directly (prove a field, check a value) or explain to someone what one of these questions actually asks the data, load `skills/semantic-query/SKILL.md`: it carries the semantic SQL grammar and the `query_*` loop, and it is the only place they are stated.
 
+The rules behind the moves below — never ask what the catalog can answer, the three stops, four options a question, put the recommended one first — are stated once in [PIPELINE.md](../../PIPELINE.md). This file is how they play out here; that one is why.
+
 ## Personas set the defaults
 
 Infer from the first message; confirm with one line ("Sounds like you want a quick read, not a deep dive — right?").

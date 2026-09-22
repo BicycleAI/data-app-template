@@ -1,5 +1,10 @@
 > **Start with compose.** Most apps should not be hand-built. Load `skills/ask-show-ship/SKILL.md` and compose a spec with `kit compose` (or the `design_*` MCP tools). Use this template only when a recipe cannot express what you need.
 
+> **Read [PIPELINE.md](../PIPELINE.md) first.** It is the procedure: what to look
+> up, the three points where you stop and ask a person, and what runs on its
+> own. This file is the reference for the build itself — the manifest, the SQL,
+> the theming.
+
 # Building a Bicycle data app
 
 You are modifying this template into an app that answers one question about a
