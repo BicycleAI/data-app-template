@@ -58,10 +58,11 @@ Each move: what you ask · what you show · when to stop. One move per message u
 
 Put the persona's template first, labelled `Default (Recommended)`, and describe each option in one sentence from its `description`. Choosing **Default** means exactly the persona's template from the table above, which is what this move did before there was a choice — so a person who does not care answers in one word and nothing changes for them.
 
-> Layout — 3 of 4 shown · say the word for any other
+> Layout — 4 of 5 shown · say the word for any other
 > 1. **Default (Recommended)** — Scorecard: the answer first, a verdict, tiles, one breakdown, one trend.
 > 2. **Report** — a document to read: tiles, narrative, trends per measure, rankings, table.
 > 3. **Explorer** — a surface to operate: sparkline tiles, breakdown per dimension, a composable heatmap.
+> 4. **Monitor** — a wall screen: sparkline tiles, one trend, one breakdown, nothing to operate.
 
 Four options at most, the default always among them. For **biz**, still offer the choice, but say the default suits them and move on the moment they agree — one extra line, not a fork in the conversation. For **pm** and **analyst**, wait for the answer.
 
