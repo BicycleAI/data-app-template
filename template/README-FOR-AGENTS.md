@@ -450,6 +450,32 @@ the only one. It is a dependency already — `import * as Plot from
 '@observablehq/plot'` — so there is nothing to install and nothing to load
 from a CDN. (A CDN would not work: the embed page sets `script-src 'self'`.)
 
+### Zoom an axis and you must clip the marks under it
+
+`Plot.areaY` fills from the line down to **zero**, and Plot does not clip a
+mark to the frame unless you ask. Leave the y axis alone and this never shows:
+the area's own zero baseline keeps zero inside the domain.
+
+Set your own `domain` — the usual reason being a rate whose whole series sits
+inside one percentage point, where a zero-based axis is a flat line — and zero
+is now far below the bottom of the chart. The fill is drawn all the way down to
+it. `.bda-chart svg` sets `overflow: visible` so tips can escape the frame, so
+the fill escapes too: a translucent band runs down the page, behind the cards
+below. Measured on a 220px chart with the axis zoomed to one percentage point,
+the fill reached 10,843px.
+
+Pass `clip: true` on any area or bar drawn against an axis you gave a `domain`:
+
+```tsx
+y: { domain: [75.2, 76.4] },
+marks: [
+  Plot.areaY(rows, { x: 'week', y: 'rate', fill: colour, fillOpacity: 0.08, clip: true }),
+  Plot.lineY(rows, { x: 'week', y: 'rate', stroke: colour, strokeWidth: 2 }),
+]
+```
+
+Nothing warns you. The chart looks right; the page below it does not.
+
 Use the `Chart` component rather than calling `Plot.plot()` yourself. It gives
 you the theme's colours and fonts, a width that follows the container, and
 correct teardown:
