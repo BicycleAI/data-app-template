@@ -26,6 +26,8 @@ export type PanelMeta = {
   /** A short name for what kind of card this is — there is no recipe catalogue here, so any short id works, e.g. `'revenue_by_month'` or `'custom'`. */
   readonly recipe: string
   readonly say?: string
+  /** The declared query this card draws, from `bda.manifest.json` — what the host's chat can re-run for the real numbers. */
+  readonly queryId?: string
   readonly bind?: Readonly<Record<string, unknown>>
   /** Whatever is cheap and worth summarising — top rows, last points, current values. ≤ 2 KB; larger values are trimmed, never thrown. */
   readonly digest?: unknown
@@ -44,6 +46,7 @@ export type PanelReport = {
   readonly panelId: string
   readonly recipe: string
   readonly say?: string
+  readonly queryId?: string
   readonly bind: Readonly<Record<string, unknown>>
   readonly selection?: unknown
   readonly digest?: unknown
@@ -151,6 +154,7 @@ function buildReport(): readonly PanelReport[] {
       panelId,
       recipe: panel.meta.recipe,
       ...(panel.meta.say === undefined ? {} : { say: panel.meta.say }),
+      ...(panel.meta.queryId === undefined ? {} : { queryId: panel.meta.queryId }),
       bind: panel.meta.bind ?? {},
       ...(panel.selection === undefined ? {} : { selection: panel.selection }),
       ...(digest === undefined ? {} : { digest }),

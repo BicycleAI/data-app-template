@@ -516,48 +516,68 @@ without the composer's panel registry to hang it off of. (It is a separate
 file from `studio/context.ts`, which is your app's identity — token, app id,
 theme — an unrelated concern.)
 
-Wrap every card your app renders:
+Make every card a `<Panel>` (`components/Panel.tsx`) instead of a bare
+`div.bda-card`:
 
 ```tsx
-import { useEffect, useRef } from 'react'
-import { registerPanel, unregisterPanel } from './studio/contextRegistry.js'
+import { Chart } from './components/Chart.js'
+import { Panel } from './components/Panel.js'
 
-function RevenueCard({ rows }: { rows: Row[] | undefined }) {
-  const cardRef = useRef<HTMLDivElement>(null)
+const BIND = { x: 'month', y: 'revenue' } // a module constant, so its identity is stable
 
-  useEffect(() => {
-    const el = cardRef.current
-    if (el === null) return
-    registerPanel(el, {
-      panelId: 'revenue_by_month', // stable across renders — a query id is a good choice
-      recipe: 'custom',
-      say: 'Monthly revenue',
-      digest: rows?.slice(0, 10), // top rows, last points, current values — whatever is cheap; ≤ 2 KB, or it is trimmed
-    })
-    return () => unregisterPanel('revenue_by_month')
-  }, [rows])
+function RevenueCard() {
+  const query = useAppQuery('revenue_by_month', { parameters: { from, to } })
+  const rows = query.data === undefined ? undefined : toObjects(query.data)
 
   return (
-    <div ref={cardRef} className="bda-card" aria-busy={rows === undefined}>
-      {/* … */}
-    </div>
+    <Panel
+      id="revenue_by_month"        // stable and unique on the page — the query id is a good choice
+      title="Monthly revenue"      // what the viewer's chip says, and what the agent is told it is
+      kind="bar"                   // 'bar' | 'line' | 'table' | 'kpi' | 'verdict' | … — any short word
+      queryId="revenue_by_month"   // the declared query it draws: what the agent re-runs for real numbers
+      rows={rows}                  // the first 20 go as a digest — a hint, never the source of truth
+      bind={BIND}
+      busy={rows === undefined}
+    >
+      <h2 className="bda-heading">Monthly revenue</h2>
+      {rows === undefined ? (
+        <SkeletonChart />
+      ) : (
+        <Chart options={optionsFor(rows)} pointLabel={(d) => `${monthOf(d.month)} · ${money(d.revenue)}`} />
+      )}
+    </Panel>
   )
 }
 ```
 
-That call does three things, all automatic once it is in place: it reports
-the card's position on screen (re-measured on scroll and resize), it reports
-`digest` whenever you pass a new one, and it listens for the host asking to
-point at this panel (`onHighlight`) so you can scroll it into view and add a
-highlight class. If a card has a row, point or cell a viewer can pick, report
-that too with `setSelection(panelId, value)` from its click handler — the
-host's chat can then ask about "the selected one" instead of you re-describing
-it in words.
+With that in place, and nothing else to write, a viewer can:
 
-None of this needs a server round trip or changes what you render — it is a
-handful of `postMessage` calls to `window.parent`, which the host is already
-listening for. Full API, including the highlight handler, is documented at
-the top of `studio/contextRegistry.ts`.
+- **hover the card** and "Add to chat" or "Ask" — the host draws those
+  controls over your card, from the position `<Panel>` reports;
+- **hover a bar or point** in a `<Chart>` inside it (any mark with `tip: true`
+  or `Plot.pointer`) and add just that data point — `pointLabel` names it
+  ("Mar 2025 · $142K"), else its first two fields do;
+- **pick it from the page**, or shift-click it, to attach several cards;
+- **follow a source chip** in an answer back to the card, which `<Panel>`
+  scrolls into view and highlights (`.bda-card--highlight`).
+
+Selecting text needs nothing from your app at all: the host's bootstrap
+reports the selection itself, in every app.
+
+What travels with a question is **data, never a picture**: the card's
+`title`, `kind`, `queryId`, `bind`, the point or quote the viewer attached,
+and your digest. So keep `title` in the viewer's words and set `queryId`
+whenever a card draws a declared query — that is what lets the agent answer
+from the real rows rather than from what it can see.
+
+`<Panel>` is `studio/contextRegistry.ts` with the bookkeeping done. For a card
+it cannot wrap, call the registry directly — `registerPanel(el, meta)` on
+mount and whenever `meta` changes, `unregisterPanel(id)` on unmount,
+`setSelection(id, value)` for a row or cell the viewer picked, and
+`onHighlight(id, fn)` to answer the host pointing at it. None of this needs a
+server round trip or changes what you render — it is a handful of
+`postMessage` calls to `window.parent`, which the host is already listening
+for. The full API is documented at the top of `studio/contextRegistry.ts`.
 
 ## Submitting
 
