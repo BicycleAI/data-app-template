@@ -1,9 +1,10 @@
 import * as Plot from '@observablehq/plot'
 import { useMemo } from 'react'
+import { provenanceSpec } from '../../runtime/src/chrome/Provenance.js'
 import { Chart } from '../../runtime/src/components/Chart.js'
 import { fmtMeasure } from '../../runtime/src/core.js'
 import { type CoreProps, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
-import { dimensionLabel, measureById, primaryMeasure, word } from '../../runtime/src/spec.js'
+import { dimensionLabel, measureById, primaryMeasure, QUERY, word } from '../../runtime/src/spec.js'
 import { usePanelId, useSelection } from '../../runtime/src/studio/contextRegistry.js'
 import { HeatmapAxes, useUi } from '../../runtime/src/ui.js'
 
@@ -59,13 +60,16 @@ export function Render({ spec, core, bind }: CoreProps) {
         .map((cell) => ({ [rowsDim]: cell.row, [colsDim]: cell.col, [measure.id]: cell.value })),
     [cells, rowsDim, colsDim, measure.id],
   )
+  const provenance = provenanceSpec({ queries: [QUERY.byDimension], measures: [measure.id], rowCount: cells.length || undefined })
   return (
     <Widget
       className="bda-card kit-panel"
       heading={<SectionHead title={`${dimensionLabel(spec, rowsDim)} × ${dimensionLabel(spec, colsDim)}`} right={<HeatmapAxes spec={spec} />} />}
       skeleton={{ kind: 'chart', height: 320 }}
       digest={digest}
-      {...widgetState(core.dims)}
+      spec={spec}
+      provenance={provenance}
+      {...widgetState(core.dims, cells.length)}
     >
       {rowsDim === colsDim ? (
         <div className="bda-state">Pick two different dimensions.</div>

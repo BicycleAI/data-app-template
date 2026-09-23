@@ -1,9 +1,10 @@
 import * as Plot from '@observablehq/plot'
 import { useMemo } from 'react'
+import { provenanceSpec } from '../../runtime/src/chrome/Provenance.js'
 import { Chart } from '../../runtime/src/components/Chart.js'
 import { fmtMeasure, type Slice, topBy } from '../../runtime/src/core.js'
 import { type CoreProps, measureColor, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
-import { dimensionLabel, type MeasureSpec, measureById, primaryMeasure, type Spec, word } from '../../runtime/src/spec.js'
+import { dimensionLabel, type MeasureSpec, measureById, primaryMeasure, QUERY, type Spec, word } from '../../runtime/src/spec.js'
 import { MeasureSelect, useUi } from '../../runtime/src/ui.js'
 
 /** One horizontal bar chart per dimension: the selected measure for each value, largest first. Waits on `core.dims`. */
@@ -40,6 +41,7 @@ function Bars({ spec, dim, measure, slices, query, limit }: { spec: Spec; dim: s
     }),
     [rows, color, measure, spec],
   )
+  const provenance = provenanceSpec({ queries: [QUERY.byDimension], measures: [measure.id], rowCount: rows.length || undefined })
   return (
     <Widget
       className="bda-card kit-dim"
@@ -50,7 +52,9 @@ function Bars({ spec, dim, measure, slices, query, limit }: { spec: Spec; dim: s
         </div>
       }
       skeleton={{ kind: 'chart', height: Math.max(90, 18 + limit * 22) }}
-      {...widgetState(query)}
+      spec={spec}
+      provenance={provenance}
+      {...widgetState(query, rows.length)}
     >
       {rows.length === 0 ? <div className="bda-state">No values.</div> : <Chart options={options} height={Math.max(90, 18 + rows.length * 22)} title={`${measure.label} by ${dimensionLabel(spec, dim)}`} />}
     </Widget>

@@ -1,10 +1,12 @@
 import * as Plot from '@observablehq/plot'
 import { useMemo } from 'react'
+import { isoDay } from '../../runtime/src/analysis.js'
+import { provenanceSpec } from '../../runtime/src/chrome/Provenance.js'
 import { Chart } from '../../runtime/src/components/Chart.js'
 import { fmtDelta, fmtMeasure, isGood, type Period, periodChange } from '../../runtime/src/core.js'
 import { mergeQueries } from '../../runtime/src/data.js'
 import { type CoreProps, measureColor, Widget, widgetState } from '../../runtime/src/parts.js'
-import { controlEnabled, type MeasureSpec, type Spec, word } from '../../runtime/src/spec.js'
+import { controlEnabled, type MeasureSpec, QUERY, type Spec, word } from '../../runtime/src/spec.js'
 import { useUi } from '../../runtime/src/ui.js'
 
 /** One tile per measure: the window total, period-over-period change, and (spark style) a sparkline. Waits on `totals` + `series`. */
@@ -55,6 +57,8 @@ function Tile({
   const change = periodChange(measure, series, periods)
   const good = isGood(measure, change.delta)
   const color = measureColor(spec, measure.id)
+  const lastPeriod = series[series.length - 1]
+  const provenance = provenanceSpec({ queries: [QUERY.totals, QUERY.byTime], measures: [measure.id], rowCount: series.length || undefined, asOf: lastPeriod === undefined ? undefined : isoDay(lastPeriod.period) })
   const points = useMemo(() => series.flatMap((point) => (point.values[measure.id] === null ? [] : [{ period: point.period, value: point.values[measure.id] as number }])), [series, measure.id])
   const options = useMemo(
     () => ({
@@ -73,7 +77,7 @@ function Tile({
   const digest = { measureId: measure.id, value: total, delta: change.delta, pct: change.pct }
   if (!spark) {
     return (
-      <Widget heading={<span className="kit-card__label">{word(spec, measure.id)}</span>} className="kit-card" skeleton={{ kind: 'metric' }} digest={digest} {...widgetState(query)}>
+      <Widget heading={<span className="kit-card__label">{word(spec, measure.id)}</span>} className="kit-card" skeleton={{ kind: 'metric' }} digest={digest} spec={spec} provenance={provenance} {...widgetState(query)}>
         <span className="kit-card__value">{fmtMeasure(total, measure.format, true)}</span>
         <span className="kit-card__hint" style={{ color: deltaColor }}>
           {change.delta === null ? 'no prior period' : `${fmtDelta(change, measure.format)} vs prior ${change.periods}${(spec.time.grain ?? 'day')[0]}`}
@@ -88,6 +92,8 @@ function Tile({
       style={{ borderTopColor: color }}
       skeleton={{ kind: 'metric' }}
       digest={digest}
+      spec={spec}
+      provenance={provenance}
       {...widgetState(query)}
     >
       <div className="kit-kpi__value">{fmtMeasure(total, measure.format, true)}</div>

@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import { buildInsights } from '../../../../runtime/src/analysis.js'
+import { provenanceSpec } from '../../../../runtime/src/chrome/Provenance.js'
 import { mergeQueries } from '../../../../runtime/src/data.js'
 import { type RecipeProps, SectionHead, Widget, widgetState } from '../../../../runtime/src/parts.js'
-import { dimensionLabel, type Metric } from '../../../../runtime/src/spec.js'
+import { abRoleMeasureIds, dimensionLabel, type Metric, QUERY } from '../../../../runtime/src/spec.js'
 import { activeVariant, MetricChips, useUi } from '../../../../runtime/src/ui.js'
 
 /** Waits on `data.meta` + `data.overall` + `data.segmentsAt`. */
@@ -24,7 +25,14 @@ export function Render({ spec, data, bind }: RecipeProps) {
   return (
     <section className="kit-section">
       <SectionHead title="Key insights" right={<MetricChips spec={spec} />} />
-      <Widget className="bda-card" heading={null} skeleton={{ kind: 'text', lines: 4 }} {...widgetState(query)}>
+      <Widget
+        className="bda-card"
+        heading={null}
+        skeleton={{ kind: 'text', lines: 4 }}
+        spec={spec}
+        provenance={provenanceSpec({ queries: [QUERY.meta, QUERY.armTotals, QUERY.segments], measures: abRoleMeasureIds(spec), rowCount: segments.length || undefined })}
+        {...widgetState(query)}
+      >
         {segments.length === 0 ? (
           <div className="bda-state">No paired segments at this combination depth.</div>
         ) : (

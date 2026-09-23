@@ -82,6 +82,43 @@ looks like a bug and is not one. Read the window from `query_describe_model`, as
 it, and when you answer, say the date the number is *as of*. If someone asks about dates
 the model does not cover, say so rather than showing them an empty result.
 
+## The loading contract — when a panel is done
+
+A composed app never blocks on a query: every card renders its layout, then fills in.
+So "the app has loaded" is not a thing you can see, and the frame says it instead. Each
+panel in the frame's `studio:sandbox:context` report carries a `status`:
+
+| `status` | What it means |
+| --- | --- |
+| `loading` | one of that panel's queries is still in flight — nothing to read yet |
+| `ready` | every query resolved and there are rows |
+| `empty` | every query resolved and there were **no rows** |
+| `error` | a query failed; the card shows the code and a Retry |
+
+Two of these decide what you say to a person.
+
+**`empty` is not `error`, and it is almost never "there is no data".** It is the same
+situation as "zero rows, no error" in the table below: the query ran, the model
+answered, and the answer for *that window, those filters* is nothing. Check the
+availability window before you call it an outage. A panel sitting at `empty` right
+after a deep link usually means the link's filters or its `asOf` landed outside the
+data, not that the model is broken.
+
+**Never read a number off a panel that is still `loading`.** A recipe that renders
+several cards for one panel reports the worst of them, so a panel only says `ready`
+when every card it drew is done. Wait for `ready`, or say the panel is still loading.
+
+A deep link — or a scheduled capture — arrives as the host's `state`: filters, a time
+preset or explicit range, and an `asOf` that pins every query's upper bound. The frame
+reports what it actually adopted back as `studio:sandbox:state` — only what differs
+from the app's defaults, so `{ filters: {} }` means "everything at its default" — with
+a `dropped` list naming anything the spec could not honour, one `{ id, reason }` per
+parameter: `id` is `f.<dim>`, `t`, `asof` or `s`; `reason` is `unknown_filter`,
+`invalid_value`, `undeclared_preset` or `invalid_date` (e.g. `{ id: "f.channel",
+reason: "unknown_filter" }`). A preset under an `asOf` ends at the as-of, not today.
+If a panel looks wrong after a link, read `dropped` first. The full shapes are in the
+kit README's protocol table.
+
 ## Shapes the kit uses
 
 Every query a composed app runs is one of these. They are the rendered output of

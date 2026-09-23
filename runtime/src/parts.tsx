@@ -2,12 +2,13 @@
 
 import type { CSSProperties, ReactNode } from 'react'
 import type { Confidence, VariantOverall } from './analysis.js'
+import { Provenance, type ProvenanceSpec } from './chrome/Provenance.js'
 import { SkeletonChart, SkeletonMetric, SkeletonTable, SkeletonText } from './components/Skeleton.js'
 import type { CoreData, Dataset, QueryState } from './data.js'
 import { fmtSigned } from './format.js'
 import type { MetricOrCvr, Spec } from './spec.js'
 import { usePanelMeta, useRegisterPanelInstance } from './studio/contextRegistry.js'
-import type { BdaError } from './studio/types.js'
+import type { BdaError, PanelStatus } from './studio/types.js'
 
 export const METRIC_COLOR: Record<MetricOrCvr, string> = {
   NIBPD: 'var(--bda-chart-1)',
@@ -169,7 +170,42 @@ export type WidgetProps = {
    * `digest`. See `studio/contextRegistry.ts`.
    */
   readonly digest?: unknown
+  /** The spec, when this card wants a "How is this computed?" affordance — pair with `provenance`. */
+  readonly spec?: Spec
+  /** What to show in the provenance popover. Omit (with `spec`) for a card with nothing worth explaining; both must be present for the affordance to render. */
+  readonly provenance?: ProvenanceSpec
+  /**
+   * What kind of panel this is, beyond its `recipe` id, and the chat thread
+   * its own answer came from — reported to the host's context message
+   * (`contextRegistry.ts`'s `PanelReport.kind`/`threadId`) so its ask
+   * overlay can continue that thread. Only the `summary` recipe (T5.4)
+   * passes these today; every other recipe leaves them unset.
+   */
+  readonly kind?: string | undefined
+  readonly threadId?: string | undefined
+  /**
+   * This card resolved with nothing to show (T9.0, contract 1) — the rows
+   * came back and there were none. Only changes what the panel *reports*
+   * (`empty` rather than `ready`); what the card renders is the recipe's own
+   * "No data." note, exactly as before. Recipes that already know their row
+   * count pass it; one that cannot say cheaply leaves it unset and reports
+   * `ready`, which is the safer default (a host waits for nothing).
+   */
+  readonly empty?: boolean
   readonly children: ReactNode
+}
+
+/**
+ * One card's readiness, from the same props that already decide what it
+ * draws: a failed query first, then a pending one, then whether anything
+ * came back. `fetching` deliberately does not count as `loading` — a
+ * background refetch keeps the previous rows on screen (AGENTS.md, "Widgets
+ * never blank"), so the panel is still showing something a host can read.
+ */
+export function widgetStatus({ pending, error = null, empty = false }: Pick<WidgetProps, 'pending' | 'error' | 'empty'>): PanelStatus {
+  if (error !== null && error !== undefined) return 'error'
+  if (pending) return 'loading'
+  return empty ? 'empty' : 'ready'
 }
 
 /**
@@ -184,20 +220,36 @@ export type WidgetProps = {
  * screen) — its `panelId` comes from `PanelMetaProvider` (App.tsx wraps every
  * resolved panel in one), so a recipe never has to know it exists.
  */
-export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, digest, children }: WidgetProps) {
+export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, digest, spec, provenance, kind, threadId, empty, children }: WidgetProps) {
   const refreshing = fetching && !pending
   const meta = usePanelMeta()
-  const { nodeRef, highlighted } = useRegisterPanelInstance(meta, digest)
+  const status = widgetStatus({ pending, error, ...(empty === undefined ? {} : { empty }) })
+  const { nodeRef, highlighted } = useRegisterPanelInstance(meta, digest, status, { ...(kind === undefined ? {} : { kind }), ...(threadId === undefined ? {} : { threadId }) })
   const classes = [className, refreshing ? 'kit-card--refreshing' : '', highlighted ? 'kit-card--highlight' : ''].filter((part) => part.length > 0).join(' ')
+  const showProvenance = spec !== undefined && provenance !== undefined
+  // The affordance is `position: absolute`, so this wrapper needs `position:
+  // relative` — merged into `style` rather than a new class, since callers
+  // pass many different `className`s (`bda-card`, `kit-kpi`, `kit-panel`…).
+  const wrapperStyle = showProvenance ? { position: 'relative' as const, ...style } : style
   return (
-    <div ref={nodeRef} className={classes} style={style} aria-busy={pending}>
+    <div ref={nodeRef} className={classes} style={wrapperStyle} aria-busy={pending}>
+      {showProvenance ? <Provenance spec={spec} provenance={provenance} panelId={meta?.panelId} /> : null}
       {heading}
       {error !== null ? <WidgetError error={error} onRetry={onRetry ?? (() => {})} /> : pending ? <SkeletonFor spec={skeleton} /> : children}
     </div>
   )
 }
 
-/** `mergeQueries(...)` (or any single `QueryState`) collapsed to the props a `Widget` needs. */
-export function widgetState(merged: Pick<QueryState<unknown>, 'isPending' | 'isFetching' | 'error' | 'refetch'>): Pick<WidgetProps, 'pending' | 'fetching' | 'error' | 'onRetry'> {
-  return { pending: merged.isPending, fetching: merged.isFetching, error: merged.error, onRetry: merged.refetch }
+/**
+ * `mergeQueries(...)` (or any single `QueryState`) collapsed to the props a
+ * `Widget` needs.
+ *
+ * `rowCount` is what the card is actually about to draw — points on a chart,
+ * rows in a table, cells in a heatmap — not the raw row count of the query
+ * behind it. Passing it is what lets the panel report `empty` rather than
+ * `ready` when everything resolved and there is nothing to show (T9.0);
+ * leaving it off keeps the old behaviour.
+ */
+export function widgetState(merged: Pick<QueryState<unknown>, 'isPending' | 'isFetching' | 'error' | 'refetch'>, rowCount?: number): Pick<WidgetProps, 'pending' | 'fetching' | 'error' | 'onRetry' | 'empty'> {
+  return { pending: merged.isPending, fetching: merged.isFetching, error: merged.error, onRetry: merged.refetch, ...(rowCount === undefined ? {} : { empty: rowCount === 0 }) }
 }

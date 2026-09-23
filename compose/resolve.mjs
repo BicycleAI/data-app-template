@@ -30,6 +30,7 @@ export function resolveSpec(input) {
     const panel = { recipe: slot.recipe, bind: { ...(slot.bind ?? {}), ...(question?.bind ?? {}) } }
     if (question?.say) panel.say = question.say
     if (slot.width) panel.width = slot.width
+    if (recipes[slot.recipe]?.explain !== undefined) panel.explain = recipes[slot.recipe].explain
     panels.push(panel)
   }
   for (const question of input.questions) {
@@ -38,7 +39,9 @@ export function resolveSpec(input) {
     const already = panels.filter((panel) => panel.recipe === question.recipe)
     if (used.has(question.recipe) && already.some((panel) => JSON.stringify(panel.bind) === JSON.stringify({ ...(template.slots.find((slot) => slot.recipe === question.recipe)?.bind ?? {}), ...(question.bind ?? {}) }))) continue
     used.add(question.recipe)
-    panels.push({ recipe: question.recipe, bind: { ...(question.bind ?? {}) }, say: question.say })
+    const panel = { recipe: question.recipe, bind: { ...(question.bind ?? {}) }, say: question.say }
+    if (recipes[question.recipe]?.explain !== undefined) panel.explain = recipes[question.recipe].explain
+    panels.push(panel)
   }
 
   // A measure is named by its label; a metric a family derives is named by itself until the interview renames it.
@@ -46,6 +49,12 @@ export function resolveSpec(input) {
     ...Object.fromEntries(input.measures.map((measure) => [measure.id, measure.label])),
     ...Object.fromEntries((family?.metrics?.series ?? []).map((metric) => [metric, metric])),
   }
+  // `summary` (T5.4) supersedes `narrative`: both answer "what stands out",
+  // but `summary` already covers it — referenced, in the team's own words —
+  // so a spec placing both gets only `summary`. Declared on `summary`'s own
+  // `recipe.json` (`caveat`), enforced here because this is the one place
+  // that turns questions into the final panel list.
+  const resolvedPanels = panels.some((panel) => panel.recipe === 'summary') ? panels.filter((panel) => panel.recipe !== 'narrative') : panels
   return {
     ...input,
     chrome: template.chrome,
@@ -53,7 +62,7 @@ export function resolveSpec(input) {
     words: { ...defaultWords, ...(input.words ?? {}) },
     rules: { confidence_bar: '90%', min_bookers: 0, trim_quartile: true, compare_periods: 7, ...(input.rules ?? {}) },
     theme: { accent: 'blue', follow: 'system', ...(input.theme ?? {}) },
-    panels,
+    panels: resolvedPanels,
   }
 }
 

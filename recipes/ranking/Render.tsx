@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
+import { provenanceSpec } from '../../runtime/src/chrome/Provenance.js'
 import { fmtMeasure, type Slice, topBy } from '../../runtime/src/core.js'
 import { type CoreProps, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
-import { dimensionLabel, measureById, primaryMeasure, word } from '../../runtime/src/spec.js'
+import { dimensionLabel, measureById, primaryMeasure, QUERY, word } from '../../runtime/src/spec.js'
 import { usePanelId, useSelection } from '../../runtime/src/studio/contextRegistry.js'
 import { MeasureSelect, useUi } from '../../runtime/src/ui.js'
 
@@ -26,8 +27,17 @@ export function Render({ spec, core, bind }: CoreProps) {
     [measure.id]: slice.measures[measure.id],
     ...Object.fromEntries(others.map((m) => [m.id, slice.measures[m.id]])),
   })
+  const provenanceBase = { queries: [QUERY.byDimension], measures: [measure.id, ...others.map((m) => m.id)] }
   const table = (title: string, rows: typeof top, digest?: unknown) => (
-    <Widget className="bda-card kit-tcard" heading={<div className="kit-tcard__head"><span>{title}</span></div>} skeleton={{ kind: 'table', rows: count }} digest={digest} {...widgetState(core.dims)}>
+    <Widget
+      className="bda-card kit-tcard"
+      heading={<div className="kit-tcard__head"><span>{title}</span></div>}
+      skeleton={{ kind: 'table', rows: count }}
+      digest={digest}
+      spec={spec}
+      provenance={provenanceSpec({ ...provenanceBase, rowCount: rows.length || undefined })}
+      {...widgetState(core.dims, rows.length)}
+    >
       {rows.length === 0 ? (
         <div className="bda-state">None.</div>
       ) : (

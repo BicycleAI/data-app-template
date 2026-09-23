@@ -17,6 +17,9 @@
   ],
   "slots": [
     {
+      "recipe": "summary"
+    },
+    {
       "recipe": "verdict",
       "always": true
     },

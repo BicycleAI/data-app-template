@@ -1,10 +1,11 @@
 import * as Plot from '@observablehq/plot'
 import { useMemo } from 'react'
 import { isoDay, str } from '../../runtime/src/analysis.js'
+import { provenanceSpec } from '../../runtime/src/chrome/Provenance.js'
 import { Chart } from '../../runtime/src/components/Chart.js'
 import { fmtMeasure, isRate } from '../../runtime/src/core.js'
 import { type CoreProps, measureColor, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
-import { dimensionLabel, type MeasureSpec, measureById, primaryMeasure, type Spec, word } from '../../runtime/src/spec.js'
+import { dimensionLabel, type MeasureSpec, measureById, primaryMeasure, QUERY, type Spec, word } from '../../runtime/src/spec.js'
 import { usePanelId, useSelection } from '../../runtime/src/studio/contextRegistry.js'
 import { MeasureSelect, useUi } from '../../runtime/src/ui.js'
 
@@ -61,6 +62,8 @@ function TrendChart({ spec, measure, series }: { spec: Spec; measure: MeasureSpe
     [points, color, measure],
   )
   const digest = useMemo(() => points.slice(-7).map((p) => ({ period: isoDay(p.period), value: p.value })), [points])
+  const lastPoint = points[points.length - 1]
+  const provenance = provenanceSpec({ queries: [QUERY.byTime], measures: [measure.id], rowCount: points.length || undefined, asOf: lastPoint === undefined ? undefined : isoDay(lastPoint.period) })
   return (
     <Widget
       heading={
@@ -71,7 +74,9 @@ function TrendChart({ spec, measure, series }: { spec: Spec; measure: MeasureSpe
       }
       skeleton={{ kind: 'chart', height: 220 }}
       digest={digest}
-      {...widgetState(series)}
+      spec={spec}
+      provenance={provenance}
+      {...widgetState(series, points.length)}
     >
       {points.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={220} title={`${measure.label} trend`} onPointer={onPointer} />}
       {selected?.measureId === measure.id ? (
@@ -129,6 +134,7 @@ function ByDimension({ spec, core, by, measure }: { spec: Spec; core: CoreProps[
     }),
     [data, measure],
   )
+  const provenance = provenanceSpec({ queries: [QUERY.byTimeDim(by)], measures: [measure.id], rowCount: rows.length || undefined })
   return (
     <Widget
       className="bda-card kit-panel"
@@ -140,7 +146,9 @@ function ByDimension({ spec, core, by, measure }: { spec: Spec; core: CoreProps[
       }
       skeleton={{ kind: 'chart', height: 280 }}
       digest={digest}
-      {...widgetState(query)}
+      spec={spec}
+      provenance={provenance}
+      {...widgetState(query, data.length)}
     >
       {data.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={280} title={`${measure.label} by ${dimensionLabel(spec, by)}`} onPointer={onPointer} />}
       {selected !== undefined ? (

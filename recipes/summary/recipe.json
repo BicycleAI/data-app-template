@@ -1,0 +1,16 @@
+{
+  "id": "summary",
+  "family": "core",
+  "name": "Summary",
+  "answers": "What's the takeaway, in a few sentences I can check?",
+  "shape": "three to five sentences from what's on screen, every figure linked to the query it came from",
+  "needs": [],
+  "slots": 0,
+  "fits": [
+    "biz",
+    "exec"
+  ],
+  "bind": {},
+  "caveat": "Every figure is checkable against a query the agent actually ran this turn; a figure without one is never shown. Supersedes `narrative` when both are placed — the composer drops `narrative`.",
+  "explain": "Three to five sentences written from the panels on screen; every figure is referenced to the query it came from. Details show each panel's finding, figures and method."
+}

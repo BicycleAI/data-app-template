@@ -54,6 +54,7 @@ profiles/         README + example tenant profiles (fixtures only; real profiles
 runtime/          the data-driven app: spec.ts, core.ts (generic maths), analysis.ts (ab_test maths), data.ts, ui.tsx, chrome/, App.tsx
 compose/          validate → resolve → render datasets → bundle → upload; `cli.mjs` is `kit`
                   datasets.mjs is the renderer; manifest.mjs holds no SQL
+                  diff.mjs is the typed spec diff behind `kit diff` (README's `## Diff`)
 skills/ask-show-ship/   SKILL.md — the interview; published by the MCP as a prompt and resource
 skills/semantic-query/  SKILL.md — the semantic SQL grammar and the query_* loop; the one statement of it, loaded by the interview, template/README-FOR-AGENTS.md and the app chat agent
 evals/            golden manifests + transcript fixtures

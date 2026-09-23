@@ -322,3 +322,143 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
  * heatmap) — a minimal, theme-aware indicator rather than a bespoke look per
  * recipe. */
 .kit-selected, tr.kit-selected td { background: var(--bda-accent-soft); outline: 1px solid var(--bda-accent-muted); outline-offset: -1px; }
+
+/* T3.5, "How is this computed?" — a quiet affordance in the corner of every
+ * widget card, visible on hover/focus, opening a small anchored popover
+ * (never a modal) with the panel's exact SQL, its measures' definitions, its
+ * recipe's `explain` sentence and its row count/as-of. The trigger stays in
+ * the accessibility tree and keyboard-reachable at all times; only its
+ * opacity is hover/focus-gated, and `prefers-reduced-motion` drops the
+ * transition entirely rather than skipping the fade. */
+.kit-provenance { position: absolute; top: var(--bda-space-2); right: var(--bda-space-2); z-index: 5; }
+.kit-provenance__trigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--bda-border);
+  border-radius: var(--bda-radius-pill);
+  background: var(--bda-surface-raised);
+  color: var(--bda-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out;
+}
+.kit-provenance:hover .kit-provenance__trigger,
+.kit-provenance__trigger:hover,
+.kit-provenance__trigger:focus-visible,
+.kit-provenance__trigger[aria-expanded='true'] {
+  opacity: 1;
+}
+.kit-provenance__trigger:hover, .kit-provenance__trigger:focus-visible { border-color: var(--bda-accent-muted); color: var(--bda-accent); }
+.kit-provenance__trigger:focus-visible { outline: 2px solid var(--bda-accent-muted); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) {
+  .kit-provenance__trigger { transition: none; }
+}
+.kit-provenance__side { position: absolute; top: 0; right: 0; }
+.kit-provenance__side--right { right: auto; left: 0; }
+.kit-provenance__side--right .kit-provenance__popover { right: auto; left: 0; }
+.kit-provenance__popover {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: 20;
+  width: min(420px, calc(100vw - 2 * var(--bda-space-5)));
+  max-height: 420px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--bda-space-3);
+  background: var(--bda-surface-raised);
+  border: 1px solid var(--bda-border);
+  border-radius: var(--bda-radius);
+  box-shadow: var(--bda-shadow), 0 8px 24px rgb(16 24 40 / 12%);
+  padding: var(--bda-space-4);
+  text-align: left;
+  font-size: 12px;
+  color: var(--bda-text-primary);
+}
+.kit-provenance__section { display: flex; flex-direction: column; gap: var(--bda-space-2); }
+.kit-provenance__heading { font-size: 11px; font-weight: 800; color: var(--bda-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+.kit-provenance__query { display: flex; flex-direction: column; gap: var(--bda-space-1); }
+.kit-provenance__query-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--bda-text-secondary); }
+.kit-provenance__sql {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  background: var(--bda-surface-overlay);
+  border: 1px solid var(--bda-border);
+  border-radius: 8px;
+  padding: var(--bda-space-2) var(--bda-space-3);
+  color: var(--bda-text-primary);
+}
+.kit-provenance__ptable { width: 100%; border-collapse: collapse; font-size: 11px; }
+.kit-provenance__ptable th, .kit-provenance__ptable td { padding: 3px var(--bda-space-2); border-bottom: 1px solid var(--bda-grid); text-align: left; }
+.kit-provenance__ptable th { color: var(--bda-text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; font-size: 10px; }
+.kit-provenance__ptable tr:last-child td { border-bottom: 0; }
+.kit-provenance__copy { align-self: flex-start; appearance: none; border: 1px solid var(--bda-border); background: var(--bda-surface-background); color: var(--bda-text-primary); border-radius: var(--bda-radius-pill); padding: 3px 10px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+.kit-provenance__copy:hover { border-color: var(--bda-accent-muted); color: var(--bda-accent); }
+.kit-provenance__measures { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--bda-space-2); }
+.kit-provenance__measures li { padding-bottom: var(--bda-space-2); border-bottom: 1px solid var(--bda-grid); }
+.kit-provenance__measures li:last-child { border-bottom: 0; padding-bottom: 0; }
+.kit-provenance__expr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--bda-text-secondary); }
+.kit-provenance__method { margin: 0; line-height: 1.5; }
+.kit-provenance__data { color: var(--bda-text-secondary); }
+
+/* --- summary (T5.4) --- */
+.kit-summary__body { display: flex; flex-direction: column; gap: var(--bda-space-3); }
+.kit-summary__plain { margin: 0; font-size: 15px; line-height: 1.6; }
+.kit-summary__cached { font-size: 11px; }
+.kit-summary__ref {
+  appearance: none;
+  border: 1px solid var(--bda-accent-muted);
+  background: var(--bda-accent-soft);
+  color: var(--bda-accent);
+  border-radius: var(--bda-radius-pill);
+  padding: 0 6px;
+  margin: 0 1px;
+  font: inherit;
+  font-size: 0.85em;
+  font-weight: 700;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.kit-summary__ref:hover, .kit-summary__ref:focus-visible { background: var(--bda-accent); border-color: var(--bda-accent); color: var(--bda-surface-background); }
+.kit-summary__toggle { align-self: flex-start; }
+.kit-summary__details { display: flex; flex-direction: column; gap: var(--bda-space-4); padding-top: var(--bda-space-2); border-top: 1px solid var(--bda-grid); }
+.kit-summary__detail { display: flex; flex-direction: column; gap: var(--bda-space-1); }
+.kit-summary__detail-say { font-size: 11px; font-weight: 700; color: var(--bda-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.kit-summary__detail-finding { margin: 0; line-height: 1.5; }
+.kit-summary__figures { width: 100%; border-collapse: collapse; font-size: 12px; }
+.kit-summary__figures td { padding: 3px var(--bda-space-2) 3px 0; border-bottom: 1px solid var(--bda-grid); }
+.kit-summary__figures tr:last-child td { border-bottom: 0; }
+.kit-summary__method { font-size: 12px; font-style: italic; }
+.kit-summary__caveats ul, .kit-summary__followups ul { margin: var(--bda-space-1) 0 0; padding-left: 1.2em; font-size: 12px; line-height: 1.6; }
+.kit-summary__note { padding: var(--bda-space-2) 0; }
+
+/* Snapshot / capture mode (T9.0) — `kit-snapshot` on <html>, set by
+ * `studio/hostState.ts` when the host's render state asks for it.
+ *
+ * A capture is a still of what the data says, so the affordances that only
+ * mean something to a pair of hands go: the "How is this computed?" trigger
+ * and its popover, and the summary panel's expand toggle. Filters stay —
+ * a capture has to show what was applied — and so does every card, every
+ * number and every chart. Motion stops outright rather than being captured
+ * mid-transition. Nothing here is conditional rendering: the DOM is the same
+ * DOM a viewer sees, which is what keeps a capture honest. */
+.kit-snapshot .kit-provenance,
+.kit-snapshot .kit-summary__toggle { display: none; }
+.kit-snapshot *, .kit-snapshot *::before, .kit-snapshot *::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}

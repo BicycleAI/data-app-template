@@ -23,6 +23,9 @@
   ],
   "slots": [
     {
+      "recipe": "summary"
+    },
+    {
       "recipe": "verdict"
     },
     {

@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { type Segment, topDraggers, topLifters } from '../../../../runtime/src/analysis.js'
+import { provenanceSpec } from '../../../../runtime/src/chrome/Provenance.js'
 import { mergeQueries } from '../../../../runtime/src/data.js'
 import { fmtInt } from '../../../../runtime/src/format.js'
 import { Badge, type RecipeProps, Signed, Widget, widgetState } from '../../../../runtime/src/parts.js'
-import { armsOf, type Spec, word } from '../../../../runtime/src/spec.js'
+import { abRoleMeasureIds, armsOf, QUERY, type Spec, word } from '../../../../runtime/src/spec.js'
 import { activeVariant, MetricChips, useUi } from '../../../../runtime/src/ui.js'
 
 /** Waits on `data.overall` + `data.segmentsAt`. */
@@ -42,6 +43,8 @@ function Table({ spec, title, tone, rows, query, count }: { spec: Spec; title: s
         </div>
       }
       skeleton={{ kind: 'table', rows: count }}
+      spec={spec}
+      provenance={provenanceSpec({ queries: [QUERY.armTotals, QUERY.segments], measures: abRoleMeasureIds(spec), rowCount: rows.length || undefined })}
       {...widgetState(query)}
     >
       {rows.length === 0 ? (

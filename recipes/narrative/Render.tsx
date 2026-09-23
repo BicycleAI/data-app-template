@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
+import { provenanceSpec } from '../../runtime/src/chrome/Provenance.js'
 import { buildFindings, type Slice } from '../../runtime/src/core.js'
 import { mergeQueries } from '../../runtime/src/data.js'
 import { type CoreProps, Widget, widgetState } from '../../runtime/src/parts.js'
+import { QUERY } from '../../runtime/src/spec.js'
 
 /** Deterministic findings: how each measure moved, and where a dimension concentrates or diverges. Waits on `totals` + `series` + `dims`. */
 export function Render({ spec, core }: CoreProps) {
@@ -15,7 +17,14 @@ export function Render({ spec, core }: CoreProps) {
   return (
     <section className="kit-section">
       <div className="kit-sh">What stands out</div>
-      <Widget className="bda-card kit-icard" heading={null} skeleton={{ kind: 'text', lines: 4 }} {...widgetState(query)}>
+      <Widget
+        className="bda-card kit-icard"
+        heading={null}
+        skeleton={{ kind: 'text', lines: 4 }}
+        spec={spec}
+        provenance={provenanceSpec({ queries: [QUERY.totals, QUERY.byTime, QUERY.byDimension], measures: spec.measures.map((measure) => measure.id) })}
+        {...widgetState(query, findings.length)}
+      >
         {findings.length === 0 ? (
           <div className="bda-state">Nothing stands out yet.</div>
         ) : (

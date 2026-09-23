@@ -1,8 +1,9 @@
 import { combinations } from '../../../../runtime/src/analysis.js'
+import { provenanceSpec } from '../../../../runtime/src/chrome/Provenance.js'
 import { mergeQueries } from '../../../../runtime/src/data.js'
 import { fmtDate } from '../../../../runtime/src/format.js'
 import { Card, type RecipeProps, trafficSplit, Widget, widgetState } from '../../../../runtime/src/parts.js'
-import { armsOf } from '../../../../runtime/src/spec.js'
+import { abRoleMeasureIds, armsOf, QUERY } from '../../../../runtime/src/spec.js'
 import { activeVariant, useUi } from '../../../../runtime/src/ui.js'
 
 /** Waits on `data.meta` + `data.overall` + `data.segmentsAt`. */
@@ -19,7 +20,14 @@ export function Render({ spec, data }: RecipeProps) {
   return (
     <section className="kit-section">
       <div className="kit-sh">Experiment overview</div>
-      <Widget className="bda-card" heading={null} skeleton={{ kind: 'metric' }} {...widgetState(query)}>
+      <Widget
+        className="bda-card"
+        heading={null}
+        skeleton={{ kind: 'metric' }}
+        spec={spec}
+        provenance={provenanceSpec({ queries: [QUERY.meta, QUERY.armTotals, QUERY.segments], measures: abRoleMeasureIds(spec), rowCount: segments || undefined, asOf: window?.dataAsOf })}
+        {...widgetState(query)}
+      >
         <div className="kit-ovrow">
           <Card label="Test period" value={window === undefined ? '—' : `${fmtDate(window.testStart)} — ${window.testEnd === undefined ? 'open' : fmtDate(window.testEnd)}`} small />
           <Card label="Test length" value={window === undefined ? '—' : `${window.effectiveTld.toFixed(2)} days`} {...(window?.scheduledTld === undefined ? {} : { hint: `${window.scheduledTld.toFixed(0)} scheduled` })} />

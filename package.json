@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "compose": "node compose/cli.mjs",
-    "check": "npm run typecheck && node compose/cli.mjs validate spec/examples/*.json && node compose/cli.mjs compose spec/examples/checkout-test-report.json --dry-run && npm run test"
+    "check": "npm run typecheck && node compose/cli.mjs validate spec/examples/*.json && node compose/cli.mjs compose spec/examples/checkout-test-report.json --dry-run && npm run test && node evals/diff.mjs"
   },
   "dependencies": {
     "@observablehq/plot": "^0.6.17",

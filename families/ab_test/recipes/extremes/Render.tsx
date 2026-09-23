@@ -1,8 +1,9 @@
 import type { Segment } from '../../../../runtime/src/analysis.js'
+import { provenanceSpec } from '../../../../runtime/src/chrome/Provenance.js'
 import { mergeQueries } from '../../../../runtime/src/data.js'
 import { fmtInt, fmtSigned } from '../../../../runtime/src/format.js'
 import { Badge, type RecipeProps, SectionHead, Widget, widgetState } from '../../../../runtime/src/parts.js'
-import { type Metric } from '../../../../runtime/src/spec.js'
+import { abRoleMeasureIds, type Metric, QUERY } from '../../../../runtime/src/spec.js'
 import { activeVariant, useUi } from '../../../../runtime/src/ui.js'
 
 /** Waits on `data.overall` + `data.segmentsAt`. */
@@ -29,6 +30,8 @@ export function Render({ spec, data, bind }: RecipeProps) {
         </div>
       }
       skeleton={{ kind: 'table', rows: count }}
+      spec={spec}
+      provenance={provenanceSpec({ queries: [QUERY.armTotals, QUERY.segments], measures: abRoleMeasureIds(spec), rowCount: rows.length || undefined })}
       {...widgetState(query)}
     >
       {rows.length === 0 ? (

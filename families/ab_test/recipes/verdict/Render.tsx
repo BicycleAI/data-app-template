@@ -1,8 +1,9 @@
 import { meetsBar } from '../../../../runtime/src/analysis.js'
+import { provenanceSpec } from '../../../../runtime/src/chrome/Provenance.js'
 import { mergeQueries } from '../../../../runtime/src/data.js'
 import { fmtSigned } from '../../../../runtime/src/format.js'
 import { Badge, type RecipeProps, Widget, widgetState } from '../../../../runtime/src/parts.js'
-import { armsOf, type Metric, word } from '../../../../runtime/src/spec.js'
+import { abRoleMeasureIds, armsOf, type Metric, QUERY, word } from '../../../../runtime/src/spec.js'
 import { activeVariant, useUi } from '../../../../runtime/src/ui.js'
 
 /** One sentence: winning, losing, or not yet decidable against the spec's confidence bar. Waits on `data.meta` + `data.overall`. */
@@ -32,8 +33,9 @@ export function Render({ spec, data, bind }: RecipeProps) {
   }
 
   const meta = data.meta.rows
+  const provenance = provenanceSpec({ queries: [QUERY.meta, QUERY.armTotals], measures: abRoleMeasureIds(spec), rowCount: overall.length || undefined, asOf: meta?.window.dataAsOf })
   return (
-    <Widget className={`kit-verdict kit-verdict--${tone}`} heading={<div className="kit-sh">Verdict</div>} skeleton={{ kind: 'text', lines: 2 }} {...widgetState(query)}>
+    <Widget className={`kit-verdict kit-verdict--${tone}`} heading={<div className="kit-sh">Verdict</div>} skeleton={{ kind: 'text', lines: 2 }} spec={spec} provenance={provenance} {...widgetState(query)}>
       <div className="kit-verdict__head">
         <span className="kit-verdict__title">{headline}</span>
         {variant === undefined ? null : <Badge confidence={variant.kpis.confidence} z={variant.kpis.z} />}
