@@ -125,6 +125,18 @@ body {
   padding: var(--bda-space-4) var(--bda-space-5);
 }
 
+/* The host's chat pointing at this card — a source chip in an answer. Set by <Panel> for a moment. */
+.bda-card--highlight {
+  box-shadow: 0 0 0 2px var(--bda-accent), var(--bda-shadow);
+  transition: box-shadow 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bda-card--highlight {
+    transition: none;
+  }
+}
+
 .bda-title {
   margin: 0 0 var(--bda-space-2);
   font-size: 20px;

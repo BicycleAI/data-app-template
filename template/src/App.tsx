@@ -29,6 +29,11 @@
  * wires to the `in` filter operator rather than to a parameter. See
  * README-FOR-AGENTS.md.
  *
+ * Every card is a `<Panel>`, which is what lets the host's chat see it: a
+ * viewer can hover a card and "Add to chat", or hover a bar and attach just
+ * that month. Give each one a stable `id`, the `title` it goes by, and the
+ * `queryId` it draws once it draws a real one.
+ *
  * The only stand-in is `usePretendQuery` below, which fakes the data call
  * because a template cannot know which queries your app will declare.
  * Everything else is the real pattern.
@@ -37,6 +42,7 @@
 import * as Plot from '@observablehq/plot'
 import { useEffect, useMemo, useState } from 'react'
 import { Chart } from './components/Chart.js'
+import { Panel } from './components/Panel.js'
 import { SkeletonChart, SkeletonMetric } from './components/Skeleton.js'
 import { context } from './studio/context.js'
 
@@ -128,6 +134,16 @@ const compactMoney = (value: number) =>
     ? `$${(value / 1_000_000).toFixed(2)}M`
     : `$${Math.round(value / 1_000).toLocaleString()}K`
 
+const monthLabel = (value: unknown) =>
+  value instanceof Date
+    ? value.toLocaleDateString(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' })
+    : String(value)
+
+// What each card draws, for the chat. Module constants, so their identity is stable across renders.
+const REVENUE_BIND = { x: 'month', y: 'revenue' }
+const CUPS_BIND = { x: 'month', y: 'cups' }
+const MIX_BIND = { x: 'share', y: 'product' }
+
 export function App() {
   const { appId, version } = context()
   const [year, setYear] = useState<Year>('All')
@@ -142,6 +158,7 @@ export function App() {
   const revenue = rows?.reduce((sum, row) => sum + row.revenue, 0) ?? 0
   const cups = rows?.reduce((sum, row) => sum + row.cups, 0) ?? 0
   const meanRevenue = rows === undefined || rows.length === 0 ? 0 : revenue / rows.length
+  const headline = useMemo(() => rows && [{ revenue, cups, months: rows.length }], [rows, revenue, cups])
 
   // Plot options are memoised on the data, so a chart is rebuilt when the
   // rows change and not on every render. `undefined` while the query is in
@@ -272,7 +289,16 @@ export function App() {
 
       {/* `aria-busy` on the region is what a screen reader announces; the
           skeleton blocks themselves are `aria-hidden`. */}
-      <section className="sample-metrics" aria-busy={pending}>
+      <Panel
+        as="section"
+        card={false}
+        className="sample-metrics"
+        id="headline"
+        title="Headline numbers"
+        kind="kpi"
+        rows={headline}
+        busy={pending}
+      >
         {pending ? (
           <>
             <SkeletonMetric />
@@ -286,29 +312,60 @@ export function App() {
             <Metric value={`${rows.length}`} label="Months" tone={3} />
           </>
         )}
-      </section>
+      </Panel>
 
       <section className="sample-grid">
         {/* The heading is outside the conditional on purpose: the reader can
             see what is coming while it loads. */}
-        <div className="bda-card" aria-busy={revenueByMonth === undefined}>
+        <Panel
+          id="revenue_by_month"
+          title="Monthly revenue"
+          kind="bar"
+          rows={rows}
+          bind={REVENUE_BIND}
+          busy={revenueByMonth === undefined}
+        >
           <h2 className="bda-heading">Monthly revenue</h2>
           {revenueByMonth === undefined ? (
             <SkeletonChart />
           ) : (
-            <Chart options={revenueByMonth} title="Revenue by month" />
+            <Chart
+              options={revenueByMonth}
+              title="Revenue by month"
+              pointLabel={(d) => `${monthLabel(d.month)} · ${compactMoney(Number(d.revenue))}`}
+            />
           )}
-        </div>
-        <div className="bda-card" aria-busy={cupsTrend === undefined}>
+        </Panel>
+        <Panel
+          id="cups_by_month"
+          title="Cups sold trend"
+          kind="line"
+          rows={rows}
+          bind={CUPS_BIND}
+          busy={cupsTrend === undefined}
+        >
           <h2 className="bda-heading">Cups sold trend</h2>
-          {cupsTrend === undefined ? <SkeletonChart /> : <Chart options={cupsTrend} title="Cups sold by month" />}
-        </div>
+          {cupsTrend === undefined ? (
+            <SkeletonChart />
+          ) : (
+            <Chart
+              options={cupsTrend}
+              title="Cups sold by month"
+              pointLabel={(d) => `${monthLabel(d.month)} · ${Math.round(Number(d.cups) / 1_000)}K cups`}
+            />
+          )}
+        </Panel>
       </section>
 
-      <section className="bda-card">
+      <Panel as="section" id="product_mix" title="Product mix" kind="bar" rows={MIX} bind={MIX_BIND}>
         <h2 className="bda-heading">Product mix</h2>
-        <Chart options={mix} height={200} title="Share of sales by product" />
-      </section>
+        <Chart
+          options={mix}
+          height={200}
+          title="Share of sales by product"
+          pointLabel={(d) => `${String(d.product)} · ${String(d.share)}%`}
+        />
+      </Panel>
     </main>
   )
 }
