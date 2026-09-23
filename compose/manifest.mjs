@@ -32,6 +32,12 @@ export function deriveManifest(spec) {
   if (spec.chat !== undefined) {
     manifest.chat = { enabled: spec.chat.enabled, anchors: spec.chat.anchors ?? ['panel'] }
   }
+
+  // Same declare-or-refuse bargain, and the same split the host enforces: `enabled` turns
+  // reporting on, `values` decides whether the numbers a panel is showing may travel with it.
+  if (spec.telemetry !== undefined) {
+    manifest.telemetry = { enabled: spec.telemetry.enabled, values: spec.telemetry.values ?? false }
+  }
   return manifest
 }
 
