@@ -10,7 +10,7 @@
  */
 
 import { datasetsFor } from './catalogue.mjs'
-import { renderDatasets } from './datasets.mjs'
+import { filtersOf, renderDatasets } from './datasets.mjs'
 
 export function deriveManifest(spec) {
   const manifest = {
@@ -20,6 +20,13 @@ export function deriveManifest(spec) {
     title: spec.title,
     queries: renderDatasets(spec, datasetsFor(spec)),
   }
+  // Controls are declared like queries, and for the same reason: something outside the
+  // app has to act on them without understanding it. The queries already carry the
+  // parameters — `region_0`, `region_1` — but nothing said those three are the `region`
+  // filter, that it takes several values, or which values are legal. A viewer sharing a
+  // link, and a schedule pinning `country = India`, both need exactly that.
+  const controls = controlsOf(spec)
+  if (controls !== undefined) manifest.controls = controls
   // Persistence is declared like queries: only what the manifest names is served.
   if (spec.store?.cache !== undefined) {
     manifest.cache = { ttlSeconds: spec.store.cache.ttl_seconds ?? 86400, maxValueBytes: spec.store.cache.max_value_bytes ?? 65536, writableBy: spec.store.cache.writable_by ?? 'viewer' }
@@ -39,6 +46,41 @@ export function deriveManifest(spec) {
     manifest.telemetry = { enabled: spec.telemetry.enabled, values: spec.telemetry.values ?? false }
   }
   return manifest
+}
+
+/**
+ * What a viewer can change, named so the host and a scheduler can act on it.
+ *
+ * `slots` is the contract that matters: the query parameters this filter binds, in
+ * order, exactly as `filtersOf` renders them. Bind them and the app is narrowed; read
+ * them back and you know what it was narrowed to. `default` is what an unset link
+ * loads, so "no filter in the URL" and "the filter at its default" stay the same app.
+ */
+function controlsOf(spec) {
+  const declared = spec.controls ?? []
+  const label = (field) => spec.dimensions.find((dimension) => dimension.field === field)?.label ?? field
+  const filters = filtersOf(spec).map((filter) => {
+    const control = declared.find((c) => c.kind === 'filter' && c.dim === filter.dim)
+    return {
+      dim: filter.dim,
+      label: label(filter.dim),
+      multi: control?.multi === true,
+      slots: filter.parameters.map((parameter) => parameter.name),
+      options: (control?.options ?? []).map(String),
+      default: filter.parameters.map((parameter) => parameter.default),
+    }
+  })
+  const timeControl = declared.find((c) => c.kind === 'time')
+  // The schema's own defaults, applied here rather than left out: a scheduler reading
+  // this manifest should not have to know what the schema would have filled in.
+  const time = {
+    column: spec.time.column ?? 'timestamp',
+    from: spec.time.from,
+    to: spec.time.to,
+    grain: spec.time.grain ?? 'day',
+    ...(timeControl?.presets === undefined ? {} : { presets: [...timeControl.presets] }),
+  }
+  return filters.length === 0 && timeControl === undefined ? { time } : { time, filters }
 }
 
 /**

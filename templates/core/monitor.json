@@ -1,0 +1,40 @@
+{
+  "id": "monitor",
+  "family": "core",
+  "name": "Monitor",
+  "chrome": "report",
+  "persona_default": [],
+  "description": "A wall screen: every measure as a sparkline tile, one trend, one breakdown. Watched from across the room, not read.",
+  "controls": [
+    {
+      "kind": "entity"
+    },
+    {
+      "kind": "time"
+    }
+  ],
+  "slots": [
+    {
+      "recipe": "kpis",
+      "always": true,
+      "bind": {
+        "style": "spark"
+      }
+    },
+    {
+      "recipe": "trend",
+      "width": "half",
+      "bind": {
+        "measures": "all"
+      }
+    },
+    {
+      "recipe": "breakdown",
+      "width": "half",
+      "bind": {
+        "dims": "first",
+        "limit": 8
+      }
+    }
+  ]
+}

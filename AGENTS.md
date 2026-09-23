@@ -2,6 +2,8 @@
 
 This file is for agents changing this repository. If you are designing a data app for a user, stop: load `skills/ask-show-ship/SKILL.md` and use the `design_*` tools on the bicycle-studio MCP instead.
 
+The asking discipline both paths share — never ask a person what the catalog can answer, the three stops, four options a question — is [PIPELINE.md](PIPELINE.md). It is short. Read it before either path below.
+
 ## Two ways to build a data app
 
 **Compose from a spec (default).** `kit compose spec.json` → `bundle.zip`. No per-app code. The runtime is built once; each app is that bundle with `window.__DATA_APP_SPEC = {...}` prepended. Use this for most apps.
@@ -44,6 +46,7 @@ The one piece of machinery that exists in both languages is the dataset renderer
 ## Layout
 
 ```
+PIPELINE.md       the asking discipline: three stops, four options, never ask what the catalog answers
 spec/             schema (v2) + examples: retail-orders-health/retail-refund-watch (core), checkout-test-report/explorer/scorecard (ab_test)
 recipes/<id>/     core recipes — recipe.json (catalogue entry) + Render.tsx; work on any model
 recipes/datasets.json        the core queries, declared

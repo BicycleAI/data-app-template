@@ -11,7 +11,7 @@ export type MetricOrCvr = Metric | 'CVR'
 export const METRICS: readonly Metric[] = ['NIBPD', 'NIBrPD', 'NICPD']
 
 export type Persona = 'biz' | 'pm' | 'analyst' | 'exec'
-export type TemplateId = 'scorecard' | 'report' | 'explorer' | 'brief'
+export type TemplateId = 'scorecard' | 'report' | 'explorer' | 'brief' | 'monitor'
 export type Chrome = 'report' | 'explorer'
 export type Grain = 'day' | 'week' | 'month'
 export type Format = 'number' | 'currency' | 'percent' | 'rate'

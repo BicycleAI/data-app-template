@@ -13,7 +13,7 @@
     "title": { "type": "string", "minLength": 1, "maxLength": 80 },
     "decision": { "type": "string", "maxLength": 300 },
     "persona": { "enum": ["biz", "pm", "analyst", "exec"] },
-    "template": { "enum": ["scorecard", "report", "explorer", "brief"] },
+    "template": { "enum": ["scorecard", "report", "explorer", "brief", "monitor"] },
     "time": {
       "type": "object",
       "additionalProperties": false,
@@ -63,7 +63,9 @@
           "label": { "type": "string", "maxLength": 60 },
           "format": { "enum": ["number", "currency", "percent", "rate"], "default": "number", "description": "rate = already a percentage value (15.7 means 15.7%)" },
           "good": { "enum": ["up", "down"], "default": "up" },
-          "role": { "enum": ["primary", "secondary"], "default": "secondary" }
+          "role": { "enum": ["primary", "secondary"], "default": "secondary" },
+          "definition": { "type": "string", "maxLength": 400, "description": "The semantic layer's plain-language definition of this measure, for the \"How is this computed?\" provenance popover." },
+          "expression": { "type": "string", "maxLength": 400, "description": "The semantic layer's expression for this measure (e.g. a metric formula), for the provenance popover." }
         }
       }
     },
@@ -245,7 +247,7 @@
       "items": {
         "type": "object",
         "required": ["recipe"],
-        "properties": { "recipe": { "type": "string" }, "bind": { "type": "object" }, "say": { "type": "string" }, "width": { "enum": ["full", "half", "third"] } }
+        "properties": { "recipe": { "type": "string" }, "bind": { "type": "object" }, "say": { "type": "string" }, "width": { "enum": ["full", "half", "third"] }, "explain": { "type": "string", "description": "The recipe's `explain` sentence (T3.6), threaded through by the composer for the \"How is this computed?\" provenance popover's Method section." } }
       }
     },
     "telemetry": {

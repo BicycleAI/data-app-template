@@ -13,6 +13,14 @@
       "arm_totals": "SELECT variant_name, arm_participants, control_participants, total_participants, unique_bookers, order_count, order_value FROM m_checkout_demo WHERE test_id = :entity AND timestamp >= :from AND timestamp < :to",
       "segments": "SELECT variant_name, device, market, customer_tier, unique_bookers, order_count, order_value FROM m_checkout_demo WHERE test_id = :entity AND timestamp >= :from AND timestamp < :to ORDER BY unique_bookers DESC LIMIT 10000",
       "daily_trend": "SELECT date_trunc('day', timestamp) AS day, variant_name, unique_bookers, order_count, order_value, arm_participants, control_participants, total_participants FROM m_checkout_demo WHERE test_id = :entity AND timestamp >= :from AND timestamp < :to"
+    },
+    "controls": {
+      "time": {
+        "column": "timestamp",
+        "from": "2026-02-01",
+        "to": "tomorrow",
+        "grain": "day"
+      }
     }
   },
   "checkout-test-report.json": {
@@ -30,6 +38,14 @@
       "arm_totals": "SELECT variant_name, arm_participants, control_participants, total_participants, unique_bookers, order_count, order_value FROM m_checkout_demo WHERE test_id = :entity AND timestamp >= :from AND timestamp < :to",
       "segments": "SELECT variant_name, device, market, customer_tier, unique_bookers, order_count, order_value FROM m_checkout_demo WHERE test_id = :entity AND timestamp >= :from AND timestamp < :to ORDER BY unique_bookers DESC LIMIT 10000",
       "daily_trend": "SELECT date_trunc('day', timestamp) AS day, variant_name, unique_bookers, order_count, order_value, arm_participants, control_participants, total_participants FROM m_checkout_demo WHERE test_id = :entity AND timestamp >= :from AND timestamp < :to"
+    },
+    "controls": {
+      "time": {
+        "column": "timestamp",
+        "from": "2026-02-01",
+        "to": "tomorrow",
+        "grain": "day"
+      }
     }
   },
   "checkout-test-scorecard.json": {
@@ -45,6 +61,14 @@
       "arm_totals": "SELECT variant_name, arm_participants, control_participants, total_participants, unique_bookers, order_count, order_value FROM m_checkout_demo WHERE test_id = :entity AND timestamp >= :from AND timestamp < :to",
       "segments": "SELECT variant_name, device, market, unique_bookers, order_count, order_value FROM m_checkout_demo WHERE test_id = :entity AND timestamp >= :from AND timestamp < :to ORDER BY unique_bookers DESC LIMIT 10000",
       "daily_trend": "SELECT date_trunc('day', timestamp) AS day, variant_name, unique_bookers, order_count, order_value, arm_participants, control_participants, total_participants FROM m_checkout_demo WHERE test_id = :entity AND timestamp >= :from AND timestamp < :to"
+    },
+    "controls": {
+      "time": {
+        "column": "timestamp",
+        "from": "2026-02-01",
+        "to": "tomorrow",
+        "grain": "day"
+      }
     }
   },
   "retail-orders-health-filtered.json": {
@@ -60,6 +84,58 @@
       "totals": "SELECT orders_total, revenue_total, refund_rate_pct, avg_order_value FROM m_retail_demo WHERE event_time >= :from AND event_time < :to AND region IN (:region_0, :region_1, :region_2) AND channel = :channel_0",
       "by_time": "SELECT date_trunc('day', event_time) AS period, orders_total, revenue_total, refund_rate_pct, avg_order_value FROM m_retail_demo WHERE event_time >= :from AND event_time < :to AND region IN (:region_0, :region_1, :region_2) AND channel = :channel_0",
       "by_dimension": "SELECT region, channel, category, orders_total, revenue_total, refund_rate_pct, avg_order_value FROM m_retail_demo WHERE event_time >= :from AND event_time < :to ORDER BY orders_total DESC LIMIT 10000"
+    },
+    "controls": {
+      "time": {
+        "column": "event_time",
+        "from": "2026-08-01",
+        "to": "tomorrow",
+        "grain": "day",
+        "presets": [
+          "7d",
+          "30d",
+          "90d",
+          "quarter"
+        ]
+      },
+      "filters": [
+        {
+          "dim": "region",
+          "label": "Region",
+          "multi": true,
+          "slots": [
+            "region_0",
+            "region_1",
+            "region_2"
+          ],
+          "options": [
+            "emea",
+            "amer",
+            "apac"
+          ],
+          "default": [
+            "emea",
+            "amer",
+            "amer"
+          ]
+        },
+        {
+          "dim": "channel",
+          "label": "Channel",
+          "multi": false,
+          "slots": [
+            "channel_0"
+          ],
+          "options": [
+            "web",
+            "app",
+            "store"
+          ],
+          "default": [
+            "web"
+          ]
+        }
+      ]
     }
   },
   "retail-orders-health.json": {
@@ -75,6 +151,14 @@
       "totals": "SELECT orders_total, revenue_total, refund_rate_pct, avg_order_value FROM m_retail_demo WHERE event_time >= :from AND event_time < :to",
       "by_time": "SELECT date_trunc('day', event_time) AS period, orders_total, revenue_total, refund_rate_pct, avg_order_value FROM m_retail_demo WHERE event_time >= :from AND event_time < :to",
       "by_dimension": "SELECT region, channel, category, orders_total, revenue_total, refund_rate_pct, avg_order_value FROM m_retail_demo WHERE event_time >= :from AND event_time < :to ORDER BY orders_total DESC LIMIT 10000"
+    },
+    "controls": {
+      "time": {
+        "column": "event_time",
+        "from": "2026-08-01",
+        "to": "tomorrow",
+        "grain": "day"
+      }
     }
   },
   "retail-refund-watch.json": {
@@ -92,6 +176,14 @@
       "by_dimension": "SELECT region, channel, category, refund_count, refund_rate_pct, orders_total FROM m_retail_demo WHERE event_time >= :from AND event_time < :to ORDER BY refund_count DESC LIMIT 10000",
       "by_time_region": "SELECT date_trunc('day', event_time) AS period, region, refund_count, refund_rate_pct, orders_total FROM m_retail_demo WHERE event_time >= :from AND event_time < :to",
       "by_time_category": "SELECT date_trunc('day', event_time) AS period, category, refund_count, refund_rate_pct, orders_total FROM m_retail_demo WHERE event_time >= :from AND event_time < :to"
+    },
+    "controls": {
+      "time": {
+        "column": "event_time",
+        "from": "2026-08-01",
+        "to": "tomorrow",
+        "grain": "day"
+      }
     }
   }
 }

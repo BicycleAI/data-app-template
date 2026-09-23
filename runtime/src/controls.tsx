@@ -17,9 +17,10 @@
  */
 
 import type { ReactNode } from 'react'
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { Scalar } from './studio/types.js'
 import { control, filterControls, type FilterControl, type Spec, type TimePreset } from './spec.js'
+import { decodeViewState, encodeViewState, readLinkParams, reportViewState } from './studio/viewState.js'
 
 /** One filter control's current picks, keyed by the dimension it narrows. */
 export type FiltersState = Readonly<Record<string, readonly string[]>>
@@ -196,8 +197,23 @@ export type ControlsActions = {
 const ControlsContext = createContext<(ControlsState & ControlsActions) | undefined>(undefined)
 
 export function ControlsProvider({ spec, children }: { spec: Spec; children: ReactNode }) {
-  const [filters, setFilters] = useState<FiltersState>(() => initialFilters(spec))
-  const [time, setTime] = useState<TimeState>(() => initialTime(spec))
+  // A link's parameters win over the spec's defaults, and only over what they name: a
+  // link pinning one filter leaves the others where the app put them.
+  const fromLink = useMemo(() => decodeViewState(spec, readLinkParams()), [spec])
+  const [filters, setFilters] = useState<FiltersState>(() => ({ ...initialFilters(spec), ...(fromLink.filters ?? {}) }))
+  const [time, setTime] = useState<TimeState>(() => fromLink.time ?? initialTime(spec))
+
+  // The frame cannot reach the address bar — opaque origin — so it tells the host what
+  // changed and the host owns the URL. Skipped on the first render: announcing the state
+  // we were just handed would make every load look like an edit.
+  const announced = useRef(false)
+  useEffect(() => {
+    if (!announced.current) {
+      announced.current = true
+      return
+    }
+    reportViewState(encodeViewState(spec, { filters, time }))
+  }, [spec, filters, time])
 
   const controlsByDim = useMemo(() => {
     const map = new Map<string, FilterControl>()

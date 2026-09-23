@@ -1,0 +1,42 @@
+{
+  "id": "monitor",
+  "name": "Monitor",
+  "chrome": "report",
+  "persona_default": [],
+  "description": "A wall screen for a running test: lift tiles with sparklines, the cumulative trend, lift by one dimension. Watched, not read.",
+  "family": "ab_test",
+  "controls": [
+    {
+      "kind": "entity"
+    },
+    {
+      "kind": "variant"
+    }
+  ],
+  "slots": [
+    {
+      "recipe": "kpi_tiles",
+      "always": true,
+      "bind": {
+        "style": "spark"
+      }
+    },
+    {
+      "recipe": "cumulative_trend",
+      "width": "half",
+      "bind": {
+        "measures": [
+          "NIBPD"
+        ]
+      }
+    },
+    {
+      "recipe": "lift_by_dimension",
+      "width": "half",
+      "bind": {
+        "dims": "first",
+        "limit": 8
+      }
+    }
+  ]
+}

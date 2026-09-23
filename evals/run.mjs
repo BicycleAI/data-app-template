@@ -25,7 +25,13 @@ for (const file of readdirSync(`${root}/spec/examples`).filter((name) => name.en
   }
   const resolved = resolveSpec(spec)
   const manifest = deriveManifest(resolved)
-  const actual = { panels: resolved.panels.map((panel) => panel.recipe), queries: Object.fromEntries(manifest.queries.map((query) => [query.id, query.sql])) }
+  const actual = {
+    panels: resolved.panels.map((panel) => panel.recipe),
+    queries: Object.fromEntries(manifest.queries.map((query) => [query.id, query.sql])),
+    // Pinned for the same reason as the SQL: the service ports this derivation, and a
+    // filter whose slots drift is a share link and a schedule that bind the wrong thing.
+    controls: manifest.controls,
+  }
   if (update) golden[file] = actual
   else if (JSON.stringify(golden[file]) !== JSON.stringify(actual)) {
     process.stdout.write(`DRIFT   ${file}\n  expected ${JSON.stringify(golden[file])}\n  actual   ${JSON.stringify(actual)}\n`)
