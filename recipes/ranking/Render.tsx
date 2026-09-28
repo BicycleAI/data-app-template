@@ -36,6 +36,7 @@ export function Render({ spec, core, bind }: CoreProps) {
       digest={digest}
       spec={spec}
       provenance={provenanceSpec({ ...provenanceBase, rowCount: rows.length || undefined })}
+      bind={{ dim, measure: measure.id, count }}
       {...widgetState(core.dims, rows.length)}
     >
       {rows.length === 0 ? (

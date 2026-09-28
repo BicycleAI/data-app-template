@@ -6,6 +6,14 @@ hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MI
 
 ## Unreleased
 
+### Added
+- `studio:sandbox:context` carries `scope`, the whole page resolved for the host's chat: the window (`to`
+  exclusive), `asOf`, the filters that narrow, the rail's measure, the checked dimensions, the entity and the
+  period comparison (`runtime/src/studio/scope.ts`). A change is posted on the next frame. The template's
+  `studio/contextRegistry.ts` exposes the same `setPageScope`. `studio:sandbox:state` is unchanged.
+- Core recipes' panel reports carry `queryId` (the card's primary query) and a `bind` resolved to what the card
+  draws, e.g. breakdown's `dims: 'all'` becomes the checked fields plus the selected measure.
+
 ### Fixed
 - A filter's state is now always what its query binds (`runtime/src/controls.tsx`). Before, the seed (the
   `default`, else every option) was not cut to the filter's slots. A single-select filter with no default then

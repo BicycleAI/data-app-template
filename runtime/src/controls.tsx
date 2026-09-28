@@ -19,9 +19,11 @@
 import type { ReactNode } from 'react'
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { AppliedState, DropReason, DroppedParam, RenderState, Scalar } from './studio/types.js'
-import { reportState } from './studio/contextRegistry.js'
+import { reportState, setPageScope } from './studio/contextRegistry.js'
 import { renderState } from './studio/hostState.js'
+import { pageScope } from './studio/scope.js'
 import { control, filterControls, type FilterControl, type Spec, type TimePreset } from './spec.js'
+import { useUi } from './ui.js'
 
 /** One filter control's current picks, keyed by the dimension it narrows. */
 export type FiltersState = Readonly<Record<string, readonly string[]>>
@@ -342,7 +344,7 @@ export function applyRenderState(spec: Spec, state: RenderState, now: Date = new
 }
 
 /** Same picks, order aside — a filter is a set. */
-function sameValues(left: readonly string[], right: readonly string[]): boolean {
+export function sameValues(left: readonly string[], right: readonly string[]): boolean {
   if (left.length !== right.length) return false
   const set = new Set(left)
   return right.every((value) => set.has(value)) && new Set(right).size === set.size
@@ -354,7 +356,7 @@ function sameValues(left: readonly string[], right: readonly string[]): boolean 
  * happens to equal today's resolution of the default preset is NOT the
  * default: it stays fixed while the preset moves with the clock.
  */
-function sameWindow(time: TimeState, defaults: TimeState): boolean {
+export function sameWindow(time: TimeState, defaults: TimeState): boolean {
   if (time.preset !== undefined || defaults.preset !== undefined) return time.preset === defaults.preset
   return time.from === defaults.from && time.to === defaults.to
 }
@@ -412,7 +414,8 @@ export type ControlsActions = {
 
 const ControlsContext = createContext<(ControlsState & ControlsActions) | undefined>(undefined)
 
-export function ControlsProvider({ spec, children }: { spec: Spec; children: ReactNode }) {
+/** `entityId` is the entity the viewer picked (App's state), reported in the page scope; omit it for a spec without one. */
+export function ControlsProvider({ spec, entityId, children }: { spec: Spec; entityId?: string | undefined; children: ReactNode }) {
   // Resolved once, before the first render of any child, so the first query
   // this app issues already carries the host's filters and its pinned as-of.
   const seed = useRef<AppliedControls | undefined>(undefined)
@@ -423,6 +426,7 @@ export function ControlsProvider({ spec, children }: { spec: Spec; children: Rea
   const [time, setTime] = useState<TimeState>(applied.time)
   const [section, setSection] = useState<string | undefined>(applied.section)
   const asOf = applied.asOf
+  const { measure, dims } = useUi()
 
   // Contract 3: once after the initial state is applied, then on every
   // change a person makes. Always sent — `filters: {}` when everything is
@@ -433,6 +437,15 @@ export function ControlsProvider({ spec, children }: { spec: Spec; children: Rea
   useEffect(() => {
     reportState(appliedState({ filters, time, asOf, section }, applied.defaults), applied.dropped)
   }, [filters, time, asOf, section, applied])
+
+  // The page scope for the host's chat (studio/scope.ts): everything the page
+  // is set to, defaults included, where the report above is only the URL's
+  // delta. Rebuilt on every change here, in the rail or of the entity;
+  // `setPageScope` drops one that did not actually change. `section` is not
+  // in it: this kit has no tabs, so it only round-trips in the URL.
+  useEffect(() => {
+    setPageScope(pageScope({ spec, controls: { filters, time, asOf }, defaults: applied.defaults, ui: { measure, dims }, entityId }))
+  }, [spec, filters, time, asOf, applied, measure, dims, entityId])
 
   const controlsByDim = useMemo(() => {
     const map = new Map<string, FilterControl>()

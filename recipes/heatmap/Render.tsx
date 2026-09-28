@@ -69,6 +69,7 @@ export function Render({ spec, core, bind }: CoreProps) {
       digest={digest}
       spec={spec}
       provenance={provenance}
+      bind={{ rows: rowsDim, cols: colsDim, measure: measure.id }}
       {...widgetState(core.dims, cells.length)}
     >
       {rowsDim === colsDim ? (

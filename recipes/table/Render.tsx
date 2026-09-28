@@ -34,6 +34,7 @@ export function Render({ spec, core, bind }: CoreProps) {
         digest={digest}
         spec={spec}
         provenance={provenanceSpec({ queries: [QUERY.byDimension], measures: spec.measures.map((measure) => measure.id), rowCount: rows.length || undefined })}
+        bind={{ dims, limit, sort: { measure: sort.id, dir: sort.dir } }}
         {...widgetState(core.dims, rows.length)}
       >
         <div className="kit-scroll">

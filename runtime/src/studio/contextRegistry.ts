@@ -12,9 +12,14 @@
  * A recipe may render more than one card for one panel (the `ranking` recipe's
  * top/bottom tables, `kpis`' one tile per measure); their geometry is unioned
  * and their digests merged so the host still sees one panel.
+ *
+ * Every message also carries the page's `scope` (see `scope.ts`) once
+ * `ControlsProvider` has reported it: what the whole page is set to, which
+ * the host sends with every chat question.
  */
 
 import { createContext, type RefObject, useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
+import type { PageScope } from './scope.js'
 import { type AppliedState, type DroppedParam, type PanelStatus, type StateMessage, worstStatus } from './types.js'
 
 export type PanelRect = {
@@ -30,6 +35,13 @@ export type PanelReport = {
   readonly panelId: string
   readonly recipe: string
   readonly say?: string
+  /** The declared query the card's figures come from (`spec.ts`'s `QUERY`), which the host's chat can re-run for the real numbers. Absent for a card with no single primary query. */
+  readonly queryId?: string
+  /**
+   * What the card draws with, resolved, when its recipe says: the checked
+   * dimensions and the selected measure rather than the spec's `dims: 'all'`.
+   * The panel's spec-time bind otherwise.
+   */
   readonly bind: Readonly<Record<string, unknown>>
   readonly selection?: unknown
   readonly digest?: unknown
@@ -56,6 +68,8 @@ export type ContextMessage = {
   readonly type: 'studio:sandbox:context'
   readonly panels: readonly PanelReport[]
   readonly tokens: Readonly<Record<string, string>>
+  /** What the whole page is set to, complete and resolved (`scope.ts`). On every message once `ControlsProvider` has reported it. */
+  readonly scope?: PageScope
 }
 
 export type HighlightMessage = {
@@ -136,6 +150,7 @@ type Instance = {
   readonly recipe: string
   readonly status: PanelStatus
   readonly say: string | undefined
+  readonly queryId?: string
   readonly bind: Readonly<Record<string, unknown>>
   readonly digest: unknown
   readonly node: Element
@@ -154,6 +169,11 @@ const highlightListeners = new Map<string, Set<() => void>>()
 let reportTimer: ReturnType<typeof setTimeout> | undefined
 let rafScheduled = false
 let listening = false
+let scope: PageScope | undefined
+/** `scope` as JSON, so an identical rebuild is a no-op rather than a post. */
+let scopeKey: string | undefined
+/** A context message has gone out: a first report is no longer pending. */
+let posted = false
 
 function stateOf(panelId: string): PanelState {
   let state = panels.get(panelId)
@@ -218,6 +238,7 @@ function buildReport(): readonly PanelReport[] {
       panelId,
       recipe: last.recipe,
       ...(last.say === undefined ? {} : { say: last.say }),
+      ...(last.queryId === undefined ? {} : { queryId: last.queryId }),
       bind: last.bind,
       ...(state.selection === undefined ? {} : { selection: state.selection }),
       ...(digest === undefined ? {} : { digest }),
@@ -232,8 +253,26 @@ function buildReport(): readonly PanelReport[] {
 
 function post(): void {
   if (typeof window === 'undefined' || window.parent === window) return
-  const message: ContextMessage = { type: 'studio:sandbox:context', panels: buildReport(), tokens: readTokens() }
+  const message: ContextMessage = { type: 'studio:sandbox:context', panels: buildReport(), tokens: readTokens(), ...(scope === undefined ? {} : { scope }) }
   window.parent.postMessage(message, '*')
+  posted = true
+}
+
+/**
+ * The page's scope (`scope.ts`), carried on every context message from now
+ * on. `ControlsProvider` calls this on every change; a scope equal to the
+ * last one is dropped. A real change goes out on the next frame, not after
+ * the 100ms registry debounce, so a question typed right after a filter
+ * change already carries the filter. Until the first report there is nothing
+ * to post it with: that report, scheduled by the first card to register,
+ * carries whatever scope is current when it goes out.
+ */
+export function setPageScope(next: PageScope): void {
+  const key = JSON.stringify(next)
+  if (key === scopeKey) return
+  scope = next
+  scopeKey = key
+  if (posted) scheduleFrameReport()
 }
 
 /**
@@ -273,8 +312,8 @@ function scheduleReport(): void {
   }, 100)
 }
 
-/** Scroll/resize: rAF-throttled — geometry only, so there is no need to wait 100ms. */
-function scheduleGeometryReport(): void {
+/** Scroll/resize, and a scope change: rAF-throttled — nothing to settle, so there is no need to wait 100ms. */
+function scheduleFrameReport(): void {
   if (rafScheduled || typeof window === 'undefined') return
   rafScheduled = true
   window.requestAnimationFrame(() => {
@@ -294,8 +333,8 @@ function onIncomingMessage(event: MessageEvent<Partial<HighlightMessage> | undef
 function ensureListening(): void {
   if (listening || typeof window === 'undefined') return
   listening = true
-  window.addEventListener('scroll', scheduleGeometryReport, { passive: true, capture: true })
-  window.addEventListener('resize', scheduleGeometryReport)
+  window.addEventListener('scroll', scheduleFrameReport, { passive: true, capture: true })
+  window.addEventListener('resize', scheduleFrameReport)
   window.addEventListener('message', onIncomingMessage)
   // Once after first paint: two rAFs so the browser has actually painted the
   // frame that just registered, not merely scheduled it.
@@ -319,7 +358,7 @@ export function unregisterInstance(panelId: string, instanceId: string): void {
 
 /** A card's own geometry changed (its `ResizeObserver` fired). No registry change, just a re-report. */
 export function notifyGeometryChange(): void {
-  scheduleGeometryReport()
+  scheduleFrameReport()
 }
 
 export function setPanelSelection(panelId: string, selection: unknown): void {
@@ -361,11 +400,14 @@ export function resetRegistryForTests(): void {
   reportTimer = undefined
   rafScheduled = false
   if (listening && typeof window !== 'undefined') {
-    window.removeEventListener('scroll', scheduleGeometryReport, true)
-    window.removeEventListener('resize', scheduleGeometryReport)
+    window.removeEventListener('scroll', scheduleFrameReport, true)
+    window.removeEventListener('resize', scheduleFrameReport)
     window.removeEventListener('message', onIncomingMessage)
   }
   listening = false
+  scope = undefined
+  scopeKey = undefined
+  posted = false
 }
 
 /* ------------------------------------------------------------ React glue */
@@ -440,14 +482,28 @@ export function useRegisterPanelInstance(
   digest: unknown,
   /** This card's own readiness, derived by `Widget` from its query props. Re-registering on a change is what makes a status move re-report, not only a digest move (T9.0, contract 1). */
   status: PanelStatus,
-  /** Overrides `meta.kind`/`meta.threadId` — how `Widget`'s own `kind`/`threadId` props (dynamic, learned after the recipe's own data lands) reach the registry, since `PanelMeta` itself is static per render. */
-  extra?: { readonly kind?: string | undefined; readonly threadId?: string | undefined },
+  /**
+   * What `Widget` knows beyond `meta`, which is static per render: its own `kind`/`threadId` (learned after the recipe's own data lands) override `meta`'s,
+   * `bind` (what the card draws, resolved) replaces `meta.bind`, and `queryId` is the card's primary query.
+   */
+  extra?: {
+    readonly kind?: string | undefined
+    readonly threadId?: string | undefined
+    readonly bind?: Readonly<Record<string, unknown>> | undefined
+    readonly queryId?: string | undefined
+  },
 ): { readonly nodeRef: RefObject<HTMLDivElement | null>; readonly highlighted: boolean } {
   const nodeRef = useRef<HTMLDivElement>(null)
   const instanceId = useId()
   const [highlighted, setHighlighted] = useState(false)
   const kind = extra?.kind ?? meta?.kind
   const threadId = extra?.threadId ?? meta?.threadId
+  const queryId = extra?.queryId
+  // Compared by value: a recipe builds its resolved bind inline on every
+  // render, and the same bind in a new object must not re-register the card.
+  const bindKey = extra?.bind === undefined ? undefined : JSON.stringify(extra.bind)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const bind = useMemo(() => extra?.bind, [bindKey])
 
   useEffect(() => {
     if (meta === undefined) return
@@ -457,7 +513,8 @@ export function useRegisterPanelInstance(
       recipe: meta.recipe,
       status,
       say: meta.say,
-      bind: meta.bind,
+      ...(queryId === undefined ? {} : { queryId }),
+      bind: bind ?? meta.bind,
       digest,
       node,
       ...(kind === undefined ? {} : { kind }),
@@ -469,7 +526,7 @@ export function useRegisterPanelInstance(
       observer.disconnect()
       unregisterInstance(meta.panelId, instanceId)
     }
-  }, [meta, instanceId, digest, status, kind, threadId])
+  }, [meta, instanceId, digest, status, kind, threadId, queryId, bind])
 
   // A pulse the host asked for: scroll the card into view and hold
   // `kit-card--highlight` for 1.6s (the CSS-only pulse is in theme.css).
