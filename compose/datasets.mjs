@@ -72,9 +72,18 @@
  *     into the spare slots. `IN` is a set, so duplicates change nothing --
  *     verified by running `IN (:c0, :c1, :c2, :c3, :c4)` with one value
  *     repeated four times and getting the same rows as the two-value query.
- *   - More values picked than slots: `totals` and `by_time` stay unnarrowed,
- *     and the FilterBar says so rather than showing a number that quietly
- *     answers a different question.
+ *   - More values than slots is never a state the page holds, because its
+ *     slots could not bind it:
+ *       - A filter is seeded with its first `slots` values (its `default`, or
+ *         else its `options`): the same values these slots' defaults name
+ *         below. So a single-select filter with no default starts on its
+ *         first option, and a multi filter offering more options than slots
+ *         starts on the first ones and has no "All".
+ *       - The FilterBar refuses a pick past the slots.
+ *       - A link naming more values is cut to the first ones and reports
+ *         `invalid_value`.
+ *     The chips, the in-memory narrowing and the host's state report
+ *     therefore always describe exactly what `totals` and `by_time` bind.
  *
  * `options` stays in the spec and out of the SQL: it is the chip list the
  * viewer picks from (T3.4 fills it from the dimension's real values), and it

@@ -6,6 +6,20 @@ hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MI
 
 ## Unreleased
 
+### Fixed
+- A filter's state is now always what its query binds (`runtime/src/controls.tsx`). Before, the seed (the
+  `default`, else every option) was not cut to the filter's slots. A single-select filter with no default then
+  started with every option pressed, while `totals`/`by_time` bound only the first. A multi filter offering more
+  options than slots started on "All" while binding the first five. The FilterBar claimed both showed every
+  value, and the in-memory breakdown kept every row. Now:
+  - the seed is cut to the slots, so that filter starts on its first option, matching the composer's slot
+    defaults;
+  - "All" appears only when the slots can hold every option;
+  - a pick past the slots is refused (the chip is disabled, with "Pick up to N");
+  - a link naming more values keeps the first ones and reports `invalid_value`.
+
+  `buildFilterParams` no longer returns `overflow`. The composer's SQL and manifest are unchanged.
+
 ## 1.1.0 (proposed tag `kit-v1.1.0`)
 
 Additive: no DataAppSpec or manifest change.

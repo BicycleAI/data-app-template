@@ -40,10 +40,32 @@ function toStrings(value: unknown): string[] {
   return (Array.isArray(value) ? value : [value]).map((item) => String(item))
 }
 
-/** The values a filter starts from: its `default`, or all of its `options` when it has none. */
+/**
+ * The values a filter starts from: its `default`, or its `options` when it
+ * has none, cut to the slots its query has.
+ *
+ * That cut is the composer's own: `compose/datasets.mjs`'s `filtersOf`
+ * pre-fills each slot from the same list, first values first. So the seed
+ * is exactly what an untouched page's `totals` and `by_time` are narrowed
+ * to. A single-select filter with no default starts on its FIRST option,
+ * never on all of them: its one slot can hold nothing else. A multi filter
+ * offering more options than it has slots starts on the first ones, since
+ * "All" is not a value its slots can take.
+ */
 export function seedOf(filterControl: FilterControl): string[] {
-  if (filterControl.default !== undefined) return toStrings(filterControl.default)
-  return (filterControl.options ?? []).map((value) => String(value))
+  const listed = filterControl.default !== undefined ? toStrings(filterControl.default) : (filterControl.options ?? []).map((value) => String(value))
+  return [...new Set(listed.slice(0, slotsOf(filterControl, listed)))]
+}
+
+/**
+ * The "All" chip's selection — every option — or `undefined` when the
+ * filter cannot be at "All": a single-select filter binds one value, and a
+ * multi filter with more options than slots could only bind some of them.
+ */
+export function allOf(filterControl: FilterControl): string[] | undefined {
+  const options = (filterControl.options ?? []).map((value) => String(value))
+  if (filterControl.multi !== true || options.length === 0) return undefined
+  return options.length <= slotsOf(filterControl, options) ? options : undefined
 }
 
 /**
@@ -59,7 +81,7 @@ export function slotsOf(filterControl: FilterControl, seed: readonly string[]): 
   return Math.min(MAX_SLOTS, Math.max(1, filterControl.slots ?? fallback))
 }
 
-/** Every filter's initial selection — the control default, or all of its options. */
+/** Every filter's initial selection — its seed (`seedOf`): what its query binds before anyone picks. */
 export function initialFilters(spec: Spec): FiltersState {
   const state: Record<string, readonly string[]> = {}
   for (const filterControl of filterControls(spec)) state[filterControl.dim] = seedOf(filterControl)
@@ -72,32 +94,29 @@ function padded(values: readonly string[], slots: number): string[] {
 
 /**
  * The `<slug>_i` parameters every filtered dataset (`totals`, `by_time`,
- * `arm_totals`, `daily_trend`) needs, built from the current selection, plus
- * which dims could not be expressed in their fixed slot count.
+ * `arm_totals`, `daily_trend`) needs, built from the current selection.
  *
  * Fewer picks than slots repeats the last pick — `IN` is a set, so a repeat
  * is a no-op (verified by running the query in compose/datasets.mjs's `##
- * Filters`). More picks than slots cannot be expressed at all: the query
- * falls back to the control's full `options` list (its "everything" state)
- * and the caller is told which dim did that, so the FilterBar can say so.
+ * Filters`). More picks than slots never reach here: `ControlsProvider`
+ * holds at most that many (the FilterBar refuses a pick past them, a link
+ * past them is cut and says so). Should a selection be wider anyway, the
+ * first `slots` picks are bound. That is the same cut the in-memory
+ * narrowing and the state report read, never a different one.
  */
-export function buildFilterParams(spec: Spec, filters: FiltersState): { readonly params: Readonly<Record<string, Scalar>>; readonly overflow: Readonly<Record<string, boolean>> } {
+export function buildFilterParams(spec: Spec, filters: FiltersState): { readonly params: Readonly<Record<string, Scalar>> } {
   const params: Record<string, Scalar> = {}
-  const overflow: Record<string, boolean> = {}
   for (const filterControl of filterControls(spec)) {
     const seed = seedOf(filterControl)
     const slots = slotsOf(filterControl, seed)
     const selected = filters[filterControl.dim] ?? seed
-    const over = selected.length > slots
-    overflow[filterControl.dim] = over
-    const source = over ? (filterControl.options ?? seed).map((value) => String(value)) : selected
-    const values = padded(source, slots)
+    const values = padded(selected.slice(0, slots), slots)
     const prefix = slug(filterControl.dim)
     values.forEach((value, index) => {
       params[`${prefix}_${index}`] = value
     })
   }
-  return { params, overflow }
+  return { params }
 }
 
 /** `from`/`to` plus `entity` (when the spec has one and the viewer picked it) — every declared query's baseline. */
@@ -273,12 +292,15 @@ export function applyRenderState(spec: Spec, state: RenderState, now: Date = new
     }
     const allowed = (filterControl.options ?? []).map((value) => String(value))
     const wanted = (Array.isArray(raw) ? raw : []).map((value) => String(value))
+    const slots = slotsOf(filterControl, seedOf(filterControl))
     const kept: string[] = []
     for (const value of wanted) {
-      // A value the filter does not offer, or a second value for a
-      // single-select filter: both are values this filter cannot take.
+      if (kept.includes(value)) continue
+      // A value the filter does not offer, or one past its slots (a second
+      // value for a single-select filter, a sixth for five slots): both are
+      // values this filter's query cannot take.
       if (allowed.length > 0 && !allowed.includes(value)) drop(`f.${id}`, 'invalid_value')
-      else if (filterControl.multi !== true && kept.length === 1) drop(`f.${id}`, 'invalid_value')
+      else if (kept.length >= slots) drop(`f.${id}`, 'invalid_value')
       else kept.push(value)
     }
     if (kept.length > 0) filters[id] = kept
@@ -374,11 +396,14 @@ export type ControlsState = {
 }
 
 export type ControlsActions = {
-  /** Multi filter: add/remove one value. Dropping the last one falls back to "All" rather than leaving nothing selected. */
+  /**
+   * Multi filter: add/remove one value. A value past the filter's slots is refused; dropping the last one
+   * falls back to "All" (or to the seed, when the slots cannot hold every option) rather than leaving nothing.
+   */
   toggleFilterValue(dim: string, value: string): void
   /** Single-select filter: replace the pick outright. */
   setFilterValue(dim: string, value: string): void
-  /** The "All" chip: reset a filter to every option. */
+  /** The "All" chip: reset a filter to every option — or to its seed, when its slots cannot hold them all. */
   resetFilter(dim: string): void
   setPreset(preset: TimePreset): void
   /** Move to another section/tab. Reported to the host like any other change. */
@@ -415,10 +440,15 @@ export function ControlsProvider({ spec, children }: { spec: Spec; children: Rea
     return map
   }, [spec])
 
-  const optionsOf = (dim: string): string[] => {
+  /**
+   * Where a filter goes back to when nothing is left picked, and what its
+   * "All" chip means: every option when its slots can hold them all, its
+   * seed when they cannot (`allOf`) — never a selection the query cannot bind.
+   */
+  const everythingOf = (dim: string): readonly string[] => {
     const filterControl = controlsByDim.get(dim)
     if (filterControl === undefined) return []
-    return (filterControl.options ?? seedOf(filterControl)).map((value) => String(value))
+    return allOf(filterControl) ?? seedOf(filterControl)
   }
 
   const value = useMemo<ControlsState & ControlsActions>(
@@ -429,15 +459,22 @@ export function ControlsProvider({ spec, children }: { spec: Spec; children: Rea
       section,
       toggleFilterValue: (dim, val) => {
         setFilters((current) => {
-          const options = optionsOf(dim)
-          const selected = current[dim] ?? options
-          if (controlsByDim.get(dim)?.multi !== true) return { ...current, [dim]: [val] }
-          const next = selected.includes(val) ? selected.filter((picked) => picked !== val) : [...selected, val]
-          return { ...current, [dim]: next.length === 0 ? options : next }
+          const filterControl = controlsByDim.get(dim)
+          if (filterControl === undefined) return current
+          if (filterControl.multi !== true) return { ...current, [dim]: [val] }
+          const selected = current[dim] ?? seedOf(filterControl)
+          if (selected.includes(val)) {
+            const next = selected.filter((picked) => picked !== val)
+            return { ...current, [dim]: next.length === 0 ? everythingOf(dim) : next }
+          }
+          // No room: the query has no slot for another value. The FilterBar
+          // disables the chip; a stray call changes nothing.
+          if (selected.length >= slotsOf(filterControl, seedOf(filterControl))) return current
+          return { ...current, [dim]: [...selected, val] }
         })
       },
       setFilterValue: (dim, val) => setFilters((current) => ({ ...current, [dim]: [val] })),
-      resetFilter: (dim) => setFilters((current) => ({ ...current, [dim]: optionsOf(dim) })),
+      resetFilter: (dim) => setFilters((current) => ({ ...current, [dim]: everythingOf(dim) })),
       // The as-of the host pinned outlives a preset change: a viewer widening
       // the window still never sees past the date the link was cut at, and
       // the new preset is computed relative to it (ends at the as-of) rather

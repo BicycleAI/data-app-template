@@ -126,6 +126,9 @@ export function validateSpec(spec) {
     if (narrowed.has(control.dim)) errors.push(`/controls/${index}/dim "${control.dim}" is narrowed by more than one filter`)
     narrowed.add(control.dim)
     // `options` is the chip list; the default is what the slots are seeded with, so it has to be pickable.
+    // No default is fine, single-select included: the slots are seeded with the first option(s)
+    // (`filtersOf`) and the runtime starts the page on the same ones. Refusing it would break
+    // specs that are valid today, and writing a default in here would only restate that seed.
     const options = control.options
     const chosen = control.default === undefined ? [] : [control.default].flat()
     if (Array.isArray(options) && chosen.some((value) => !options.includes(value))) errors.push(`/controls/${index}/default is not among that filter's options`)
