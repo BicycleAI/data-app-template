@@ -440,7 +440,13 @@ describe('pageScope', () => {
       entity: { field: 'store_id', label: 'Store', type: 'string' },
       controls: fields.map((dim) => ({ kind: 'filter' as const, dim, multi: true, options, default: options.slice(0, 120) })),
     }
-    const scope = scopeOf(spec, { measure: 'orders', dims: fields }, { asOf: '2026-13-01', entityId: long })
+    // The kit's own state never holds more picks than a filter's slots (at most 5), so it can
+    // never reach the host's cap of 100 values...
+    expect(scopeOf(spec, { measure: 'orders', dims: fields }).filters[0]?.values).toHaveLength(5)
+    // ...which is why the cap is tested with a wider state than the kit makes, passed in directly.
+    const applied = applyRenderState(spec, {})
+    const wide = Object.fromEntries(fields.map((dim) => [dim, options.slice(0, 120)]))
+    const scope = pageScope({ spec, controls: { filters: wide, time: applied.time, asOf: '2026-13-01' }, defaults: applied.defaults, ui: { measure: 'orders', dims: fields }, entityId: long })
 
     expect(scope.window).toBeUndefined()
     expect(scope.asOf).toBeUndefined()
