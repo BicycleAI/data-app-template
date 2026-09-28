@@ -583,7 +583,7 @@ reports the selection itself, in every app.
 
 What travels with a question is **data, never a picture**: the card's
 `title`, `kind`, `queryId`, `bind`, the point or quote the viewer attached,
-and your digest. So keep `title` in the viewer's words and set `queryId`
+your digest, and the page's scope (below). So keep `title` in the viewer's words and set `queryId`
 whenever a card draws a declared query — that is what lets the agent answer
 from the real rows rather than from what it can see.
 
@@ -595,6 +595,46 @@ mount and whenever `meta` changes, `unregisterPanel(id)` on unmount,
 server round trip or changes what you render — it is a handful of
 `postMessage` calls to `window.parent`, which the host is already listening
 for. The full API is documented at the top of `studio/contextRegistry.ts`.
+
+### Report what the page is set to
+
+The host sends the page's **scope** with every chat question, and the agent
+applies it to every query it runs, so "revenue by week" is answered for the
+window, filters and measure on screen. Report it with `setPageScope` from
+`studio/contextRegistry.ts`: on mount and again whenever any of it changes,
+whole every time, defaults included (`complete: true`). The same scope twice
+is a no-op; a change goes out on the next frame.
+
+```tsx
+import { setPageScope } from './studio/contextRegistry.js'
+
+useEffect(() => {
+  setPageScope({
+    complete: true,
+    model: 'm_retail_demo',
+    window: { column: 'event_time', from, to, isDefault: from === DEFAULT_FROM && to === DEFAULT_TO },
+    filters: channel === 'All' ? [] : [{ field: 'channel', label: 'Channel', values: [channel], isDefault: false }],
+    measure: { id: 'revenue', column: 'revenue_total', label: 'Revenue' },
+  })
+}, [from, to, channel])
+```
+
+| Field | What |
+| --- | --- |
+| `complete` | always `true` |
+| `model` | the model your queries read |
+| `window` | `{ column?, from, to, preset?, grain?, isDefault }`: `from` inclusive, **`to` exclusive**, the same `time >= :from AND time < :to` your queries use |
+| `asOf` | `YYYY-MM-DD`, when the page is pinned to one |
+| `filters` | `[{ field, label?, values, isDefault }]`, only the filters that narrow: leave one at "All" out, `[]` when none does |
+| `measure` | `{ id, column?, label? }`, the measure on screen |
+| `dimensions` | `[{ field, label? }]`, the split-by dimensions on screen |
+| `entity` | `{ field, value, label? }`, the one entity the page is about, if any |
+| `compare` | `{ periods, grain? }`, "last N vs the N before", if a card compares periods |
+| `tab` | the tab on screen, if the app has tabs |
+
+Dates must be real days: a window that is not is left out. Lists and strings
+are trimmed to what the host accepts (24 filters, 100 values each, 24
+dimensions, 256 characters), never thrown.
 
 ## Calling functions, agents and workflows
 

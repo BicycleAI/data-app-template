@@ -14,19 +14,21 @@ export function Render({ spec, core, bind }: CoreProps) {
   const limit = typeof bind.limit === 'number' ? bind.limit : 10
   const dims = bind.dims === 'first' ? spec.dimensions.slice(0, 1).map((dim) => dim.field) : Array.isArray(bind.dims) ? (bind.dims as string[]) : ui.dims
   if (dims.length === 0) return null
+  // What the cards draw, for the host's chat: the dimensions and the measure, not `dims: 'all'`.
+  const drawn = { dims, limit, measure: measure.id }
   return (
     <section className="kit-section">
       <SectionHead title={`${word(spec, measure.id)} by dimension`} right={bind.measure === undefined ? <MeasureSelect spec={spec} /> : undefined} />
       <div className="kit-dims">
         {dims.map((dim) => (
-          <Bars key={dim} spec={spec} dim={dim} measure={measure} slices={core.slicesAt([dim])} query={core.dims} limit={limit} />
+          <Bars key={dim} spec={spec} dim={dim} measure={measure} slices={core.slicesAt([dim])} query={core.dims} limit={limit} drawn={drawn} />
         ))}
       </div>
     </section>
   )
 }
 
-function Bars({ spec, dim, measure, slices, query, limit }: { spec: Spec; dim: string; measure: MeasureSpec; slices: readonly Slice[]; query: CoreProps['core']['dims']; limit: number }) {
+function Bars({ spec, dim, measure, slices, query, limit, drawn }: { spec: Spec; dim: string; measure: MeasureSpec; slices: readonly Slice[]; query: CoreProps['core']['dims']; limit: number; drawn: Readonly<Record<string, unknown>> }) {
   const rows = useMemo(() => topBy(slices, measure.id, limit).map((slice) => ({ value: slice.values[0] ?? '', amount: slice.measures[measure.id] ?? 0, weight: slice.weight })), [slices, measure.id, limit])
   const color = measureColor(spec, measure.id)
   const options = useMemo(
@@ -54,6 +56,7 @@ function Bars({ spec, dim, measure, slices, query, limit }: { spec: Spec; dim: s
       skeleton={{ kind: 'chart', height: Math.max(90, 18 + limit * 22) }}
       spec={spec}
       provenance={provenance}
+      bind={drawn}
       {...widgetState(query, rows.length)}
     >
       {rows.length === 0 ? <div className="bda-state">No values.</div> : <Chart options={options} height={Math.max(90, 18 + rows.length * 22)} title={`${measure.label} by ${dimensionLabel(spec, dim)}`} />}

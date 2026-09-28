@@ -184,6 +184,21 @@ export type WidgetProps = {
   readonly kind?: string | undefined
   readonly threadId?: string | undefined
   /**
+   * What this card draws with, resolved: `{ dims: ['region', 'channel'],
+   * limit: 12, measure: 'orders' }` rather than the spec's `{ dims: 'all',
+   * limit: 12 }`. Reported as the panel's `bind` in place of the spec-time
+   * one; omit it and the spec's bind is reported as-is. Compared by value,
+   * so building it inline on every render is fine.
+   */
+  readonly bind?: Readonly<Record<string, unknown>> | undefined
+  /**
+   * The declared query this card's figures come from (`spec.ts`'s `QUERY`),
+   * reported as the panel's `queryId` so the host's chat can re-run it.
+   * Defaults to `provenance`'s query when it names exactly one; a card that
+   * draws several names the primary one here.
+   */
+  readonly queryId?: string | undefined
+  /**
    * This card resolved with nothing to show (T9.0, contract 1) — the rows
    * came back and there were none. Only changes what the panel *reports*
    * (`empty` rather than `ready`); what the card renders is the recipe's own
@@ -220,11 +235,17 @@ export function widgetStatus({ pending, error = null, empty = false }: Pick<Widg
  * screen) — its `panelId` comes from `PanelMetaProvider` (App.tsx wraps every
  * resolved panel in one), so a recipe never has to know it exists.
  */
-export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, digest, spec, provenance, kind, threadId, empty, children }: WidgetProps) {
+export function Widget({ heading, pending, fetching = false, error = null, onRetry, skeleton, className = 'bda-card', style, digest, spec, provenance, kind, threadId, bind, queryId, empty, children }: WidgetProps) {
   const refreshing = fetching && !pending
   const meta = usePanelMeta()
   const status = widgetStatus({ pending, error, ...(empty === undefined ? {} : { empty }) })
-  const { nodeRef, highlighted } = useRegisterPanelInstance(meta, digest, status, { ...(kind === undefined ? {} : { kind }), ...(threadId === undefined ? {} : { threadId }) })
+  const primaryQuery = queryId ?? (provenance?.queries.length === 1 ? provenance.queries[0] : undefined)
+  const { nodeRef, highlighted } = useRegisterPanelInstance(meta, digest, status, {
+    ...(kind === undefined ? {} : { kind }),
+    ...(threadId === undefined ? {} : { threadId }),
+    ...(bind === undefined ? {} : { bind }),
+    ...(primaryQuery === undefined ? {} : { queryId: primaryQuery }),
+  })
   const classes = [className, refreshing ? 'kit-card--refreshing' : '', highlighted ? 'kit-card--highlight' : ''].filter((part) => part.length > 0).join(' ')
   const showProvenance = spec !== undefined && provenance !== undefined
   // The affordance is `position: absolute`, so this wrapper needs `position:

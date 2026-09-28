@@ -112,12 +112,14 @@ capability is a `postMessage` to the parent. This is the whole wire.
 | host -> frame | `studio:sandbox:query-result` | `requestId`, `ok`, `result` \| `error` | `runtime/src/studio/client.ts` |
 | frame -> host | `studio:sandbox:store` | `requestId`, `op` (`cache.get`/`set`/`delete`, `blob.get`/`list`), `key`/`name`/`value` | `runtime/src/studio/store.ts` |
 | host -> frame | `studio:sandbox:store-result` | `requestId`, `ok`, `result` \| `error` | `runtime/src/studio/store.ts` |
-| frame -> host | `studio:sandbox:context` | `panels[]` (`panelId`, `recipe`, `say`, `bind`, `selection?`, `digest?`, `kind?`, `threadId?`, **`status`**, `rect`), `tokens` | `runtime/src/studio/contextRegistry.ts` |
+| frame -> host | `studio:sandbox:context` | `panels[]` (`panelId`, `recipe`, `say`, `queryId?`, `bind` (resolved to what the card draws), `selection?`, `digest?`, `kind?`, `threadId?`, **`status`**, `rect`), `tokens`, **`scope?`** | `runtime/src/studio/contextRegistry.ts`, `runtime/src/studio/scope.ts` |
 | host -> frame | `studio:sandbox:highlight` | `panelId` | `runtime/src/studio/contextRegistry.ts` |
 | frame -> host | **`studio:sandbox:state`** | `state` (`asOf?`, `time?`, `filters`, `section?` — only what differs from the defaults), `dropped[]` (`{ id, reason }`) | `runtime/src/studio/contextRegistry.ts` |
 
 Note `studio:sandbox:state` uses `kind:` where the others use `type:` — it is a
 state announcement, not one half of a request/response pair.
+
+`scope` is the whole page as the host's chat applies it to every question, complete on every context message, defaults included: `{ complete: true, model, window: { column, from, to, preset?, grain, isDefault }, asOf?, filters (only those that narrow), measure, dimensions, entity?, compare? }`, typed in `scope.ts`. `window.to` is **exclusive**, as in the kit's own SQL (`time >= :from AND time < :to`). `studio:sandbox:state` stays delta-only, for the URL.
 
 ### Panel `status` (T9.0)
 
