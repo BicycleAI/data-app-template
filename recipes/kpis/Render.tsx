@@ -16,6 +16,7 @@ export function Render({ spec, core, bind }: CoreProps) {
   const periods = spec.rules?.compare_periods ?? 7
   const measures = Array.isArray(bind.measures) ? spec.measures.filter((measure) => (bind.measures as string[]).includes(measure.id)) : spec.measures
   const query = mergeQueries(core.totals, core.series)
+  const drawn = { style, measures: measures.map((measure) => measure.id) }
   return (
     <section className={style === 'spark' ? 'kit-kpis' : 'kit-ovrow'}>
       {measures.map((measure) => (
@@ -29,6 +30,7 @@ export function Render({ spec, core, bind }: CoreProps) {
           spark={style === 'spark'}
           active={style === 'spark' && controlEnabled(spec, 'measure') && ui.measure === measure.id}
           query={query}
+          drawn={drawn}
         />
       ))}
     </section>
@@ -44,6 +46,7 @@ function Tile({
   spark,
   active,
   query,
+  drawn,
 }: {
   spec: Spec
   measure: MeasureSpec
@@ -53,6 +56,7 @@ function Tile({
   spark: boolean
   active: boolean
   query: ReturnType<typeof mergeQueries>
+  drawn: Readonly<Record<string, unknown>>
 }) {
   const change = periodChange(measure, series, periods)
   const good = isGood(measure, change.delta)
@@ -77,7 +81,7 @@ function Tile({
   const digest = { measureId: measure.id, value: total, delta: change.delta, pct: change.pct }
   if (!spark) {
     return (
-      <Widget heading={<span className="kit-card__label">{word(spec, measure.id)}</span>} className="kit-card" skeleton={{ kind: 'metric' }} digest={digest} spec={spec} provenance={provenance} {...widgetState(query)}>
+      <Widget heading={<span className="kit-card__label">{word(spec, measure.id)}</span>} className="kit-card" skeleton={{ kind: 'metric' }} digest={digest} spec={spec} provenance={provenance} bind={drawn} queryId={QUERY.totals} {...widgetState(query)}>
         <span className="kit-card__value">{fmtMeasure(total, measure.format, true)}</span>
         <span className="kit-card__hint" style={{ color: deltaColor }}>
           {change.delta === null ? 'no prior period' : `${fmtDelta(change, measure.format)} vs prior ${change.periods}${(spec.time.grain ?? 'day')[0]}`}
@@ -94,6 +98,8 @@ function Tile({
       digest={digest}
       spec={spec}
       provenance={provenance}
+      bind={drawn}
+      queryId={QUERY.totals}
       {...widgetState(query)}
     >
       <div className="kit-kpi__value">{fmtMeasure(total, measure.format, true)}</div>

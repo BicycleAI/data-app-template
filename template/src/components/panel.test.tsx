@@ -11,12 +11,13 @@ import * as Plot from '@observablehq/plot'
 import { cleanup, render } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { type PageScope, setPageScope } from '../studio/contextRegistry.js'
 import { Chart, pointSelection } from './Chart.js'
 import { Panel, digestOf } from './Panel.js'
 
 type Report = { panelId: string; recipe: string; say?: string; queryId?: string; digest?: unknown; selection?: unknown }
 
-const sent: Array<{ type: string; panels: Report[] }> = []
+const sent: Array<{ type: string; panels: Report[]; scope?: PageScope }> = []
 const realParent = Object.getOwnPropertyDescriptor(window, 'parent')
 
 const latest = (): Report[] => {
@@ -178,5 +179,47 @@ describe('Chart inside a Panel', () => {
       await vi.advanceTimersByTimeAsync(200)
     })
     expect(sent).toEqual([])
+  })
+})
+
+describe('setPageScope', () => {
+  const SCOPE: PageScope = {
+    complete: true,
+    model: 'm_retail_demo',
+    window: { column: 'event_time', from: '2026-01-01', to: '2026-02-01', isDefault: true },
+    filters: [{ field: 'channel', label: 'Channel', values: ['online'], isDefault: false }],
+    measure: { id: 'revenue', column: 'revenue_total', label: 'Revenue' },
+  }
+
+  const contexts = () => sent.filter((message) => message.type === 'studio:sandbox:context')
+
+  it('rides on every context message once set, and the same scope again posts nothing', async () => {
+    render(<Panel id="by_month" title="Monthly revenue" queryId="revenue_by_month" />)
+    await flush()
+    setPageScope(SCOPE)
+    await flush()
+    expect(contexts().at(-1)?.scope).toEqual(SCOPE)
+
+    const before = contexts().length
+    setPageScope(JSON.parse(JSON.stringify(SCOPE)) as PageScope)
+    await flush()
+    expect(contexts()).toHaveLength(before)
+  })
+
+  it('is trimmed to what the host accepts, and a window that is not real days is left out', async () => {
+    render(<Panel id="by_month" title="Monthly revenue" />)
+    await flush()
+    const values = Array.from({ length: 150 }, (_, index) => `v${index}`)
+    setPageScope({
+      ...SCOPE,
+      window: { from: '2026-02-31', to: '2026-03-01', isDefault: false },
+      filters: Array.from({ length: 30 }, (_, index) => ({ field: `f${index}`, label: 'x'.repeat(300), values, isDefault: false })),
+    })
+    await flush()
+    const scope = contexts().at(-1)?.scope
+    expect(scope?.window).toBeUndefined()
+    expect(scope?.filters).toHaveLength(24)
+    expect(scope?.filters[0]?.values).toHaveLength(100)
+    expect(scope?.filters[0]?.label).toHaveLength(256)
   })
 })

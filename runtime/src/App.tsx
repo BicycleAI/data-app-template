@@ -76,7 +76,7 @@ export function App({ spec }: { spec: Spec }) {
   const needsEntity = spec.entity !== undefined
   return (
     <UiProvider spec={spec}>
-      <ControlsProvider spec={spec}>
+      <ControlsProvider spec={spec} entityId={entityId}>
         <Chrome spec={spec} entityId={entityId} onEntity={setEntityId}>
           {needsEntity && entityId === undefined ? null : isAb(spec) ? <AbBody spec={spec} entityId={entityId ?? ''} /> : <CoreBody spec={spec} entityId={entityId} />}
         </Chrome>

@@ -58,7 +58,17 @@ export function Render({ spec, core, bind }: CoreProps) {
   const lastPeriod = series[series.length - 1]
   const provenance = provenanceSpec({ queries: [QUERY.totals, QUERY.byTime], measures: [measure.id], rowCount: series.length || undefined, asOf: lastPeriod === undefined ? undefined : isoDay(lastPeriod.period) })
   return (
-    <Widget className={`kit-verdict kit-verdict--${tone}`} heading={<div className="kit-sh">Verdict</div>} skeleton={{ kind: 'text', lines: 2 }} spec={spec} provenance={provenance} {...widgetState(query)}>
+    <Widget
+      className={`kit-verdict kit-verdict--${tone}`}
+      heading={<div className="kit-sh">Verdict</div>}
+      skeleton={{ kind: 'text', lines: 2 }}
+      spec={spec}
+      provenance={provenance}
+      // The measure it always judges (the primary one unless bound), and the query its comparison is computed from.
+      bind={{ measure: measure.id }}
+      queryId={QUERY.byTime}
+      {...widgetState(query)}
+    >
       <div className="kit-verdict__head">
         <span className="kit-verdict__title">{headline}</span>
       </div>

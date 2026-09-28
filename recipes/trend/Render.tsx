@@ -22,12 +22,13 @@ export function Render({ spec, core, bind }: CoreProps) {
 
   if (by !== undefined) return <ByDimension spec={spec} core={core} by={by} measure={measureById(spec, ui.measure) ?? primaryMeasure(spec)} />
 
+  const drawn = { measures: measures.map((measure) => measure.id) }
   return (
     <section className="kit-section">
       <SectionHead title="Trends" right={bind.measures === undefined ? <MeasureSelect spec={spec} /> : undefined} />
       <div className={measures.length === 1 ? '' : 'kit-grid2'}>
         {measures.map((measure) => (
-          <TrendChart key={measure.id} spec={spec} measure={measure} series={core.series} />
+          <TrendChart key={measure.id} spec={spec} measure={measure} series={core.series} drawn={drawn} />
         ))}
       </div>
     </section>
@@ -38,7 +39,7 @@ type Point = { period: Date; value: number; series?: string }
 /** What a click on the chart reports as `selection` — the nearest point, tagged with which measure's line it came from. */
 type PointSelection = { measureId: string; period: string; value: number }
 
-function TrendChart({ spec, measure, series }: { spec: Spec; measure: MeasureSpec; series: CoreProps['core']['series'] }) {
+function TrendChart({ spec, measure, series, drawn }: { spec: Spec; measure: MeasureSpec; series: CoreProps['core']['series']; drawn: Readonly<Record<string, unknown>> }) {
   const color = measureColor(spec, measure.id)
   const panelId = usePanelId()
   const [selected, setSelected] = useSelection<PointSelection>(panelId)
@@ -76,6 +77,7 @@ function TrendChart({ spec, measure, series }: { spec: Spec; measure: MeasureSpe
       digest={digest}
       spec={spec}
       provenance={provenance}
+      bind={drawn}
       {...widgetState(series, points.length)}
     >
       {points.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={220} title={`${measure.label} trend`} onPointer={onPointer} />}
@@ -148,6 +150,7 @@ function ByDimension({ spec, core, by, measure }: { spec: Spec; core: CoreProps[
       digest={digest}
       spec={spec}
       provenance={provenance}
+      bind={{ by, measure: measure.id }}
       {...widgetState(query, data.length)}
     >
       {data.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={280} title={`${measure.label} by ${dimensionLabel(spec, by)}`} onPointer={onPointer} />}

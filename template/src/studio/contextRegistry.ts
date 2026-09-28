@@ -6,7 +6,9 @@
  * a hand-built app has no composer-resolved panel list to hang a React
  * context off of. See README-FOR-AGENTS.md's "Report your panels" — wrap
  * every card your app renders with `registerPanel`/`unregisterPanel` so it
- * gets the same host-owned chat a composed app does, for free.
+ * gets the same host-owned chat a composed app does, for free. Then call
+ * `setPageScope` with what the whole page is set to (its window, filters and
+ * measure), which the host sends with every chat question.
  *
  * Not `studio/context.ts` on purpose: that file is already the app's identity
  * (`initContext`/`context`) — the token, the app id, the theme. This is a
@@ -53,10 +55,49 @@ export type PanelReport = {
   readonly rect: PanelRect
 }
 
+/**
+ * What the whole page is set to, fully resolved. The host sends it with every
+ * chat question and the agent applies it to every query it runs, so report
+ * it whole, defaults included (`complete: true`). The same shape a composed
+ * app reports (`runtime/src/studio/scope.ts` in the kit). See
+ * README-FOR-AGENTS.md's "Report what the page is set to".
+ */
+export type PageScope = {
+  readonly complete: true
+  /** The model your queries read (`FROM m_…`). */
+  readonly model?: string
+  readonly window?: {
+    /** The time column your queries bound. */
+    readonly column?: string
+    /** Inclusive, `YYYY-MM-DD`. */
+    readonly from: string
+    /** EXCLUSIVE, `YYYY-MM-DD`: the `time >= :from AND time < :to` your queries use. */
+    readonly to: string
+    /** The preset picked, if any (`7d`, `30d`, `90d`, `quarter`, `ytd`). */
+    readonly preset?: string
+    readonly grain?: string
+    /** Whether this is the window the page opens on. */
+    readonly isDefault: boolean
+  }
+  readonly asOf?: string
+  /** Only the filters that narrow: one at "All" is left out. `[]` when none does. */
+  readonly filters: readonly { readonly field: string; readonly label?: string; readonly values: readonly string[]; readonly isDefault: boolean }[]
+  readonly measure?: { readonly id: string; readonly column?: string; readonly label?: string }
+  /** The split-by dimensions on screen. */
+  readonly dimensions?: readonly { readonly field: string; readonly label?: string }[]
+  readonly entity?: { readonly field: string; readonly value: string; readonly label?: string }
+  /** "Last `periods` vs the `periods` before", when a card compares periods. */
+  readonly compare?: { readonly periods: number; readonly grain?: string }
+  /** The tab on screen, when the app has tabs. */
+  readonly tab?: string
+}
+
 export type ContextMessage = {
   readonly type: 'studio:sandbox:context'
   readonly panels: readonly PanelReport[]
   readonly tokens: Readonly<Record<string, string>>
+  /** On every message once `setPageScope` has been called. */
+  readonly scope?: PageScope
 }
 
 export type HighlightMessage = {
@@ -124,6 +165,37 @@ function withinBudget(value: unknown): unknown {
   return copy.length > 0 ? copy : undefined
 }
 
+/** What the host accepts. `setPageScope` trims to these rather than throwing, like the digest budget above. */
+const SCOPE_LIMITS = { filters: 24, values: 100, dimensions: 24, chars: 256 }
+
+const clip = (text: string): string => text.slice(0, SCOPE_LIMITS.chars)
+
+/** Every string field of a flat object clipped to the limit. */
+function clipped<T extends object>(value: T): T {
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, typeof item === 'string' ? clip(item) : item])) as T
+}
+
+/** A real calendar day, `YYYY-MM-DD`: `2026-02-31` does not survive the round trip. */
+function isDay(value: string): boolean {
+  const date = new Date(`${value}T00:00:00Z`)
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
+
+function withinLimits(scope: PageScope): PageScope {
+  const { window: range, asOf, filters, dimensions, measure, entity, model, tab, ...rest } = scope
+  return {
+    ...rest,
+    ...(model === undefined ? {} : { model: clip(model) }),
+    ...(range === undefined || !isDay(range.from) || !isDay(range.to) ? {} : { window: clipped(range) }),
+    ...(asOf === undefined || !isDay(asOf) ? {} : { asOf }),
+    filters: filters.slice(0, SCOPE_LIMITS.filters).map((filter) => ({ ...clipped(filter), values: filter.values.slice(0, SCOPE_LIMITS.values).map(clip) })),
+    ...(measure === undefined ? {} : { measure: clipped(measure) }),
+    ...(dimensions === undefined ? {} : { dimensions: dimensions.slice(0, SCOPE_LIMITS.dimensions).map((dimension) => clipped(dimension)) }),
+    ...(entity === undefined ? {} : { entity: clipped(entity) }),
+    ...(tab === undefined ? {} : { tab: clip(tab) }),
+  }
+}
+
 type Panel = { meta: PanelMeta; el: Element; selection: unknown }
 
 const panels = new Map<string, Panel>()
@@ -133,6 +205,10 @@ const resizeObservers = new Map<string, ResizeObserver>()
 let reportTimer: ReturnType<typeof setTimeout> | undefined
 let rafScheduled = false
 let listening = false
+let scope: PageScope | undefined
+let scopeKey: string | undefined
+/** A context message has gone out, so the first report is no longer pending. */
+let posted = false
 
 function rectOf(el: Element): PanelRect {
   const box = el.getBoundingClientRect()
@@ -166,8 +242,9 @@ function buildReport(): readonly PanelReport[] {
 
 function post(): void {
   if (typeof window === 'undefined' || window.parent === window) return
-  const message: ContextMessage = { type: 'studio:sandbox:context', panels: buildReport(), tokens: readTokens() }
+  const message: ContextMessage = { type: 'studio:sandbox:context', panels: buildReport(), tokens: readTokens(), ...(scope === undefined ? {} : { scope }) }
   window.parent.postMessage(message, '*')
+  posted = true
 }
 
 /** Registry change: debounced 100ms. */
@@ -180,7 +257,7 @@ function scheduleReport(): void {
   }, 100)
 }
 
-/** Scroll/resize: rAF-throttled — geometry only, so there is no need to wait 100ms. */
+/** Scroll/resize, and a scope change: rAF-throttled — no need to wait 100ms. */
 function scheduleGeometryReport(): void {
   if (rafScheduled || typeof window === 'undefined') return
   rafScheduled = true
@@ -233,6 +310,23 @@ export function unregisterPanel(panelId: string): void {
   resizeObservers.delete(panelId)
   panels.delete(panelId)
   scheduleReport()
+}
+
+/**
+ * Report what the page is set to (`PageScope`), whole, on mount and again
+ * whenever any of it changes: the window, a filter, the measure. It rides on
+ * every context message from then on. The same scope twice is a no-op; a
+ * real change goes out on the next frame, so a question typed right after a
+ * filter change already carries it. Nothing is posted for it before your
+ * first `registerPanel`, whose first report carries it.
+ */
+export function setPageScope(next: PageScope): void {
+  const capped = withinLimits(next)
+  const key = JSON.stringify(capped)
+  if (key === scopeKey) return
+  scope = capped
+  scopeKey = key
+  if (posted) scheduleGeometryReport()
 }
 
 /** The picked row/point/cell, if your card has one worth reporting. Most cards do not need this. */
