@@ -7,10 +7,16 @@
  * that picks the values `controls.ts`'s `buildFilterParams` turns into those
  * parameters. `time` moves every query's `from`/`to`. Chips are the same
  * `.bda-pill` used elsewhere for a single choice (measure chips); a multi
- * filter adds an "All" chip and lets more than one stay pressed.
+ * filter lets more than one stay pressed, up to its slots.
+ *
+ * The chips show exactly what the query binds, because both read the same
+ * state and that state never outgrows the slots. A single-select filter has
+ * one chip pressed, always. A multi filter has an "All" chip only when its
+ * slots can hold every option. With more options than slots it says how many
+ * can be picked and disables the rest once that many are pressed.
  */
 
-import { buildFilterParams, seedOf, slotsOf, timePresets, useControls } from '../controls.js'
+import { allOf, seedOf, slotsOf, timePresets, useControls } from '../controls.js'
 import { controlEnabled, dimensionLabel, filterControls, type Spec, type TimePreset } from '../spec.js'
 
 const PRESET_LABEL: Record<TimePreset, string> = {
@@ -32,39 +38,47 @@ export function FilterBar({ spec }: { spec: Spec }) {
   const filterList = filterControls(spec)
   const hasTime = controlEnabled(spec, 'time')
   if (filterList.length === 0 && !hasTime) return null
-  const { overflow } = buildFilterParams(spec, filters)
 
   return (
     <div className="kit-filterbar">
       {filterList.map((filterControl) => {
         const dim = filterControl.dim
         const label = dimensionLabel(spec, dim)
-        const options = (filterControl.options ?? seedOf(filterControl)).map((value) => String(value))
-        const selected = filters[dim] ?? options
+        const seed = seedOf(filterControl)
+        const options = (filterControl.options ?? seed).map((value) => String(value))
+        const selected = filters[dim] ?? seed
         const multi = filterControl.multi === true
-        const allSelected = multi && options.length > 0 && options.every((option) => selected.includes(option))
+        const slots = slotsOf(filterControl, seed)
+        const all = allOf(filterControl)
+        const allSelected = all !== undefined && all.every((option) => selected.includes(option))
+        // A multi filter with more options than slots: once that many are pressed, the rest wait.
+        const full = multi && options.length > slots && selected.length >= slots
         return (
           <fieldset key={dim} className="bda-controls kit-filterbar__group">
             <legend className="bda-controls__label">{label}</legend>
-            {multi ? (
+            {all !== undefined ? (
               <button type="button" className="bda-pill" aria-pressed={allSelected} onClick={() => resetFilter(dim)}>
                 All
               </button>
             ) : null}
-            {options.map((option) => (
-              <button
-                key={option}
-                type="button"
-                className="bda-pill"
-                aria-pressed={selected.includes(option)}
-                onClick={() => (multi ? toggleFilterValue(dim, option) : setFilterValue(dim, option))}
-              >
-                {option}
-              </button>
-            ))}
-            {overflow[dim] === true ? (
+            {options.map((option) => {
+              const picked = selected.includes(option)
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  className="bda-pill"
+                  aria-pressed={picked}
+                  disabled={full && !picked}
+                  onClick={() => (multi ? toggleFilterValue(dim, option) : setFilterValue(dim, option))}
+                >
+                  {option}
+                </button>
+              )
+            })}
+            {multi && options.length > slots ? (
               <span className="bda-subtle kit-note kit-filterbar__note">
-                Totals and trends show all {plural(label)} — pick up to {slotsOf(filterControl, seedOf(filterControl))} to narrow them.
+                Pick up to {slots} {plural(label)}.
               </span>
             ) : null}
           </fieldset>

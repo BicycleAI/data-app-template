@@ -1,9 +1,10 @@
 /**
  * T3.3's contract with `compose/datasets.mjs`'s `## Filters`: a viewer's pick
  * has to become the same fixed-arity `<slug>_i` parameters the composer
- * rendered the query's SQL with, padding by repeating the last pick and
- * falling back to "all options" (with a flag) when the pick is wider than
- * the slots. Also covers the client-side filtering `by_dimension`/
+ * rendered the query's SQL with, padding by repeating the last pick. The
+ * selection never outgrows the slots (see filterSeed.test.tsx), so a wider
+ * one binds its first picks rather than a different set. Also covers the
+ * client-side filtering `by_dimension`/
  * `by_time_<dim>`/`segments` rows need (the query never narrows them), and
  * the time-preset arithmetic, against a fixed `now` so it never flakes.
  */
@@ -30,7 +31,7 @@ const SPEC: Spec = {
   ],
   questions: [],
   controls: [
-    // 8 options, multi, no explicit `slots` — the composer caps at 5, so picking 6+ overflows.
+    // 8 options, multi, no explicit `slots` — the composer caps at 5, so at most 5 can be picked.
     { kind: 'filter', dim: 'region', multi: true, options: ['emea', 'amer', 'apac', 'latam', 'anzu', 'nordics', 'benelux', 'dach'], default: ['emea', 'amer'] },
     // single-select: always exactly 1 slot.
     { kind: 'filter', dim: 'channel', options: ['web', 'app', 'store'], default: 'web' },
@@ -69,33 +70,30 @@ describe('slotsOf', () => {
 
 describe('buildFilterParams', () => {
   it('(a) default selection: one param per slot, repeating the last pick to fill the rest', () => {
-    const { params, overflow } = buildFilterParams(SPEC, initialFilters(SPEC))
+    const { params } = buildFilterParams(SPEC, initialFilters(SPEC))
     // region: multi, 8 options -> 5 slots; default picks 2 -> padded by repeating "amer".
     expect(params).toMatchObject({ region_0: 'emea', region_1: 'amer', region_2: 'amer', region_3: 'amer', region_4: 'amer' })
     // channel: single-select -> exactly 1 slot.
     expect(params).toMatchObject({ channel_0: 'web' })
-    expect(overflow).toEqual({ region: false, channel: false })
   })
 
   it('(b) one region picked: every slot repeats that single pick', () => {
-    const { params, overflow } = buildFilterParams(SPEC, { region: ['apac'], channel: ['app'] })
+    const { params } = buildFilterParams(SPEC, { region: ['apac'], channel: ['app'] })
     expect(params).toMatchObject({ region_0: 'apac', region_1: 'apac', region_2: 'apac', region_3: 'apac', region_4: 'apac', channel_0: 'app' })
-    expect(overflow.region).toBe(false)
   })
 
-  it('(c) six regions picked (more than the 5 slots): falls back to all options and flags the overflow', () => {
-    const sixPicked = ['emea', 'amer', 'apac', 'latam', 'anzu', 'nordics']
-    const { params, overflow } = buildFilterParams(SPEC, { region: sixPicked, channel: ['web'] })
-    // Slots repeat the first 5 of the control's full `options` list — not the viewer's 6 picks,
-    // which cannot be expressed in 5 scalar parameters.
-    expect(params).toMatchObject({ region_0: 'emea', region_1: 'amer', region_2: 'apac', region_3: 'latam', region_4: 'anzu' })
-    expect(overflow.region).toBe(true)
-    expect(overflow.channel).toBe(false)
+  it('(c) a selection wider than the 5 slots binds its first 5 picks — the cut the page shows — never other options', () => {
+    // ControlsProvider never holds this (see filterSeed.test.tsx); should it reach here anyway, the
+    // query narrows to the same values the in-memory narrowing and the state report read.
+    const sixPicked = ['benelux', 'dach', 'apac', 'latam', 'anzu', 'nordics']
+    const { params } = buildFilterParams(SPEC, { region: sixPicked, channel: ['web'] })
+    expect(params).toMatchObject({ region_0: 'benelux', region_1: 'dach', region_2: 'apac', region_3: 'latam', region_4: 'anzu' })
   })
 
-  it('a single-select filter with its one pick in state never overflows its one slot', () => {
-    const { overflow } = buildFilterParams(SPEC, { region: ['emea'], channel: ['web'] })
-    expect(overflow.channel).toBe(false)
+  it('a single-select filter binds its one pick to its one slot', () => {
+    const { params } = buildFilterParams(SPEC, { region: ['emea'], channel: ['store'] })
+    expect(params).toMatchObject({ channel_0: 'store' })
+    expect(params).not.toHaveProperty('channel_1')
   })
 })
 
