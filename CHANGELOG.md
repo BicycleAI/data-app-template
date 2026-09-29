@@ -8,7 +8,8 @@ hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MI
 
 ## 1.2.0 (proposed tag `kit-v1.2.0`)
 
-Additive: one new optional spec field (`theme.builtWithBicycle`, default `true`); no manifest change.
+Additive: three optional spec fields (`theme.builtWithBicycle` default `true`, `currency` default `USD`,
+`sampleData` default `false`); no manifest change. Visible: percent and rate measures now show one decimal.
 
 ### Added
 - "Built with Bicycle": the official logo, bundled (`runtime/src/assets/`, `template/src/assets/`) and inlined
@@ -22,12 +23,28 @@ Additive: one new optional spec field (`theme.builtWithBicycle`, default `true`)
   banner; ₹ with lakh/crore for Indian tenants; rates to one decimal; curate alerts). The same in
   `docs/agents/02-data-apps.md`, `template/CLAUDE.md`, `template/README-FOR-AGENTS.md` and the ask-show-ship skill.
 - `skills/semantic-query/SKILL.md`: a model id that is not a plain identifier is double-quoted, `FROM "7Abc1234"`.
+- Spec `currency` (ISO 4217, default `USD`): `format: currency` measures show the tenant's currency. `INR` reads
+  the Indian way, ₹12,34,567 in full and ₹4.2 L / ₹1.3 Cr compact (`fmtMoney`, `setCurrency` in
+  `runtime/src/format.ts`). The ab_test family's money (NICPD) follows it too.
+- Spec `sampleData` (default `false`): a "Sample data — illustrative" banner at the top of the Report and
+  Explorer chromes (`chrome/SampleBanner.tsx`). Every `spec/examples/` spec sets it.
+- `template/src/studio/store.ts`: the runtime's blob and cache client, so a hand-built app can read declared
+  blobs. `README-FOR-AGENTS.md` has "Blobs and the cache", and `evals/templateParity.test.tsx` keeps the two
+  copies identical.
+- "Lessons from real apps" gains the gotchas from a real demo app, each with its workaround: one property per
+  entity per query, `date_trunc` for day series with entity fields, no ORDER BY + LIMIT across backend queries, a
+  blank count is 0, Detect and Explain takes the entity, drafts cannot run queries before publish, blobs via
+  `store.ts`, resolve Plot colour tokens, keep native roles, keep blobs small.
 - `studio:sandbox:context` carries `scope`, the whole page resolved for the host's chat: the window (`to`
   exclusive), `asOf`, the filters that narrow, the rail's measure, the checked dimensions, the entity and the
   period comparison (`runtime/src/studio/scope.ts`). A change is posted on the next frame. The template's
   `studio/contextRegistry.ts` exposes the same `setPageScope`. `studio:sandbox:state` is unchanged.
 - Core recipes' panel reports carry `queryId` (the card's primary query) and a `bind` resolved to what the card
   draws, e.g. breakdown's `dims: 'all'` becomes the checked fields plus the selected measure.
+
+### Changed
+- `percent` and `rate` measures show one decimal (3.1%, was 3.14%), and a rate's change shows one decimal of
+  points. The ab_test family's lift percentages keep two.
 
 ### Fixed
 - A filter's state is now always what its query binds (`runtime/src/controls.tsx`). Before, the seed (the

@@ -6,6 +6,7 @@
   "decision": "Are retail orders healthy in the regions and channels we run, and where are refunds concentrated?",
   "persona": "pm",
   "template": "report",
+  "sampleData": true,
   "time": {
     "column": "event_time",
     "from": "2026-08-01",

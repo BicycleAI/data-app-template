@@ -6,6 +6,7 @@ import { controlEnabled, type Spec } from '../spec.js'
 import { DepthPills, DimensionChecks, MeasureSelect } from '../ui.js'
 import { BuiltWithBicycle, showBuiltWith } from './BuiltWith.js'
 import { FilterBar } from './FilterBar.js'
+import { SampleBanner } from './SampleBanner.js'
 
 type Props = { spec: Spec; entityId: string | undefined; onEntity: (id: string) => void; children: ReactNode }
 
@@ -26,6 +27,7 @@ export function ReportChrome({ spec, entityId, onEntity, children }: Props) {
 
   return (
     <main className="kit-report">
+      <SampleBanner spec={spec} />
       <nav className="kit-nav">
         <div className="kit-nav__title">
           {spec.title}
