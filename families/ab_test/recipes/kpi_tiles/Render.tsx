@@ -23,7 +23,7 @@ export function Render({ spec, data, bind }: RecipeProps) {
 
   if (style === 'spark') {
     const query = mergeQueries(data.meta, data.overall, data.trend)
-    if (!query.isPending && variant === undefined) return null
+    if (query.error === null && !query.isPending && variant === undefined) return null
     const trend = data.trend.rows?.filter((point) => point.variant === variant?.name) ?? []
     const provenance = provenanceSpec({ queries: [QUERY.meta, QUERY.armTotals, QUERY.trend], measures: abRoleMeasureIds(spec), rowCount: trend.length || undefined, asOf: data.meta.rows?.window.dataAsOf })
     return (
@@ -37,7 +37,7 @@ export function Render({ spec, data, bind }: RecipeProps) {
   }
 
   const query = mergeQueries(data.meta, data.overall)
-  if (!query.isPending && variant === undefined) return null
+  if (query.error === null && !query.isPending && variant === undefined) return null
   const meta = data.meta.rows
   const next = variant === undefined ? 0 : (ui.variantIndex + 1) % overall.length
   const provenance = provenanceSpec({ queries: [QUERY.meta, QUERY.armTotals], measures: abRoleMeasureIds(spec), rowCount: overall.length || undefined, asOf: meta?.window.dataAsOf })

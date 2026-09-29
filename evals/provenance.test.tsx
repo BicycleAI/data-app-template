@@ -1,5 +1,5 @@
 /**
- * T3.5, "Provenance — How is this computed?"
+ * T3.5, "Provenance", shown as "Source"
  *
  * Everything the popover shows travels WITH the composed app already: the
  * declared queries (`window.__DATA_APP_QUERIES`, see `compose/bundle.mjs`'s
@@ -13,9 +13,11 @@
  * Synthetic spec only — no real customer or model ids, per `scripts/no-real-ids.sh`.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { CORE } from '../runtime/src/App.js'
+import { showSources, toCsv } from '../runtime/src/chrome/Provenance.js'
 import { ControlsProvider } from '../runtime/src/controls.js'
 import type { CoreData, QueryState } from '../runtime/src/data.js'
 import type { QuerySpec, Spec } from '../runtime/src/spec.js'
@@ -87,20 +89,20 @@ afterEach(() => {
   delete window.__DATA_APP_QUERIES
 })
 
-describe('the "How is this computed?" affordance', () => {
+describe('the "Source" link', () => {
   it('is a keyboard-reachable button, closed until clicked', () => {
     mountKpis()
-    const trigger = screen.getAllByRole('button', { name: 'How is this computed?' })[0]
+    const trigger = screen.getAllByRole('button', { name: 'Source' })[0]
     expect(trigger).toBeDefined()
-    expect(screen.queryByRole('dialog', { name: 'How is this computed?' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Source' })).toBeNull()
   })
 
   it('shows the substituted SQL, the measure definition and the panel explain on click', () => {
     mountKpis()
-    const trigger = screen.getAllByRole('button', { name: 'How is this computed?' })[0] as HTMLElement
+    const trigger = screen.getAllByRole('button', { name: 'Source' })[0] as HTMLElement
     fireEvent.click(trigger)
 
-    const popover = screen.getAllByRole('dialog', { name: 'How is this computed?' })[0]
+    const popover = screen.getAllByRole('dialog', { name: 'Source' })[0]
     expect(popover).toBeDefined()
     const text = popover.textContent ?? ''
 
@@ -119,10 +121,66 @@ describe('the "How is this computed?" affordance', () => {
 
   it('closes on a second click', () => {
     mountKpis()
-    const trigger = screen.getAllByRole('button', { name: 'How is this computed?' })[0] as HTMLElement
+    const trigger = screen.getAllByRole('button', { name: 'Source' })[0] as HTMLElement
     fireEvent.click(trigger)
-    expect(screen.queryByRole('dialog', { name: 'How is this computed?' })).not.toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Source' })).not.toBeNull()
     fireEvent.click(trigger)
-    expect(screen.queryByRole('dialog', { name: 'How is this computed?' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Source' })).toBeNull()
+  })
+})
+
+describe('the "Source" side panel', () => {
+  const RESULT = {
+    columns: [{ name: 'region', type: 'string' }, { name: 'orders_total', type: 'number' }],
+    rows: [['emea', 120], ['amer, north', 80], ['apac', null], ['latam', 5], ['mea', 4], ['anz', 3]],
+    meta: { rowCount: 6, truncated: false },
+  }
+
+  function mountWithCache(spec: Spec = SPEC) {
+    window.__DATA_APP_QUERIES = QUERIES
+    const client = new QueryClient()
+    client.setQueryData(['bda', 'app_demo', 'totals', '{}', 'null', 'null', null], RESULT)
+    const meta = { panelId: 'p0:kpis', recipe: 'kpis', say: 'How big is each measure?', bind: {}, explain: EXPLAIN }
+    const Recipe = CORE.kpis
+    if (Recipe === undefined) throw new Error('no "kpis" core recipe')
+    return render(
+      <QueryClientProvider client={client}>
+        <UiProvider spec={spec}>
+          <ControlsProvider spec={spec}>
+            <PanelMetaProvider value={meta}>
+              <Recipe spec={spec} core={readyCore} bind={{}} />
+            </PanelMetaProvider>
+          </ControlsProvider>
+        </UiProvider>
+      </QueryClientProvider>,
+    )
+  }
+
+  it('shows the title, window, model and query, and the first rows of the last result', () => {
+    mountWithCache()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Source' })[0] as HTMLElement)
+    const panel = screen.getAllByRole('dialog', { name: 'Source' })[0] as HTMLElement
+    const text = panel.textContent ?? ''
+    expect(text).toContain('How big is each measure?')
+    expect(text).toContain('2026-01-01 to 2026-02-01')
+    expect(text).toContain('m_retail_demo')
+    expect(text).toContain('totals')
+    expect(text).toContain('6 rows')
+    expect(text).toContain('first 5 shown')
+    expect(text).toContain('emea')
+    expect(text).not.toContain('anz') // the sixth row is in the CSV, not the preview
+    expect(screen.getAllByRole('button', { name: 'Download CSV' }).length).toBeGreaterThan(0)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close source' })[0] as HTMLElement)
+    expect(screen.queryByRole('dialog', { name: 'Source' })).toBeNull()
+  })
+
+  it('is on by default and off with showSources: false', () => {
+    expect(showSources(SPEC)).toBe(true)
+    mountWithCache({ ...SPEC, showSources: false })
+    expect(screen.queryByRole('button', { name: 'Source' })).toBeNull()
+  })
+
+  it('writes every row to the CSV, quoting what needs it', () => {
+    expect(toCsv(RESULT)).toBe('region,orders_total\nemea,120\n"amer, north",80\napac,\nlatam,5\nmea,4\nanz,3\n')
   })
 })

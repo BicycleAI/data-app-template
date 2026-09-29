@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactNode } from 'react'
 import type { Confidence, VariantOverall } from './analysis.js'
-import { Provenance, type ProvenanceSpec } from './chrome/Provenance.js'
+import { Provenance, type ProvenanceSpec, showSources } from './chrome/Provenance.js'
 import { SkeletonChart, SkeletonMetric, SkeletonTable, SkeletonText } from './components/Skeleton.js'
 import type { CoreData, Dataset, QueryState } from './data.js'
 import { fmtSigned } from './format.js'
@@ -138,16 +138,27 @@ function SkeletonFor({ spec }: { spec: SkeletonSpec }) {
 }
 
 /** What failed, and a way to try again without reloading the rest of the app. */
+/**
+ * A failed or timed-out query: a quiet "Couldn't load" with Retry, never a number. The query was already
+ * retried with backoff (`studio/hooks.ts`); the code and message stay in the tooltip for whoever debugs it.
+ * Distinct from an empty result, which reads "No data for this window" (`EmptyState`).
+ */
 export function WidgetError({ error, onRetry }: { error: BdaError; onRetry: () => void }) {
   return (
-    <div className="kit-widget-error" role="alert">
-      <span className="kit-widget-error__code">{error.code}</span>
-      <span>{error.message}</span>
+    <div className="kit-widget-error" role="alert" title={`${error.code}: ${error.message}`}>
+      <span>Couldn't load</span>
       <button type="button" className="kit-widget-error__retry" onClick={onRetry}>
         Retry
       </button>
     </div>
   )
+}
+
+/** A query that answered with no rows: true, and said so — never a zero. */
+export const EMPTY_TEXT = 'No data for this window'
+
+export function EmptyState() {
+  return <div className="bda-state">{EMPTY_TEXT}</div>
 }
 
 export type WidgetProps = {
@@ -170,7 +181,7 @@ export type WidgetProps = {
    * `digest`. See `studio/contextRegistry.ts`.
    */
   readonly digest?: unknown
-  /** The spec, when this card wants a "How is this computed?" affordance — pair with `provenance`. */
+  /** The spec, when this card wants a "Source" link — pair with `provenance`. */
   readonly spec?: Spec
   /** What to show in the provenance popover. Omit (with `spec`) for a card with nothing worth explaining; both must be present for the affordance to render. */
   readonly provenance?: ProvenanceSpec
@@ -247,7 +258,7 @@ export function Widget({ heading, pending, fetching = false, error = null, onRet
     ...(primaryQuery === undefined ? {} : { queryId: primaryQuery }),
   })
   const classes = [className, refreshing ? 'kit-card--refreshing' : '', highlighted ? 'kit-card--highlight' : ''].filter((part) => part.length > 0).join(' ')
-  const showProvenance = spec !== undefined && provenance !== undefined
+  const showProvenance = spec !== undefined && provenance !== undefined && showSources(spec)
   // The affordance is `position: absolute`, so this wrapper needs `position:
   // relative` — merged into `style` rather than a new class, since callers
   // pass many different `className`s (`bda-card`, `kit-kpi`, `kit-panel`…).

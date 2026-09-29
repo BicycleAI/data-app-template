@@ -12,7 +12,7 @@ export function Render({ spec, data, bind }: RecipeProps) {
   const overall = data.overall.rows ?? []
   const variant = activeVariant(overall, ui.variantIndex)
   const query = mergeQueries(data.meta, data.overall)
-  if (!query.isPending && variant === undefined) return null
+  if (query.error === null && !query.isPending && variant === undefined) return null
   const metric = (typeof bind.measure === 'string' && bind.measure !== 'ui' ? (bind.measure as Metric) : ui.metric) ?? 'NIBPD'
   const value = variant?.kpis[metric] ?? null
   const bar = spec.rules?.confidence_bar ?? '90%'

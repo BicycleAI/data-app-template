@@ -32,6 +32,26 @@ export function stableKey(value: unknown): string {
   })
 }
 
+/** Tries after the first: three in all, so a redeploy's few seconds of 502s or host timeouts pass unseen. */
+export const MAX_RETRIES = 2
+
+/**
+ * Retry what is transient — a server-side failure (5xx), or no answer at all
+ * (status 0: `host_timeout`, a dropped connection) — and never what is not:
+ * a refused query, an expired token (4xx) or a cancelled one. What still
+ * fails shows "Couldn't load" with Retry, never a number.
+ */
+export function shouldRetry(failures: number, error: BdaError): boolean {
+  if (failures >= MAX_RETRIES) return false
+  if (error.code === 'aborted') return false
+  return error.status >= 500 || error.status === 0
+}
+
+/** Backoff between tries: 1 s, then 2 s (capped at 8 s). */
+export function retryDelay(failures: number): number {
+  return Math.min(1000 * 2 ** failures, 8000)
+}
+
 export function useAppQuery(
   queryId: string,
   options: QueryOptions & { enabled?: boolean } = {},
@@ -54,12 +74,8 @@ export function useAppQuery(
     // Keep the previous rows visible while a filter change refetches.
     placeholderData: keepPreviousData,
     staleTime: 30_000,
-    retry: (attempt, error) => {
-      // A refused query or an expired token does not fix itself by retrying;
-      // only a server-side failure is worth a second attempt.
-      if (error.status < 500) return false
-      return attempt < 2
-    },
+    retry: shouldRetry,
+    retryDelay: retryDelay,
   })
 }
 

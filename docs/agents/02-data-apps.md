@@ -102,6 +102,7 @@ admin switches it in the app's settings: *Functions in chat: Inherit / Off* (`se
   apps draw it (`theme.builtWithBicycle: false` hides it, only if the person asks); hand-built apps keep the
   template's `<BuiltWithBicycle />`. Never recreate, recolour or hotlink it.
 - Never put a customer's logo in an app unless the customer provided the file for it.
+- Every number shows its source: keep the "Source" link on every card.
 
 ## Lessons from real apps
 
@@ -112,6 +113,12 @@ admin switches it in the app's settings: *Functions in chat: Inherit / Off* (`se
 - **Money in the tenant's currency.** Composed: `"currency": "INR"` (ISO 4217) gives ₹12,34,567, ₹4.2 L and
   ₹1.3 Cr. Hand-built: format the same way (`fmtMoney` in the kit's `runtime/src/format.ts`). Never `$` for a
   non-US tenant.
+- **Every number shows its source.** Composed apps put a small "Source" link on every KPI, chart and table (title,
+  window, model and query, the exact SQL, row count, first rows, CSV); `"showSources": false` only if the person
+  asks. Hand-built: give each card the same (its declared query, window and rows).
+- **A failure is never a zero.** A failed or timed-out query shows "Couldn't load" with Retry (after 3 tries with
+  backoff), and an empty answer says "No data for this window". Never default a missing value to 0, ₹0 or 0.0%,
+  and never write a finding from a partial answer.
 - **Rates to one decimal** (3.1%). The kit does this by default.
 - **Curate alerts, do not list them.** Merge metrics for the same event into one alert. Fold a daily repeat into
   one ongoing issue (since when, how many days). Rank by impact.

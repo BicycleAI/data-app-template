@@ -8,12 +8,15 @@ import { QUERY } from '../../runtime/src/spec.js'
 /** Deterministic findings: how each measure moved, and where a dimension concentrates or diverges. Waits on `totals` + `series` + `dims`. */
 export function Render({ spec, core }: CoreProps) {
   const query = mergeQueries(core.totals, core.series, core.dims)
+  // Findings from a partial answer would state movements nobody measured: none while any query failed.
+  const failed = query.error !== null
   const findings = useMemo(() => {
+    if (failed) return []
     const byDim = new Map<string, readonly Slice[]>()
     for (const dim of spec.dimensions.slice(0, 4)) byDim.set(dim.field, core.slicesAt([dim.field]))
     return buildFindings(spec, core.totals.rows ?? {}, core.series.rows ?? [], byDim, spec.rules?.compare_periods ?? 7)
-  }, [spec, core])
-  if (!query.isPending && findings.length === 0) return null
+  }, [spec, core, failed])
+  if (!failed && !query.isPending && findings.length === 0) return null
   return (
     <section className="kit-section">
       <div className="kit-sh">What stands out</div>

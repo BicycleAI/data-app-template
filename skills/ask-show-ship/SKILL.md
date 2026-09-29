@@ -64,7 +64,7 @@ Each move: what you ask · what you show · when to stop. One move per message u
 
 **7 · Ship.** Read the spec back in one paragraph a person can nod at ("A report on checkout tests. It answers four questions… viewers can switch experiment and metric, and narrow by region and channel… it calls NIBPD 'extra bookings a day' and needs 90% confidence"). Name the filters in that sentence — the brief says the same thing back as "You can narrow by: Region, Channel". Call `design_spec_validate`, fix anything, then `design_compose`. Report the state. If `validated`, ask "Publish it?" and call `dataapp_publish` only on a yes. Offer `design_brief` for the executive thread.
 
-**Branding.** Every app shows the small "Built with Bicycle" logo (the kit's bundled file). Leave `theme.builtWithBicycle` unset unless the person asks to hide it; never put a customer's logo in an app unless they provided it. An app on sample or demo data sets `"sampleData": true` (a "Sample data — illustrative" banner). Set `currency` to the tenant's (ISO 4217; `INR` shows ₹ with lakh and crore).
+**Branding.** Every app shows the small "Built with Bicycle" logo (the kit's bundled file). Leave `theme.builtWithBicycle` unset unless the person asks to hide it; never put a customer's logo in an app unless they provided it. An app on sample or demo data sets `"sampleData": true` (a "Sample data — illustrative" banner). Set `currency` to the tenant's (ISO 4217; `INR` shows ₹ with lakh and crore). Every card has a "Source" link (leave `showSources` unset unless the person asks), and a failed query shows "Couldn't load", never a zero.
 
 ## Sentence grammar (move 4)
 

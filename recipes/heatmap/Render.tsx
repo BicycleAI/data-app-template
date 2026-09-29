@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { provenanceSpec } from '../../runtime/src/chrome/Provenance.js'
 import { Chart } from '../../runtime/src/components/Chart.js'
 import { fmtMeasure } from '../../runtime/src/core.js'
-import { type CoreProps, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
+import { type CoreProps, EmptyState, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
 import { dimensionLabel, measureById, primaryMeasure, QUERY, word } from '../../runtime/src/spec.js'
 import { usePanelId, useSelection } from '../../runtime/src/studio/contextRegistry.js'
 import { HeatmapAxes, useUi } from '../../runtime/src/ui.js'
@@ -75,7 +75,7 @@ export function Render({ spec, core, bind }: CoreProps) {
       {rowsDim === colsDim ? (
         <div className="bda-state">Pick two different dimensions.</div>
       ) : cells.length === 0 ? (
-        <div className="bda-state">No cells.</div>
+        <EmptyState />
       ) : (
         <>
           <Chart options={options} height={Math.min(520, Math.max(220, 100 + rowCount * 34))} title={`${measure.label} heatmap`} onPointer={onPointer} />

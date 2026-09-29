@@ -23,7 +23,7 @@ export type MeasureSpec = {
   readonly format?: Format
   readonly good?: 'up' | 'down'
   readonly role?: 'primary' | 'secondary'
-  /** The semantic layer's plain-language definition of this measure, for the "How is this computed?" provenance popover. */
+  /** The semantic layer's plain-language definition of this measure, for the "Source" panel. */
   readonly definition?: string
   /** The semantic layer's expression for this measure (e.g. a metric formula), for the provenance popover. */
   readonly expression?: string
@@ -143,6 +143,8 @@ export type Spec = {
   readonly store?: StoreSpec
   /** ISO 4217 code for `format: currency` measures (default USD). INR shows ₹ with lakh and crore. */
   readonly currency?: string
+  /** Every card's "Source" link and side panel (default true): every number shows its source. */
+  readonly showSources?: boolean
   /** The app runs on sample or demo data: show the "Sample data — illustrative" banner. */
   readonly sampleData?: boolean
   readonly panels?: readonly Panel[]
@@ -166,7 +168,7 @@ export type QueryParam = {
 
 /**
  * A declared query as the composer rendered it, carried alongside the spec
- * (`window.__DATA_APP_QUERIES`) so the "How is this computed?" provenance
+ * (`window.__DATA_APP_QUERIES`) so the "Source" provenance
  * popover can show the exact semantic SQL a panel's data came from. This is
  * a read-only copy for display — the runtime still issues every query
  * through `studio/hooks.ts`'s `useAppQuery`, never through this.
