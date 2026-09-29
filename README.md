@@ -220,7 +220,7 @@ not change, so every message repeats it rather than the host having to remember
 the first one.
 
 `snapshot: true` adds `kit-snapshot` to the document root, and `theme.css` does
-the rest: the provenance "How is this computed?" affordance and the summary
+the rest: the "Source" link and the summary
 panel's expand toggle are hidden, and transitions and animations stop. Nothing
 is rendered conditionally — the DOM a capture sees is the DOM a viewer sees —
 and the filters stay on screen, because a capture has to show what was applied.

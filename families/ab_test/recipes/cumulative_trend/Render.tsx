@@ -6,7 +6,7 @@ import { provenanceSpec } from '../../../../runtime/src/chrome/Provenance.js'
 import { Chart } from '../../../../runtime/src/components/Chart.js'
 import { mergeQueries } from '../../../../runtime/src/data.js'
 import { fmtCompact, fmtCompactMoney, fmtPct, fmtSigned } from '../../../../runtime/src/format.js'
-import { Legend, METRIC_COLOR, METRIC_TITLE, type RecipeProps, Widget, widgetState } from '../../../../runtime/src/parts.js'
+import { EmptyState, Legend, METRIC_COLOR, METRIC_TITLE, type RecipeProps, Widget, widgetState } from '../../../../runtime/src/parts.js'
 import { abRoleMeasureIds, armsOf, type Metric, type MetricOrCvr, QUERY, type Spec, word } from '../../../../runtime/src/spec.js'
 import { activeVariant, useUi } from '../../../../runtime/src/ui.js'
 
@@ -16,7 +16,7 @@ export function Render({ spec, data, bind }: RecipeProps) {
   const overall = data.overall.rows ?? []
   const variant = activeVariant(overall, ui.variantIndex)
   const query = mergeQueries(data.overall, data.trend)
-  if (!query.isPending && variant === undefined) return null
+  if (query.error === null && !query.isPending && variant === undefined) return null
   const measures = (Array.isArray(bind.measures) ? (bind.measures as MetricOrCvr[]) : ['NIBPD', 'NIBrPD', 'NICPD', 'CVR']) as MetricOrCvr[]
   const points = variant === undefined ? [] : (data.trend.rows ?? []).filter((point) => point.variant === variant.name)
   return (
@@ -70,7 +70,7 @@ function TrendChart({ spec, metric, points, variant, query }: { spec: Spec; metr
       provenance={provenanceSpec({ queries: [QUERY.armTotals, QUERY.trend], measures: abRoleMeasureIds(spec), rowCount: rows.length || undefined, asOf: lastRow === undefined ? undefined : isoDay(lastRow.day) })}
       {...widgetState(query)}
     >
-      {rows.length === 0 ? <div className="bda-state">No daily data.</div> : <Chart options={options} height={240} title={`${metric} trend`} />}
+      {rows.length === 0 ? <EmptyState /> : <Chart options={options} height={240} title={`${metric} trend`} />}
     </Widget>
   )
 }
@@ -123,7 +123,7 @@ function CvrChart({ spec, points, variant, query }: { spec: Spec; points: readon
       provenance={provenanceSpec({ queries: [QUERY.armTotals, QUERY.trend], measures: abRoleMeasureIds(spec), rowCount: rows.length || undefined, asOf: lastRow === undefined ? undefined : isoDay(lastRow.day) })}
       {...widgetState(query)}
     >
-      {rows.length === 0 ? <div className="bda-state">No daily data.</div> : <Chart options={options} height={240} title="Conversion rate trend" />}
+      {rows.length === 0 ? <EmptyState /> : <Chart options={options} height={240} title="Conversion rate trend" />}
     </Widget>
   )
 }

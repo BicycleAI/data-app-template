@@ -26,6 +26,13 @@ hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MI
 - `template/src/studio/store.ts`: the runtime's blob and cache client, so a hand-built app can read declared
   blobs. `README-FOR-AGENTS.md` has "Blobs and the cache", and `evals/templateParity.test.tsx` keeps the two
   copies identical.
+- "Source" on every KPI, chart and table (every number shows its source): the provenance affordance is now a small
+  visible "Source" link opening a side panel with the panel's title, the date window, the model and declared query,
+  the exact semantic SQL, the measures' definitions, the row count and first rows of the last result (read from
+  the query cache, never a new fetch) and a CSV download. The summary's `[n]` citations open the same panel. Spec
+  `showSources` (default `true`) turns it off.
+- `EmptyState`: an answer with no rows reads "No data for this window" (trend, breakdown, heatmap, cumulative
+  trend), distinct from a failure.
 - "Lessons from real apps" gains the gotchas from a real demo app, each with its workaround: one property per
   entity per query, `date_trunc` for day series with entity fields, no ORDER BY + LIMIT across backend queries, a
   blank count is 0, Detect and Explain takes the entity, drafts cannot run queries before publish, blobs via
@@ -40,6 +47,13 @@ hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MI
 ### Changed
 - `percent` and `rate` measures show one decimal (3.1%, was 3.14%), and a rate's change shows one decimal of
   points. The ab_test family's lift percentages keep two.
+
+- A failed or timed-out query never reads as a number. Queries retry what is transient (5xx, or no answer:
+  `host_timeout`) up to three tries with backoff (1 s, 2 s), in the runtime and the template (`shouldRetry`,
+  `retryDelay` in `studio/hooks.ts`); what still fails shows a quiet "Couldn't load" with Retry (code and message
+  in the tooltip). Cards that hid themselves on a failure (narrative, ab_test verdict, KPI tiles, cumulative
+  trend, overview) now show it, and narrative writes no findings from a partial answer. `evals/failure.test.tsx`
+  renders every recipe failed, part-failed and empty, and fails on any zero amount, rate or change.
 
 ### Fixed
 - A filter's state is now always what its query binds (`runtime/src/controls.tsx`). Before, the seed (the

@@ -13,7 +13,7 @@ export function Render({ spec, data }: RecipeProps) {
   const variant = activeVariant(overall, ui.variantIndex)
   const segQuery = data.segmentsAt(ui.dims, ui.depth)
   const query = mergeQueries(data.meta, data.overall, segQuery)
-  if (!query.isPending && variant === undefined) return null
+  if (query.error === null && !query.isPending && variant === undefined) return null
   const window = data.meta.rows?.window
   const combos = combinations(ui.dims, Math.min(ui.depth, ui.dims.length)).length
   const segments = (segQuery.rows ?? []).filter((segment) => segment.variant === variant?.name).length

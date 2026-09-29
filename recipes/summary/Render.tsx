@@ -13,7 +13,7 @@ const RETRY_MAX_MS = 4000
 
 /**
  * `[n]` -> a small reference button. Clicking it pulses the panel that
- * figure came from and opens its "How is this computed?" card (see
+ * figure came from and opens its "Source" panel (see
  * `onRefClick` below); hovering shows the exact SQL and value in a native
  * tooltip either way, so the reference is checkable even when the panel it
  * names isn't on screen right now.

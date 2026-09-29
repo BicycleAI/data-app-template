@@ -4,7 +4,7 @@ import { isoDay, str } from '../../runtime/src/analysis.js'
 import { provenanceSpec } from '../../runtime/src/chrome/Provenance.js'
 import { Chart } from '../../runtime/src/components/Chart.js'
 import { fmtMeasure, isRate } from '../../runtime/src/core.js'
-import { type CoreProps, measureColor, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
+import { type CoreProps, EmptyState, measureColor, SectionHead, Widget, widgetState } from '../../runtime/src/parts.js'
 import { dimensionLabel, type MeasureSpec, measureById, primaryMeasure, QUERY, type Spec, word } from '../../runtime/src/spec.js'
 import { usePanelId, useSelection } from '../../runtime/src/studio/contextRegistry.js'
 import { MeasureSelect, useUi } from '../../runtime/src/ui.js'
@@ -80,7 +80,7 @@ function TrendChart({ spec, measure, series, drawn }: { spec: Spec; measure: Mea
       bind={drawn}
       {...widgetState(series, points.length)}
     >
-      {points.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={220} title={`${measure.label} trend`} onPointer={onPointer} />}
+      {points.length === 0 ? <EmptyState /> : <Chart options={options} height={220} title={`${measure.label} trend`} onPointer={onPointer} />}
       {selected?.measureId === measure.id ? (
         <p className="kit-caption bda-subtle">
           Selected: {selected.period} · {fmtMeasure(selected.value, measure.format)}
@@ -153,7 +153,7 @@ function ByDimension({ spec, core, by, measure }: { spec: Spec; core: CoreProps[
       bind={{ by, measure: measure.id }}
       {...widgetState(query, data.length)}
     >
-      {data.length === 0 ? <div className="bda-state">No data.</div> : <Chart options={options} height={280} title={`${measure.label} by ${dimensionLabel(spec, by)}`} onPointer={onPointer} />}
+      {data.length === 0 ? <EmptyState /> : <Chart options={options} height={280} title={`${measure.label} by ${dimensionLabel(spec, by)}`} onPointer={onPointer} />}
       {selected !== undefined ? (
         <p className="kit-caption bda-subtle">
           Selected: {selected.series} · {isoDay(selected.period)} · {fmtMeasure(selected.value, measure.format)}

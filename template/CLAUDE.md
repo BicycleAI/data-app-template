@@ -20,5 +20,7 @@ guide; `../docs/agents/` is the offline copy.
 - Keep `<BuiltWithBicycle />` (`src/components/BuiltWithBicycle.tsx`): the bundled official logo, small. Never
   recreate, recolour or hotlink it; `BUILT_WITH_BICYCLE = false` only if the person asks. Never use a customer's
   logo unless the customer provided it.
+- Every number shows its source, and a failed query is never a zero ("Couldn't load" + Retry; an empty answer
+  says "No data for this window"). See Lessons.
 - Read "Lessons from real apps" in `../CLAUDE.md` before you build: each gotcha has its workaround (quoting a
   model id, sample-data banners, currency, rates, alerts, entity fields, blank counts, drafts, blobs).
