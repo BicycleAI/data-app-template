@@ -7,6 +7,17 @@ hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MI
 ## Unreleased
 
 ### Added
+- "Built with Bicycle": the official logo, bundled (`runtime/src/assets/`, `template/src/assets/`) and inlined
+  into `app.js` as a `data:` URI, so it renders under the frame's CSP and in the snapshot renderer offline. Composed
+  apps show it small in the chrome's footer (it replaces the "Powered by Bicycle AI" text); the new
+  `theme.builtWithBicycle` (default `true`) hides it. The template has `<BuiltWithBicycle />` in its sample app,
+  with one switch (`BUILT_WITH_BICYCLE`). The logo's wordmark is white, so it sits on a dark chip
+  (`--bda-brand-chip`) in both themes. `evals/brand.test.tsx` and the template's test pin the file's bytes.
+- `CLAUDE.md`: "Branding" (use the bundled logo; never recreate or recolour it; no customer logo unless the
+  customer provided it) and "Lessons from real apps" (quote a model id that starts with a digit; sample-data
+  banner; ₹ with lakh/crore for Indian tenants; rates to one decimal; curate alerts). The same in
+  `docs/agents/02-data-apps.md`, `template/CLAUDE.md`, `template/README-FOR-AGENTS.md` and the ask-show-ship skill.
+- `skills/semantic-query/SKILL.md`: a model id that is not a plain identifier is double-quoted, `FROM "7Abc1234"`.
 - `studio:sandbox:context` carries `scope`, the whole page resolved for the host's chat: the window (`to`
   exclusive), `asOf`, the filters that narrow, the rail's measure, the checked dimensions, the entity and the
   period comparison (`runtime/src/studio/scope.ts`). A change is posted on the next frame. The template's

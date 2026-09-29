@@ -14,3 +14,11 @@ guide; `../docs/agents/` is the offline copy.
 4. **Never invent** data, fields or causes. Say when you do not know.
 5. **Hand over**: walk them through testing, list what you created and how to disable each piece.
 6. **Plain words.**
+
+## Branding and lessons
+
+- Keep `<BuiltWithBicycle />` (`src/components/BuiltWithBicycle.tsx`): the bundled official logo, small. Never
+  recreate, recolour or hotlink it; `BUILT_WITH_BICYCLE = false` only if the person asks. Never use a customer's
+  logo unless the customer provided it.
+- Read "Lessons from real apps" in `../CLAUDE.md` before you build: quoting a model id, sample-data banners,
+  currency, rates, alerts.

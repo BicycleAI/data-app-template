@@ -96,6 +96,25 @@ agents (`expose.agents`), as tools named `fn_<local>`, with the same invocation 
 admin switches it in the app's settings: *Functions in chat: Inherit / Off* (`settings.chat.functions`,
 `PATCH /api/data-apps/{id}`). There is no MCP tool for this setting yet.
 
+## Branding
+
+- Every app shows the official Bicycle logo, small ("Built with Bicycle"), from the kit's bundled file. Composed
+  apps draw it (`theme.builtWithBicycle: false` hides it, only if the person asks); hand-built apps keep the
+  template's `<BuiltWithBicycle />`. Never recreate, recolour or hotlink it.
+- Never put a customer's logo in an app unless the customer provided the file for it.
+
+## Lessons from real apps
+
+- Quote a model id that is not a plain identifier: an id that starts with a digit (`7Abc1234`) is written
+  `FROM "7Abc1234"`. `query_describe_model` prints the `FROM` to copy.
+- An app on sample or demo data shows a visible "Sample data — illustrative" banner.
+- Money in the tenant's currency: for Indian tenants ₹ with lakh and crore (₹4.2 L, ₹1.3 Cr). Rates to one
+  decimal (3.1%).
+- Curate alerts: merge metrics for the same event into one alert, fold a daily repeat into one ongoing issue
+  (since when, how many days), rank by impact.
+- Composed apps cannot draw the banner or format ₹ yet (the kit shows `$` and two-decimal rates): hand-build
+  when an app needs them.
+
 ## Schedules and sharing
 
 - `dataapp_schedule` creates, updates, enables, disables, deletes or runs a scheduled snapshot of one saved view,

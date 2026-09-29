@@ -134,7 +134,12 @@ export type Spec = {
   readonly controls?: readonly ControlSpec[]
   readonly words?: Readonly<Record<string, string>>
   readonly rules?: Rules
-  readonly theme?: { readonly accent?: 'blue' | 'teal' | 'purple' | 'amber' | 'coral'; readonly follow?: 'system' | 'light' | 'dark' }
+  readonly theme?: {
+    readonly accent?: 'blue' | 'teal' | 'purple' | 'amber' | 'coral'
+    readonly follow?: 'system' | 'light' | 'dark'
+    /** The small "Built with Bicycle" logo in the footer (default true). */
+    readonly builtWithBicycle?: boolean
+  }
   readonly store?: StoreSpec
   readonly panels?: readonly Panel[]
   /**

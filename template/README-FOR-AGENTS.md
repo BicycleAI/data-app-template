@@ -393,6 +393,7 @@ runs in a frame with no storage, so the choice could not be remembered.
 | `--bda-space-1` … `--bda-space-5` | 4, 8, 12, 16, 24px |
 | `--bda-font-family`, `--bda-font-size` | type |
 | `--bda-shadow` | card depth (none in dark) |
+| `--bda-brand-chip`, `--bda-brand-chip-text` | the "Built with Bicycle" chip — dark in both themes |
 
 Everything except the palette is shared between the two themes: only the
 colour tokens are redefined under `:root[data-theme='dark']`.
@@ -404,6 +405,14 @@ Ready-made classes in `theme.css`: `.bda-card`, `.bda-title`, `.bda-heading`,
 reader that the layout has no room for). Controls: `.bda-controls`
 (+`--spread`, `__label`), `.bda-select`, `.bda-checkbox`, `.bda-checkboxes`
 (+`--inline`) — see "Filters and controls".
+
+### Branding
+
+Keep `<BuiltWithBicycle />` (`src/components/BuiltWithBicycle.tsx`) when you
+replace the sample app: the official logo, bundled into `app.js`, small, on its
+own dark chip because its wordmark is white. Never recreate, recolour, stretch
+or hotlink it. `BUILT_WITH_BICYCLE = false` hides it, only if the person asks.
+Never use a customer's logo unless the customer provided the file.
 
 ### How much of the look can you change?
 

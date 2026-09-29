@@ -21,3 +21,28 @@ The people asking for apps are usually not engineers. Hold their hand:
 5. **Hand over properly.** After building, walk them through testing it, list everything you created (app,
    versions, functions, workflows, schedules) and say how to disable or remove each one.
 6. **Plain words.** No jargon, ids or stack traces unless they ask.
+
+## Branding
+
+- Every app shows the official Bicycle logo, small: "Built with Bicycle". Use the bundled file. Composed apps draw
+  it by default (`theme.builtWithBicycle: false` hides it, only if the person asks); hand-built apps keep
+  `<BuiltWithBicycle />` (`template/src/components/`).
+- Never recreate, redraw, recolour, stretch or hotlink the logo. Its wordmark is white, so it sits on its own dark
+  chip in both themes.
+- Never put a customer's logo in an app unless the customer provided the file for it.
+
+## Lessons from real apps
+
+Short rules learned building apps for people. New ones are added here.
+
+- **Quote a model id that is not a plain identifier.** An id that starts with a digit (`7Abc1234`) must be
+  double-quoted: `FROM "7Abc1234"`; bare, it does not parse. `query_describe_model` prints the `FROM` to copy.
+- **Sample data says so.** An app on demo or sample data shows a visible "Sample data — illustrative" banner.
+- **Money in the tenant's currency.** Indian tenants: ₹ with lakh and crore (₹4.2 L, ₹1.3 Cr), never `$` or
+  4,200,000. Otherwise the tenant's own currency.
+- **Rates to one decimal**: 3.1%, not 3.14% or 3%.
+- **Curate alerts, do not list them.** Merge metrics that describe the same event into one alert, fold a problem
+  that repeats every day into one ongoing issue (since when, for how many days), and rank by impact.
+
+Composed apps: the kit runtime does not draw a sample-data banner or format ₹ yet, and shows rates to two
+decimals. Hand-build when an app needs them.

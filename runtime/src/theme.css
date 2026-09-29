@@ -36,6 +36,9 @@
   --bda-space-4: 16px;
   --bda-space-5: 24px;
   --bda-shadow: 0 1px 2px rgb(16 24 40 / 4%), 0 1px 3px rgb(16 24 40 / 3%);
+  /* The "Built with Bicycle" chip: dark in both themes, because the logo's wordmark is white. */
+  --bda-brand-chip: #15171c;
+  --bda-brand-chip-text: #d7dbe4;
 }
 :root[data-accent='teal'] { --bda-accent: #0f9d8a; --bda-accent-soft: #e3f6f2; --bda-accent-muted: #9fdccf; }
 :root[data-accent='purple'] { --bda-accent: #8b46e0; --bda-accent-soft: #f0e8fb; --bda-accent-muted: #cdb3f2; }
@@ -63,6 +66,8 @@
   --bda-chart-5: #30b239;
   --bda-chart-6: #ed6555;
   --bda-shadow: none;
+  --bda-brand-chip: #15171c;
+  --bda-brand-chip-text: #d7dbe4;
 }
 :root[data-theme='dark'][data-accent='teal'] { --bda-accent: #2dd4bf; --bda-accent-soft: #10302e; --bda-accent-muted: #1f6f65; }
 :root[data-theme='dark'][data-accent='purple'] { --bda-accent: #a855f7; --bda-accent-soft: #2a2342; --bda-accent-muted: #5b3f8f; }
@@ -188,6 +193,9 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
 .kit-axes { display: flex; gap: var(--bda-space-2); flex-wrap: wrap; }
 .kit-field { display: flex; align-items: center; gap: var(--bda-space-2); font-size: 12px; color: var(--bda-text-secondary); }
 .kit-side__foot { margin-top: auto; padding-top: var(--bda-space-3); font-size: 11px; color: var(--bda-text-secondary); text-align: center; }
+/* "Built with Bicycle" (chrome/BuiltWith.tsx): the logo's wordmark is white, so it sits on its own dark chip in both themes. Never recolour the logo. */
+.kit-builtwith { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: var(--bda-radius-pill); background: var(--bda-brand-chip); border: 1px solid var(--bda-border); color: var(--bda-brand-chip-text); font-size: 11px; line-height: 1; vertical-align: middle; }
+.kit-builtwith__logo { display: block; height: 12px; width: auto; }
 .kit-main { min-width: 0; padding: var(--bda-space-4) var(--bda-space-5) var(--bda-space-5); display: flex; flex-direction: column; gap: var(--bda-space-4); }
 .kit-empty { max-width: 720px; margin: 12vh auto 0; display: flex; flex-direction: column; gap: var(--bda-space-3); }
 .kit-h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }

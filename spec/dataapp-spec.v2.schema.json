@@ -207,7 +207,8 @@
       "additionalProperties": false,
       "properties": {
         "accent": { "enum": ["blue", "teal", "purple", "amber", "coral"], "default": "blue" },
-        "follow": { "enum": ["system", "light", "dark"], "default": "system" }
+        "follow": { "enum": ["system", "light", "dark"], "default": "system" },
+        "builtWithBicycle": { "type": "boolean", "default": true, "description": "The small \"Built with Bicycle\" footer: the bundled official logo, never recoloured. Set false only when the person asks." }
       }
     },
     "store": {
