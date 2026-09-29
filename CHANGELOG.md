@@ -6,6 +6,10 @@ hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MI
 
 ## Unreleased
 
+## 1.2.0 (proposed tag `kit-v1.2.0`)
+
+Additive: one new optional spec field (`theme.builtWithBicycle`, default `true`); no manifest change.
+
 ### Added
 - "Built with Bicycle": the official logo, bundled (`runtime/src/assets/`, `template/src/assets/`) and inlined
   into `app.js` as a `data:` URI, so it renders under the frame's CSP and in the snapshot renderer offline. Composed
