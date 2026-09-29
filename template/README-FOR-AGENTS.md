@@ -722,6 +722,23 @@ Outside the host (`npm run dev`, tests) every call rejects with
 `fn_unavailable`: render the call's card in a "runs in Studio" state rather than
 failing the page. Errors are in "When something goes wrong" below.
 
+## Blobs and the cache
+
+`src/studio/store.ts` reads the app's declared blobs and its small shared
+cache through the host, like queries (the same file the kit runtime uses).
+Declare them in `bda.manifest.json` first (`blobs: [{name, purpose, kind}]`,
+`cache: {...}`, fields in `docs/agents/_generated/app-manifest.md`). A name
+that is not declared is refused with `store_not_declared`.
+
+```ts
+import { blobs, cache } from './studio/store.js'
+
+const targets = await blobs.json('targets')          // parsed JSON
+const csv = await blobs.text('distributor-orders')   // a CSV as text
+await cache.set('last_seen', { at: Date.now() })
+```
+
+
 ## Submitting
 
 ```bash

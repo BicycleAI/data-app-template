@@ -9,12 +9,14 @@ import { App } from './App.js'
 import { loadSpec } from './spec.js'
 import { initContext } from './studio/context.js'
 import { createQueryClient } from './studio/hooks.js'
+import { setCurrency } from './format.js'
 import { pinTheme } from './studio/theme.js'
 import './theme.css'
 
 function applyThemeChoices() {
   const spec = loadSpec()
   document.documentElement.dataset.accent = spec.theme?.accent ?? 'blue'
+  setCurrency(spec.currency)
   const follow = spec.theme?.follow ?? 'system'
   if (follow !== 'system') pinTheme(follow)
   return spec

@@ -141,6 +141,10 @@ export type Spec = {
     readonly builtWithBicycle?: boolean
   }
   readonly store?: StoreSpec
+  /** ISO 4217 code for `format: currency` measures (default USD). INR shows ₹ with lakh and crore. */
+  readonly currency?: string
+  /** The app runs on sample or demo data: show the "Sample data — illustrative" banner. */
+  readonly sampleData?: boolean
   readonly panels?: readonly Panel[]
   /**
    * Whether the host page offers its chat for this app, and what it may

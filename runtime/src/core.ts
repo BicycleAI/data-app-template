@@ -7,6 +7,7 @@
  */
 
 import { num, str } from './analysis.js'
+import { fmtMoney } from './format.js'
 import type { Format, MeasureSpec, Spec } from './spec.js'
 
 export type Row = Record<string, unknown>
@@ -132,11 +133,12 @@ export function fmtMeasure(value: number | null, format: Format | undefined, com
   if (value === null || !Number.isFinite(value)) return '—'
   switch (format) {
     case 'currency':
-      return compact ? compactMoney(value) : `$${Math.round(value).toLocaleString()}`
+      return fmtMoney(value, compact)
+    // Rates read to one decimal (3.1%): a second decimal is noise to the person reading the app.
     case 'percent':
-      return `${(value * 100).toFixed(2)}%`
+      return `${(value * 100).toFixed(1)}%`
     case 'rate':
-      return `${value.toFixed(2)}%`
+      return `${value.toFixed(1)}%`
     default:
       return compact ? compactNumber(value) : Number.isInteger(value) ? value.toLocaleString() : value.toFixed(Math.abs(value) < 10 ? 2 : 1)
   }
@@ -146,7 +148,7 @@ export function fmtDelta(change: Change, format: Format | undefined): string {
   if (change.delta === null) return '—'
   const sign = change.delta >= 0 ? '+' : '−'
   if (format === 'percent') return `${sign}${(Math.abs(change.delta) * 10_000).toFixed(0)} bps`
-  if (format === 'rate') return `${sign}${Math.abs(change.delta).toFixed(2)} pts`
+  if (format === 'rate') return `${sign}${Math.abs(change.delta).toFixed(1)} pts`
   const pct = change.pct === null ? '' : ` (${sign}${(Math.abs(change.pct) * 100).toFixed(1)}%)`
   return `${sign}${fmtMeasure(Math.abs(change.delta), format, true)}${pct}`
 }
@@ -160,11 +162,7 @@ export function compactNumber(value: number): string {
 }
 
 export function compactMoney(value: number): string {
-  const sign = value < 0 ? '−' : ''
-  const magnitude = Math.abs(value)
-  if (magnitude >= 1_000_000) return `${sign}$${(magnitude / 1_000_000).toFixed(1)}M`
-  if (magnitude >= 1000) return `${sign}$${(magnitude / 1000).toFixed(0)}k`
-  return `${sign}$${magnitude.toFixed(0)}`
+  return fmtMoney(value, true)
 }
 
 export type Finding = { readonly html: string; readonly tone: 'positive' | 'negative' | 'neutral' }
