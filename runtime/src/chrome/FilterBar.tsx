@@ -16,16 +16,8 @@
  * can be picked and disables the rest once that many are pressed.
  */
 
-import { allOf, seedOf, slotsOf, timePresets, useControls } from '../controls.js'
-import { controlEnabled, dimensionLabel, filterControls, type Spec, type TimePreset } from '../spec.js'
-
-const PRESET_LABEL: Record<TimePreset, string> = {
-  '7d': 'Last 7 days',
-  '30d': 'Last 30 days',
-  '90d': 'Last 90 days',
-  quarter: 'This quarter',
-  ytd: 'Year to date',
-}
+import { allOf, PRESET_LABEL, seedOf, slotsOf, timePresets, useControls } from '../controls.js'
+import { controlEnabled, dimensionLabel, filterControls, type Spec } from '../spec.js'
 
 /** "Region" -> "regions" — good enough for the dimension labels this narrows (short plain nouns). */
 function plural(label: string): string {

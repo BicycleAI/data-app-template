@@ -15,10 +15,14 @@
  *
  * Every message also carries the page's `scope` (see `scope.ts`) once
  * `ControlsProvider` has reported it: what the whole page is set to, which
- * the host sends with every chat question.
+ * the host sends with every chat question. And its `outline` (see
+ * `outline.ts`) once `App` has reported it: what the page is, its controls
+ * with what each offers and its panels, which the host sends when a chat
+ * thread starts and again when it changes.
  */
 
 import { createContext, type RefObject, useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
+import type { PageOutline } from './outline.js'
 import type { PageScope } from './scope.js'
 import { type AppliedState, type DroppedParam, type PanelStatus, type StateMessage, worstStatus } from './types.js'
 
@@ -70,6 +74,8 @@ export type ContextMessage = {
   readonly tokens: Readonly<Record<string, string>>
   /** What the whole page is set to, complete and resolved (`scope.ts`). On every message once `ControlsProvider` has reported it. */
   readonly scope?: PageScope
+  /** What the page is: its controls, what each one offers, its panels (`outline.ts`). Structure only. On every message once `App` has reported it. */
+  readonly outline?: PageOutline
 }
 
 export type HighlightMessage = {
@@ -172,6 +178,9 @@ let listening = false
 let scope: PageScope | undefined
 /** `scope` as JSON, so an identical rebuild is a no-op rather than a post. */
 let scopeKey: string | undefined
+let outline: PageOutline | undefined
+/** `outline` as JSON, the same way. */
+let outlineKey: string | undefined
 /** A context message has gone out: a first report is no longer pending. */
 let posted = false
 
@@ -253,7 +262,13 @@ function buildReport(): readonly PanelReport[] {
 
 function post(): void {
   if (typeof window === 'undefined' || window.parent === window) return
-  const message: ContextMessage = { type: 'studio:sandbox:context', panels: buildReport(), tokens: readTokens(), ...(scope === undefined ? {} : { scope }) }
+  const message: ContextMessage = {
+    type: 'studio:sandbox:context',
+    panels: buildReport(),
+    tokens: readTokens(),
+    ...(scope === undefined ? {} : { scope }),
+    ...(outline === undefined ? {} : { outline }),
+  }
   window.parent.postMessage(message, '*')
   posted = true
 }
@@ -272,6 +287,22 @@ export function setPageScope(next: PageScope): void {
   if (key === scopeKey) return
   scope = next
   scopeKey = key
+  if (posted) scheduleFrameReport()
+}
+
+/**
+ * The page's outline (`outline.ts`), carried on every context message from
+ * now on, exactly as the scope is. `App` calls this whenever the spec or the
+ * loaded entity list changes; an outline equal to the last one is dropped,
+ * and a real change goes out on the next frame. Until the first report there
+ * is nothing to post it with: that report carries whatever outline is current
+ * when it goes out.
+ */
+export function setPageOutline(next: PageOutline): void {
+  const key = JSON.stringify(next)
+  if (key === outlineKey) return
+  outline = next
+  outlineKey = key
   if (posted) scheduleFrameReport()
 }
 
@@ -312,7 +343,7 @@ function scheduleReport(): void {
   }, 100)
 }
 
-/** Scroll/resize, and a scope change: rAF-throttled — nothing to settle, so there is no need to wait 100ms. */
+/** Scroll/resize, and a scope or outline change: rAF-throttled — nothing to settle, so there is no need to wait 100ms. */
 function scheduleFrameReport(): void {
   if (rafScheduled || typeof window === 'undefined') return
   rafScheduled = true
@@ -407,6 +438,8 @@ export function resetRegistryForTests(): void {
   listening = false
   scope = undefined
   scopeKey = undefined
+  outline = undefined
+  outlineKey = undefined
   posted = false
 }
 
@@ -417,10 +450,13 @@ export function resetRegistryForTests(): void {
  * and to a recipe's own click handlers.
  *
  * `explain` is carried here for the in-frame Provenance popover's Method
- * section only. It deliberately does NOT flow into `PanelReport`/
- * `ContextMessage` above — the host's context reporter wire protocol is
- * pinned by `evals/context.test.tsx` and this repo's default is to keep that
- * message exactly as-is unless there's a specific reason to grow it.
+ * section. It reaches the host too, but through the page outline
+ * (`outline.ts`'s `panels[].explain`, read from the spec), not through
+ * `PanelReport`: how a card computes its numbers is what the page is, not
+ * what it shows, so it travels with the rest of the page's structure, which
+ * the host forwards when a chat thread starts and again only when it
+ * changes. That lets the agent say how any card is computed, one off screen
+ * included, while every panel report stays as `evals/context.test.tsx` pins it.
  */
 export type PanelMeta = {
   readonly panelId: string

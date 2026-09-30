@@ -240,6 +240,20 @@ export function filterControls(spec: Spec): readonly FilterControl[] {
   return (spec.controls ?? []).filter((control): control is FilterControl => control.kind === 'filter' && typeof control.dim === 'string')
 }
 
+/** The panels the page renders, in order: the composer's resolved `panels`, else one per question. */
+export function panelsOf(spec: Spec): readonly Panel[] {
+  return spec.panels ?? spec.questions.map((question) => ({ recipe: question.recipe, bind: question.bind ?? {}, say: question.say }))
+}
+
+/**
+ * `p3:ranking` — the resolved panel's position plus its recipe. Stable across
+ * a render, which is what the context reporter keys its registry on, and the
+ * id the page outline (`studio/outline.ts`) names the same panel by.
+ */
+export function panelId(index: number, recipe: string): string {
+  return `p${index}:${recipe}`
+}
+
 export function resolveTo(to: string): string {
   if (to !== 'tomorrow') return to
   return new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)

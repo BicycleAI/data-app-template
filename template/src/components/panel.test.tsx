@@ -1,5 +1,7 @@
 /**
  * What a `<Panel>` tells the host's chat, and what a `<Chart>` inside one adds.
+ * Then the page as a whole: the scope it is set to, and the outline its
+ * controls and page info describe.
  *
  * The host is a stand-in `window.parent` that records what it is sent: the
  * frame reports by posting to its parent, and only when it has one, so the
@@ -11,13 +13,22 @@ import * as Plot from '@observablehq/plot'
 import { cleanup, render } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { type PageScope, setPageScope } from '../studio/contextRegistry.js'
+import {
+  type OutlineControl,
+  type PageOutline,
+  type PageScope,
+  registerControl,
+  setPageInfo,
+  setPageScope,
+  unregisterControl,
+} from '../studio/contextRegistry.js'
 import { Chart, pointSelection } from './Chart.js'
 import { Panel, digestOf } from './Panel.js'
+import { useReportControl } from './useReportControl.js'
 
 type Report = { panelId: string; recipe: string; say?: string; queryId?: string; digest?: unknown; selection?: unknown }
 
-const sent: Array<{ type: string; panels: Report[]; scope?: PageScope }> = []
+const sent: Array<{ type: string; panels: Report[]; scope?: PageScope; outline?: PageOutline }> = []
 const realParent = Object.getOwnPropertyDescriptor(window, 'parent')
 
 const latest = (): Report[] => {
@@ -221,5 +232,176 @@ describe('setPageScope', () => {
     expect(scope?.filters).toHaveLength(24)
     expect(scope?.filters[0]?.values).toHaveLength(100)
     expect(scope?.filters[0]?.label).toHaveLength(256)
+  })
+})
+
+describe('describing the page', () => {
+  const TIME: OutlineControl = {
+    id: 'time',
+    kind: 'dateRange',
+    label: 'Time',
+    options: [
+      { value: '7d', label: 'Last 7 days' },
+      { value: '30d', label: 'Last 30 days' },
+    ],
+    default: ['30d'],
+    range: { min: '2025-01-01', max: '2026-06-30' },
+  }
+  const TOP_N: OutlineControl = {
+    id: 'top_n',
+    kind: 'select',
+    label: 'Show',
+    options: [
+      { value: '10', label: 'Top 10' },
+      { value: '25', label: 'Top 25' },
+    ],
+    default: ['10'],
+    panelId: 'by_region',
+  }
+
+  // Each control reported by the component that draws it, as README-FOR-AGENTS.md says: effects run children first.
+  function TimeRow() {
+    useReportControl(TIME)
+    return null
+  }
+  function ChannelFilter({ channels }: { channels: readonly string[] | undefined }) {
+    // Built inline on every render, with its options once they load.
+    useReportControl({ id: 'channel', kind: 'filter', label: 'Channel', ...(channels === undefined ? {} : { options: channels.map((value) => ({ value })) }), default: ['All'] })
+    return null
+  }
+  function TopN() {
+    useReportControl(TOP_N)
+    return null
+  }
+  function Page({ channels, topN = true }: { channels?: readonly string[]; topN?: boolean }) {
+    return (
+      <>
+        <TimeRow />
+        <ChannelFilter channels={channels} />
+        <Panel id="by_region" title="Revenue by region">
+          {topN ? <TopN /> : null}
+        </Panel>
+      </>
+    )
+  }
+
+  const contexts = () => sent.filter((message) => message.type === 'studio:sandbox:context')
+  const outline = () => contexts().at(-1)?.outline
+
+  // The page info outlives a test in this module's registry: start each one without it.
+  beforeEach(() => setPageInfo({}))
+
+  // Unmount while the clock is still fake, and let the frame that schedules run: one left
+  // pending when the real clock is back would never fire, and the registry would wait on it.
+  afterEach(async () => {
+    cleanup()
+    await flush()
+  })
+
+  it('reports the controls in the order they register, keeps a control in its place when it updates, and drops one that unmounts', async () => {
+    const view = render(<Page />)
+    await flush()
+    expect(outline()?.controls).toEqual([TIME, { id: 'channel', kind: 'filter', label: 'Channel', default: ['All'] }, TOP_N])
+
+    view.rerender(<Page channels={['All', 'online', 'store']} />)
+    await flush()
+    expect(outline()?.controls.map((control) => control.id)).toEqual(['time', 'channel', 'top_n'])
+    expect(outline()?.controls[1]?.options).toEqual([{ value: 'All' }, { value: 'online' }, { value: 'store' }])
+
+    view.rerender(<Page channels={['All', 'online', 'store']} topN={false} />)
+    await flush()
+    expect(outline()?.controls.map((control) => control.id)).toEqual(['time', 'channel'])
+
+    view.unmount()
+    await flush()
+    expect(outline()?.controls).toEqual([])
+  })
+
+  it('carries the page info with the controls, whole every time', async () => {
+    render(<Page />)
+    const info = {
+      title: 'Retail orders',
+      description: 'Which channels and regions move orders.',
+      notes: ['Orders are complete up to yesterday; refunds lag by about three days.'],
+      tabs: [
+        { label: 'Overview', active: true },
+        { label: 'Details', active: false },
+      ],
+      panels: [{ panelId: 'by_region', title: 'Revenue by region', kind: 'bar', explain: 'Revenue summed per region over the window.' }],
+    }
+    setPageInfo(info)
+    await flush()
+    expect(outline()).toEqual({ ...info, controls: [TIME, { id: 'channel', kind: 'filter', label: 'Channel', default: ['All'] }, TOP_N] })
+
+    // A field left out is no longer reported.
+    setPageInfo({ title: 'Retail orders' })
+    await flush()
+    expect(outline()).toEqual({ title: 'Retail orders', controls: expect.any(Array) })
+  })
+
+  it('posts nothing for the same outline again, and a change on the next frame', async () => {
+    render(<Page />)
+    setPageInfo({ title: 'Retail orders' })
+    await flush()
+    const before = contexts().length
+
+    registerControl({ ...TIME })
+    setPageInfo({ title: 'Retail orders' })
+    await flush()
+    expect(contexts()).toHaveLength(before)
+
+    // Well inside the registry's 100 ms debounce: only the next-frame report can have gone out.
+    setPageInfo({ title: 'Retail orders, by week' })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30)
+    })
+    expect(contexts().length).toBeGreaterThan(before)
+    expect(outline()?.title).toBe('Retail orders, by week')
+  })
+
+  it('is trimmed to what the host accepts, never thrown', async () => {
+    render(<Panel id="by_month" title="Monthly revenue" />)
+    const long = 'x'.repeat(1500)
+    const options = Array.from({ length: 150 }, (_, index) => ({ value: `v${index}_${'y'.repeat(300)}`, label: long }))
+    const ids = Array.from({ length: 30 }, (_, index) => `c${index}`)
+    registerControl({ id: 'wide', kind: 'k'.repeat(100), label: long, options, multi: true, maxPicks: 5000, default: options.map((option) => option.value), panelId: long })
+    // Not a real day, and a range the wrong way round: both left out. `maxPicks` without `multi` too.
+    registerControl({ id: 'odd', kind: 'dateRange', label: 'Time', optionCount: 2_000_000.5, maxPicks: 3, range: { min: '2026-02-31', max: '2026-03-01' } })
+    registerControl({ id: 'backwards', kind: 'dateRange', label: 'Time', range: { min: '2026-03-01', max: '2026-01-01' } })
+    for (const id of ids) registerControl({ id, kind: 'toggle', label: id })
+    setPageInfo({
+      title: long,
+      description: long,
+      notes: Array.from({ length: 10 }, () => long),
+      tabs: Array.from({ length: 20 }, () => ({ label: long, active: false })),
+      panels: Array.from({ length: 60 }, () => ({ panelId: long, title: long, kind: long, explain: long, tab: long })),
+    })
+    await flush()
+
+    const trimmed = outline()
+    expect(trimmed?.controls).toHaveLength(24)
+    const [wide, odd, backwards] = trimmed?.controls ?? []
+    expect(wide?.kind).toHaveLength(64)
+    expect(wide?.label).toHaveLength(256)
+    expect(wide?.options).toHaveLength(100)
+    expect(wide?.options?.[0]?.value).toHaveLength(256)
+    expect(wide?.options?.[0]?.label).toHaveLength(256)
+    expect(wide?.optionCount).toBe(150)
+    expect(wide?.maxPicks).toBe(1000)
+    expect(wide?.default).toHaveLength(100)
+    expect(wide?.panelId).toHaveLength(128)
+    expect(odd).toEqual({ id: 'odd', kind: 'dateRange', label: 'Time', optionCount: 1_000_000 })
+    expect(backwards).toEqual({ id: 'backwards', kind: 'dateRange', label: 'Time' })
+
+    expect(trimmed?.title).toHaveLength(256)
+    expect(trimmed?.description).toHaveLength(1000)
+    expect(trimmed?.notes).toHaveLength(8)
+    expect(trimmed?.notes?.[0]).toHaveLength(1000)
+    expect(trimmed?.tabs).toHaveLength(12)
+    expect(trimmed?.tabs?.[0]?.label).toHaveLength(256)
+    expect(trimmed?.panels).toHaveLength(48)
+    expect(trimmed?.panels?.[0]).toEqual({ panelId: 'x'.repeat(128), title: 'x'.repeat(256), kind: 'x'.repeat(64), explain: 'x'.repeat(1000), tab: 'x'.repeat(256) })
+
+    for (const id of ['wide', 'odd', 'backwards', ...ids]) unregisterControl(id)
   })
 })

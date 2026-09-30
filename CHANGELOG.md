@@ -13,6 +13,13 @@ hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MI
   `studio/contextRegistry.ts` exposes the same `setPageScope`. `studio:sandbox:state` is unchanged.
 - Core recipes' panel reports carry `queryId` (the card's primary query) and a `bind` resolved to what the card
   draws, e.g. breakdown's `dims: 'all'` becomes the checked fields plus the selected measure.
+- `studio:sandbox:context` carries `outline`, what the page is for the host's chat: its controls in screen order
+  with what each offers (the presets and their labels, the options, `multi`/`maxPicks`, what it starts on, the
+  panel a picker sits in, the entity list once loaded) and every panel with its `explain`
+  (`runtime/src/studio/outline.ts`). Structure only: the values stay in `scope`. Built from the helpers the chrome
+  renders with, and posted on the next frame when it changes. The template's `studio/contextRegistry.ts` gains
+  `registerControl`/`unregisterControl`/`setPageInfo` and `components/useReportControl.ts`, documented in
+  README-FOR-AGENTS ("Describe the page").
 
 ### Fixed
 - A filter's state is now always what its query binds (`runtime/src/controls.tsx`). Before, the seed (the
