@@ -37,16 +37,38 @@ export function measureOptions(spec: Spec): string[] {
   return isAb(spec) ? [...METRICS] : spec.measures.map((measure) => measure.id)
 }
 
-export function UiProvider({ spec, children }: { spec: Spec; children: ReactNode }) {
-  const depthControl = control(spec, 'depth')
+/** The `depth` control's combination depths, or 1- to 3-way when it names none. */
+export function depthOptions(spec: Spec): readonly number[] {
+  return (control(spec, 'depth')?.options as number[] | undefined) ?? [1, 2, 3]
+}
+
+/**
+ * What `UiProvider` starts on, before anyone picks: the measure control's
+ * `default` (else NIBPD for ab_test, else the primary measure; the first
+ * option when that is not one of them), the depth, every dimension checked,
+ * and the heatmap's axes. The page outline (`studio/outline.ts`) reports the
+ * same values as each control's `default`.
+ */
+export function initialUi(spec: Spec): Pick<UiState, 'measure' | 'depth' | 'dims' | 'heatRows' | 'heatCols'> {
   const options = measureOptions(spec)
-  const initial = (control(spec, 'measure')?.default as string | undefined) ?? (isAb(spec) ? 'NIBPD' : primaryMeasure(spec).id)
-  const [measure, setMeasureState] = useState<string>(options.includes(initial) ? initial : (options[0] ?? initial))
-  const [depth, setDepth] = useState<number>(Number(depthControl?.default ?? 3))
-  const [dims, setDims] = useState<readonly string[]>(spec.dimensions.map((dim) => dim.field))
+  const measure = (control(spec, 'measure')?.default as string | undefined) ?? (isAb(spec) ? 'NIBPD' : primaryMeasure(spec).id)
+  return {
+    measure: options.includes(measure) ? measure : (options[0] ?? measure),
+    depth: Number(control(spec, 'depth')?.default ?? 3),
+    dims: spec.dimensions.map((dim) => dim.field),
+    heatRows: spec.dimensions[1]?.field ?? spec.dimensions[0]?.field ?? '',
+    heatCols: spec.dimensions[2]?.field ?? spec.dimensions[0]?.field ?? '',
+  }
+}
+
+export function UiProvider({ spec, children }: { spec: Spec; children: ReactNode }) {
+  const initial = initialUi(spec)
+  const [measure, setMeasureState] = useState<string>(initial.measure)
+  const [depth, setDepth] = useState<number>(initial.depth)
+  const [dims, setDims] = useState<readonly string[]>(initial.dims)
   const [variantIndex, setVariantIndex] = useState(0)
-  const [heatRows, setHeatRows] = useState(spec.dimensions[1]?.field ?? spec.dimensions[0]?.field ?? '')
-  const [heatCols, setHeatCols] = useState(spec.dimensions[2]?.field ?? spec.dimensions[0]?.field ?? '')
+  const [heatRows, setHeatRows] = useState(initial.heatRows)
+  const [heatCols, setHeatCols] = useState(initial.heatCols)
 
   const value = useMemo(
     () => ({
@@ -121,7 +143,7 @@ export function MeasureSelect({ spec }: { spec: Spec }) {
 export function DepthPills({ spec }: { spec: Spec }) {
   const ui = useUi()
   if (!controlEnabled(spec, 'depth')) return null
-  const options = (control(spec, 'depth')?.options as number[] | undefined) ?? [1, 2, 3]
+  const options = depthOptions(spec)
   return (
     <fieldset className="bda-controls">
       <legend className="bda-visually-hidden">Dimension combination depth</legend>

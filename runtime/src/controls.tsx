@@ -200,6 +200,15 @@ export function timePresets(spec: Spec): readonly TimePreset[] {
   return control(spec, 'time')?.presets ?? ['7d', '30d', '90d']
 }
 
+/** What each preset is called on screen: the FilterBar's chips, and the page outline's options (`studio/outline.ts`). */
+export const PRESET_LABEL: Readonly<Record<TimePreset, string>> = {
+  '7d': 'Last 7 days',
+  '30d': 'Last 30 days',
+  '90d': 'Last 90 days',
+  quarter: 'This quarter',
+  ytd: 'Year to date',
+}
+
 /**
  * The starting time state: the `time` control's default preset resolved, or
  * the spec's own range. With an `asOf`, the default preset is computed
