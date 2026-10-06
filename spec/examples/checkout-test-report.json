@@ -5,6 +5,7 @@
   "decision": "Ship or hold a checkout test, and learn which cohorts it helps or hurts.",
   "persona": "pm",
   "template": "report",
+  "sampleData": true,
   "time": {
     "column": "timestamp",
     "from": "2026-02-01",

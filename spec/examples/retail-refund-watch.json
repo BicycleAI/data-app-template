@@ -5,6 +5,7 @@
   "decision": "Which regions and categories are driving refunds, is any of them trending, and are we within target?",
   "persona": "analyst",
   "template": "explorer",
+  "sampleData": true,
   "time": { "column": "event_time", "from": "2026-08-01", "to": "tomorrow", "grain": "day" },
   "measures": [
     { "id": "refunded", "column": "refund_count", "label": "Refunded orders", "format": "number", "good": "down", "role": "primary" },

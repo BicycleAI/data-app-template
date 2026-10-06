@@ -5,6 +5,7 @@
   "decision": "Where does the lift live?",
   "persona": "analyst",
   "template": "explorer",
+  "sampleData": true,
   "time": {
     "column": "timestamp",
     "from": "2026-02-01",

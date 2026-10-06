@@ -4,7 +4,9 @@ import { type ReactNode, useMemo, useState } from 'react'
 import { type EntityOption, useEntityList } from '../data.js'
 import { controlEnabled, type Spec } from '../spec.js'
 import { DepthPills, DimensionChecks, MeasureSelect } from '../ui.js'
+import { BuiltWithBicycle, showBuiltWith } from './BuiltWith.js'
 import { FilterBar } from './FilterBar.js'
+import { SampleBanner } from './SampleBanner.js'
 
 type Props = { spec: Spec; entityId: string | undefined; onEntity: (id: string) => void; children: ReactNode }
 
@@ -59,9 +61,14 @@ export function ExplorerChrome({ spec, entityId, onEntity, children }: Props) {
         ) : null}
         <DepthPills spec={spec} />
         <DimensionChecks spec={spec} />
-        <div className="kit-side__foot">Powered by Bicycle AI</div>
+        {showBuiltWith(spec) ? (
+          <div className="kit-side__foot">
+            <BuiltWithBicycle />
+          </div>
+        ) : null}
       </aside>
       <main className="kit-main">
+        <SampleBanner spec={spec} />
         <FilterBar spec={spec} />
         {entity !== undefined && entityId === undefined ? (
           <div className="kit-empty">

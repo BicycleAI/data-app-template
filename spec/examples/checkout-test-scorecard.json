@@ -5,6 +5,7 @@
   "decision": "Tell me in one line whether the treatment is winning, and which market is carrying it.",
   "persona": "biz",
   "template": "scorecard",
+  "sampleData": true,
   "time": {
     "from": "2026-02-01",
     "to": "tomorrow"

@@ -41,6 +41,7 @@
 
 import * as Plot from '@observablehq/plot'
 import { useEffect, useMemo, useState } from 'react'
+import { BuiltWithBicycle } from './components/BuiltWithBicycle.js'
 import { Chart } from './components/Chart.js'
 import { Panel } from './components/Panel.js'
 import { SkeletonChart, SkeletonMetric } from './components/Skeleton.js'
@@ -366,6 +367,10 @@ export function App() {
           pointLabel={(d) => `${String(d.product)} · ${String(d.share)}%`}
         />
       </Panel>
+
+      <footer className="bda-foot">
+        <BuiltWithBicycle />
+      </footer>
     </main>
   )
 }

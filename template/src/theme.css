@@ -64,6 +64,10 @@
   --bda-space-5: 24px;
   /* Cards sit on the page with light, diffuse depth rather than a hard edge. */
   --bda-shadow: 0 1px 2px rgb(16 24 40 / 4%), 0 1px 3px rgb(16 24 40 / 3%);
+
+  /* The "Built with Bicycle" chip: dark in both themes, because the logo's wordmark is white. */
+  --bda-brand-chip: #15171c;
+  --bda-brand-chip-text: #d7dbe4;
 }
 
 :root[data-theme='dark'] {
@@ -94,6 +98,9 @@
   --bda-chart-6: #c29bec;
 
   --bda-shadow: none;
+
+  --bda-brand-chip: #15171c;
+  --bda-brand-chip-text: #d7dbe4;
 }
 
 html,
@@ -480,6 +487,34 @@ body {
   max-width: 100%;
   height: auto;
   overflow: visible;
+}
+
+/* "Built with Bicycle" (components/BuiltWithBicycle.tsx). Keep it when you
+ * replace the sample app. Never recolour the logo; the chip is what makes its
+ * white wordmark readable in the light theme. */
+.bda-foot {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--bda-space-5);
+}
+
+.bda-builtwith {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--bda-radius-pill);
+  background: var(--bda-brand-chip);
+  border: 1px solid var(--bda-border);
+  color: var(--bda-brand-chip-text);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.bda-builtwith__logo {
+  display: block;
+  height: 12px;
+  width: auto;
 }
 
 /* --- the sample app's own layout; replace along with App.tsx --- */

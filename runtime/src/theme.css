@@ -36,6 +36,9 @@
   --bda-space-4: 16px;
   --bda-space-5: 24px;
   --bda-shadow: 0 1px 2px rgb(16 24 40 / 4%), 0 1px 3px rgb(16 24 40 / 3%);
+  /* The "Built with Bicycle" chip: dark in both themes, because the logo's wordmark is white. */
+  --bda-brand-chip: #15171c;
+  --bda-brand-chip-text: #d7dbe4;
 }
 :root[data-accent='teal'] { --bda-accent: #0f9d8a; --bda-accent-soft: #e3f6f2; --bda-accent-muted: #9fdccf; }
 :root[data-accent='purple'] { --bda-accent: #8b46e0; --bda-accent-soft: #f0e8fb; --bda-accent-muted: #cdb3f2; }
@@ -63,6 +66,8 @@
   --bda-chart-5: #30b239;
   --bda-chart-6: #ed6555;
   --bda-shadow: none;
+  --bda-brand-chip: #15171c;
+  --bda-brand-chip-text: #d7dbe4;
 }
 :root[data-theme='dark'][data-accent='teal'] { --bda-accent: #2dd4bf; --bda-accent-soft: #10302e; --bda-accent-muted: #1f6f65; }
 :root[data-theme='dark'][data-accent='purple'] { --bda-accent: #a855f7; --bda-accent-soft: #2a2342; --bda-accent-muted: #5b3f8f; }
@@ -188,6 +193,10 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
 .kit-axes { display: flex; gap: var(--bda-space-2); flex-wrap: wrap; }
 .kit-field { display: flex; align-items: center; gap: var(--bda-space-2); font-size: 12px; color: var(--bda-text-secondary); }
 .kit-side__foot { margin-top: auto; padding-top: var(--bda-space-3); font-size: 11px; color: var(--bda-text-secondary); text-align: center; }
+/* "Built with Bicycle" (chrome/BuiltWith.tsx): the logo's wordmark is white, so it sits on its own dark chip in both themes. Never recolour the logo. */
+.kit-builtwith { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: var(--bda-radius-pill); background: var(--bda-brand-chip); border: 1px solid var(--bda-border); color: var(--bda-brand-chip-text); font-size: 11px; line-height: 1; vertical-align: middle; }
+.kit-sample { padding: var(--bda-space-2) var(--bda-space-3); border-radius: var(--bda-radius); border: 1px solid var(--bda-accent-muted); background: var(--bda-accent-soft); color: var(--bda-text-primary); font-size: 13px; margin-bottom: var(--bda-space-3); }
+.kit-builtwith__logo { display: block; height: 12px; width: auto; }
 .kit-main { min-width: 0; padding: var(--bda-space-4) var(--bda-space-5) var(--bda-space-5); display: flex; flex-direction: column; gap: var(--bda-space-4); }
 .kit-empty { max-width: 720px; margin: 12vh auto 0; display: flex; flex-direction: column; gap: var(--bda-space-3); }
 .kit-h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
@@ -301,10 +310,9 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
 
 /* Per-widget error: what failed, and a way to try again without reloading
  * the rest of the app. */
-.kit-widget-error { display: flex; flex-direction: column; align-items: flex-start; gap: var(--bda-space-2); color: var(--bda-negative); }
-.kit-widget-error__code { font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--bda-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
-.kit-widget-error__retry { appearance: none; border: 1px solid var(--bda-negative); background: transparent; color: var(--bda-negative); border-radius: var(--bda-radius-pill); padding: 3px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-.kit-widget-error__retry:hover { background: color-mix(in srgb, var(--bda-negative) 12%, transparent); }
+.kit-widget-error { display: flex; align-items: center; gap: var(--bda-space-2); color: var(--bda-text-secondary); font-size: 13px; }
+.kit-widget-error__retry { appearance: none; border: 1px solid var(--bda-border); background: transparent; color: var(--bda-text-primary); border-radius: var(--bda-radius-pill); padding: 3px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.kit-widget-error__retry:hover { border-color: var(--bda-accent-muted); color: var(--bda-accent); }
 
 /* Host-driven highlight: the host page asked to point at a panel already on
  * screen — `studio:sandbox:highlight` in `studio/contextRegistry.ts`.
@@ -323,67 +331,57 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
  * recipe. */
 .kit-selected, tr.kit-selected td { background: var(--bda-accent-soft); outline: 1px solid var(--bda-accent-muted); outline-offset: -1px; }
 
-/* T3.5, "How is this computed?" — a quiet affordance in the corner of every
- * widget card, visible on hover/focus, opening a small anchored popover
- * (never a modal) with the panel's exact SQL, its measures' definitions, its
- * recipe's `explain` sentence and its row count/as-of. The trigger stays in
- * the accessibility tree and keyboard-reachable at all times; only its
- * opacity is hover/focus-gated, and `prefers-reduced-motion` drops the
- * transition entirely rather than skipping the fade. */
+/* T3.5, "Source" — every number shows its source. A small, always-visible
+ * link in the corner of every widget card opens a side panel with the panel's
+ * title, window, model and query, the exact SQL, its measures' definitions,
+ * its recipe's `explain` sentence, the first rows and a CSV download.
+ * Hidden in snapshot captures (below). */
 .kit-provenance { position: absolute; top: var(--bda-space-2); right: var(--bda-space-2); z-index: 5; }
 .kit-provenance__trigger {
   appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--bda-border);
-  border-radius: var(--bda-radius-pill);
-  background: var(--bda-surface-raised);
+  border: 0;
+  background: transparent;
   color: var(--bda-text-secondary);
   font: inherit;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out;
+  text-decoration: underline;
+  text-decoration-color: var(--bda-border);
+  text-underline-offset: 2px;
 }
-.kit-provenance:hover .kit-provenance__trigger,
-.kit-provenance__trigger:hover,
-.kit-provenance__trigger:focus-visible,
-.kit-provenance__trigger[aria-expanded='true'] {
-  opacity: 1;
-}
-.kit-provenance__trigger:hover, .kit-provenance__trigger:focus-visible { border-color: var(--bda-accent-muted); color: var(--bda-accent); }
+.kit-provenance__trigger:hover, .kit-provenance__trigger:focus-visible, .kit-provenance__trigger[aria-expanded='true'] { color: var(--bda-accent); text-decoration-color: currentColor; }
 .kit-provenance__trigger:focus-visible { outline: 2px solid var(--bda-accent-muted); outline-offset: 1px; }
-@media (prefers-reduced-motion: reduce) {
-  .kit-provenance__trigger { transition: none; }
-}
-.kit-provenance__side { position: absolute; top: 0; right: 0; }
-.kit-provenance__side--right { right: auto; left: 0; }
-.kit-provenance__side--right .kit-provenance__popover { right: auto; left: 0; }
+/* The side panel: fixed to the frame's right edge, full height, above every card. */
+.kit-provenance__side { position: static; }
 .kit-provenance__popover {
-  position: absolute;
-  top: 28px;
+  position: fixed;
+  top: 0;
   right: 0;
-  z-index: 20;
-  width: min(420px, calc(100vw - 2 * var(--bda-space-5)));
-  max-height: 420px;
+  bottom: 0;
+  z-index: 50;
+  width: min(440px, 100vw);
+  box-sizing: border-box;
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: var(--bda-space-3);
   background: var(--bda-surface-raised);
-  border: 1px solid var(--bda-border);
-  border-radius: var(--bda-radius);
-  box-shadow: var(--bda-shadow), 0 8px 24px rgb(16 24 40 / 12%);
+  border-left: 1px solid var(--bda-border);
+  box-shadow: var(--bda-shadow), -8px 0 24px rgb(16 24 40 / 12%);
   padding: var(--bda-space-4);
   text-align: left;
   font-size: 12px;
   color: var(--bda-text-primary);
 }
+.kit-provenance__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--bda-space-2); }
+.kit-provenance__title { font-size: 15px; font-weight: 800; line-height: 1.3; }
+.kit-provenance__close { appearance: none; border: 1px solid var(--bda-border); background: var(--bda-surface-background); color: var(--bda-text-secondary); border-radius: var(--bda-radius-pill); width: 24px; height: 24px; font: inherit; font-size: 14px; line-height: 1; cursor: pointer; flex-shrink: 0; }
+.kit-provenance__close:hover, .kit-provenance__close:focus-visible { color: var(--bda-accent); border-color: var(--bda-accent-muted); }
+.kit-provenance__rows { display: flex; flex-direction: column; gap: var(--bda-space-2); margin-top: var(--bda-space-2); }
 .kit-provenance__section { display: flex; flex-direction: column; gap: var(--bda-space-2); }
 .kit-provenance__heading { font-size: 11px; font-weight: 800; color: var(--bda-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
 .kit-provenance__query { display: flex; flex-direction: column; gap: var(--bda-space-1); }
@@ -449,7 +447,7 @@ body { background: var(--bda-surface-background); color: var(--bda-text-primary)
  * `studio/hostState.ts` when the host's render state asks for it.
  *
  * A capture is a still of what the data says, so the affordances that only
- * mean something to a pair of hands go: the "How is this computed?" trigger
+ * mean something to a pair of hands go: the "Source" link
  * and its popover, and the summary panel's expand toggle. Filters stay —
  * a capture has to show what was applied — and so does every card, every
  * number and every chart. Motion stops outright rather than being captured

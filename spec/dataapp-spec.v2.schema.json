@@ -64,7 +64,7 @@
           "format": { "enum": ["number", "currency", "percent", "rate"], "default": "number", "description": "rate = already a percentage value (15.7 means 15.7%)" },
           "good": { "enum": ["up", "down"], "default": "up" },
           "role": { "enum": ["primary", "secondary"], "default": "secondary" },
-          "definition": { "type": "string", "maxLength": 400, "description": "The semantic layer's plain-language definition of this measure, for the \"How is this computed?\" provenance popover." },
+          "definition": { "type": "string", "maxLength": 400, "description": "The semantic layer's plain-language definition of this measure, for the \"Source\" panel." },
           "expression": { "type": "string", "maxLength": 400, "description": "The semantic layer's expression for this measure (e.g. a metric formula), for the provenance popover." }
         }
       }
@@ -207,9 +207,13 @@
       "additionalProperties": false,
       "properties": {
         "accent": { "enum": ["blue", "teal", "purple", "amber", "coral"], "default": "blue" },
-        "follow": { "enum": ["system", "light", "dark"], "default": "system" }
+        "follow": { "enum": ["system", "light", "dark"], "default": "system" },
+        "builtWithBicycle": { "type": "boolean", "default": true, "description": "The small \"Built with Bicycle\" footer: the bundled official logo, never recoloured. Set false only when the person asks." }
       }
     },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "default": "USD", "description": "ISO 4217 code for `format: currency` measures: the tenant's currency. INR shows ₹ with lakh and crore (₹4.2 L, ₹1.3 Cr)." },
+    "showSources": { "type": "boolean", "default": true, "description": "A small \"Source\" link on every KPI, chart and table, opening a side panel: title, window, model and query, the exact semantic SQL, row count, first rows and a CSV download. Every number shows its source; set false only when the person asks." },
+    "sampleData": { "type": "boolean", "default": false, "description": "The app runs on sample or demo data: show a \"Sample data — illustrative\" banner at the top." },
     "store": {
       "type": "object",
       "description": "Persistence the app may use at runtime, brokered by the host and scoped to this app and tenant. Cache: small, shared, expiring values (a saved target, an annotation, a memoised result). Blobs: large read-only objects the builder uploads once (lookup tables, targets per segment, model weights).",
@@ -247,7 +251,7 @@
       "items": {
         "type": "object",
         "required": ["recipe"],
-        "properties": { "recipe": { "type": "string" }, "bind": { "type": "object" }, "say": { "type": "string" }, "width": { "enum": ["full", "half", "third"] }, "explain": { "type": "string", "description": "The recipe's `explain` sentence (T3.6), threaded through by the composer for the \"How is this computed?\" provenance popover's Method section." } }
+        "properties": { "recipe": { "type": "string" }, "bind": { "type": "object" }, "say": { "type": "string" }, "width": { "enum": ["full", "half", "third"] }, "explain": { "type": "string", "description": "The recipe's `explain` sentence (T3.6), threaded through by the composer for the \"Source\" panel's Method section." } }
       }
     },
     "telemetry": {

@@ -13,6 +13,9 @@ shape only.
 - **Metrics are columns, and they are already aggregated.** `revenue_total` *is* the
   sum. Select it as it stands. `sum(revenue_total)` does not compile.
 - **`FROM` is a model id** — `FROM m_retail_demo`. Never a table name, never a schema.
+  An id that is not a plain identifier — one that starts with a digit, like `7Abc1234` —
+  must be double-quoted: `FROM "7Abc1234"`. Bare, it does not parse. `query_describe_model`
+  prints the `FROM` exactly as it must be written.
 - **Dimensions are plain columns**: the fields of the metric's event type (`region`,
   `channel`). Name one in the `SELECT` list and the metric comes back cut by it.
 - **`GROUP BY` is implicit.** The non-metric columns you selected *are* the grouping.
