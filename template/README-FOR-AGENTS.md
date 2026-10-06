@@ -78,8 +78,9 @@ September, which looks like a bug in your app and is not. Read the window from
    nothing. Start every action (a refresh, a function call) from a button's
    `onClick`.
 9. **Never build chat UI.** The host page owns chat for every app: no ask box,
-   drawer or message list in your bundle. Report what is on screen instead
-   (see "Report your panels").
+   drawer or message list in your bundle. Report what is on screen instead,
+   and every control that changes it (see "Report your panels" and "Describe
+   the page").
 
 ## The loop
 
@@ -116,7 +117,16 @@ In `bda.manifest.json`, `queries` is a list. Each entry:
 - `sql` — one `SELECT` or `WITH`, max 8000 chars. No semicolons. Parameters are
   `:name` or `$name` (both work).
 - `parameters` — every placeholder in the SQL must be declared. Types:
-  `string`, `number`, `boolean`, `date`. Max 16.
+  `string`, `number`, `boolean`, `date` (`2026-09-01`), `timestamp` (an
+  ISO-8601 instant, `2026-09-01T00:00:00Z`). Max 16. On semantic SQL (v2) a
+  `date` or `timestamp` reaches the layer typed (`{"type": "timestamp",
+  "value": ...}`); the app sends plain strings.
+- `sqlVersion` — the SQL's language. Absent or `"v1"`: Studio SQL on bicycle
+  query (metric columns). `"v2"`: semantic SQL (`MEASURE(metric)`,
+  `GROUP BY ALL`), only on a tenant switched onto the semantic layer.
+  `query_list_models` labels each model with its language. A query reads the
+  model its own `FROM` names (when you can see it), so v1 and v2 queries can
+  sit in one app.
 - `columns` — **the allow-list for filtering and sorting.** A filter or sort on
   a column you did not declare is refused. Types: `string`, `number`,
   `boolean`, `date`, `timestamp`. Max 64.
@@ -592,7 +602,7 @@ reports the selection itself, in every app.
 
 What travels with a question is **data, never a picture**: the card's
 `title`, `kind`, `queryId`, `bind`, the point or quote the viewer attached,
-your digest, and the page's scope (below). So keep `title` in the viewer's words and set `queryId`
+your digest, and the page's scope and outline (below). So keep `title` in the viewer's words and set `queryId`
 whenever a card draws a declared query — that is what lets the agent answer
 from the real rows rather than from what it can see.
 
@@ -644,6 +654,123 @@ useEffect(() => {
 Dates must be real days: a window that is not is left out. Lists and strings
 are trimmed to what the host accepts (24 filters, 100 values each, 24
 dimensions, 256 characters), never thrown.
+
+### Describe the page
+
+The scope says what the page is set to. The page's **outline** says what the
+page is: every control and what it offers, and the page's own title, purpose
+and notes. The host sends it when a chat thread starts and again whenever it
+changes, and the agent answers questions about the page itself from it ("how
+many date ranges are there?", "can I pick more than one region?") without
+running a query. Without it the chat cannot see your controls at all.
+
+**Report every control that changes what the page shows.** It is required,
+as `<Panel>` is for a card. Call `useReportControl`
+(`components/useReportControl.ts`) in the component that draws the control:
+it registers the control on mount, again whenever what you pass changes
+(compared by value, so building it inline is fine and options that load later
+are picked up), and unregisters it on unmount. Controls are reported in the
+order they first register, and React runs effects children first, so call it
+where the control is drawn, not in a parent. Describe what a control offers,
+never what it is set to: that is the scope's job.
+
+```tsx
+import { useEffect } from 'react'
+import { useReportControl } from './components/useReportControl.js'
+import { toObjects } from './studio/client.js'
+import { setPageInfo } from './studio/contextRegistry.js'
+import { useAppQuery } from './studio/hooks.js'
+
+const PRESETS = [
+  { value: '7d', label: 'Last 7 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: '90d', label: 'Last 90 days' },
+]
+
+// Preset buttons plus a custom from/to anywhere in the data: the presets are
+// its options, `range` the first and last day a custom pick may use.
+function DateControls() {
+  useReportControl({ id: 'time', kind: 'dateRange', label: 'Time', options: PRESETS, default: ['30d'], range: { min: '2025-01-01', max: '2026-06-30' } })
+  return <div className="bda-controls">{/* the preset pills and the two date inputs */}</div>
+}
+
+// A single-select filter whose options come from a query: leave `options` out
+// until they land. A list longer than 100 keeps its first 100, and
+// `optionCount` is set to how many there were.
+function ChannelFilter({ from, to }: { from: string; to: string }) {
+  const query = useAppQuery('channels', { parameters: { from, to } })
+  const channels = query.data === undefined ? undefined : [...new Set(toObjects(query.data).map((row) => String(row.channel)))]
+  useReportControl({
+    id: 'filter.channel',
+    kind: 'filter',
+    label: 'Channel',
+    ...(channels === undefined ? {} : { options: ['All', ...channels].map((value) => ({ value })) }),
+    default: ['All'],
+  })
+  return <select className="bda-select">{/* All, then the channels */}</select>
+}
+
+// A picker inside one card: `panelId` is that card's `<Panel id>`.
+function TopN() {
+  useReportControl({
+    id: 'top_n',
+    kind: 'select',
+    label: 'Show',
+    options: [
+      { value: '10', label: 'Top 10' },
+      { value: '25', label: 'Top 25' },
+    ],
+    default: ['10'],
+    panelId: 'revenue_by_region',
+  })
+  return <select className="bda-select">{/* Top 10, Top 25 */}</select>
+}
+
+// The page itself, once.
+useEffect(() => {
+  setPageInfo({
+    title: 'Retail orders',
+    description: 'Which channels and regions move orders, week by week.',
+    notes: ['The data runs from 1 Jan 2025 to 30 Jun 2026, and the latest day is still filling in.'],
+  })
+}, [])
+```
+
+When the page itself lists only some of the options (a search box over
+thousands of stores), report the ones it shows and set `optionCount` to how
+many there are in all. Outside a component, call `registerControl(control)`
+and `unregisterControl(id)` from `studio/contextRegistry.ts` directly.
+
+| Field | What |
+| --- | --- |
+| `id` | stable and unique on the page (`'time'`, `'filter.channel'`); registering the same id again updates that control in place |
+| `kind` | `'dateRange'`, `'filter'`, `'measure'`, `'dimensions'`, `'entity'`, `'select'` or `'toggle'` |
+| `label` | as the page shows it |
+| `options` | `[{ value, label? }]` in the page's order; a `dateRange`'s are its presets. Leave it out until they load |
+| `optionCount` | how many options there are in all, when `options` lists fewer or none |
+| `multi` | `true` when more than one option may be picked; leave it out otherwise |
+| `maxPicks` | with `multi`: at most this many |
+| `default` | the option values the page opens on; `[]` for nothing picked (no narrowing) |
+| `range` | `{ min, max }`, `YYYY-MM-DD`, **both inclusive** (unlike the scope's `window.to`): a `dateRange` that also takes any custom from/to between them |
+| `panelId` | the `<Panel id>` of the one card the control sits in and changes; leave it out for a control that changes the whole page |
+
+`setPageInfo` describes the page itself, whole every time: a field you leave
+out is no longer reported.
+
+| Field | What |
+| --- | --- |
+| `title` | the page's name |
+| `description` | what the page is for, in a sentence |
+| `notes` | text a viewer reads that no control or panel carries: what the data covers, a caveat, a definition |
+| `tabs` | `[{ label, active }]`, when the app has tabs |
+| `panels` | `[{ panelId, title, kind?, explain?, tab? }]`: every card the page has, on screen or not (one on another tab), under its `<Panel id>`; `explain` says how it is computed |
+
+Lists and strings are trimmed to what the host accepts, never thrown: 24
+controls, 100 options and 100 default values each, 48 panels, 12 tabs, 8
+notes; 256 characters for an id, label, value or title, 64 for a `kind`, 128
+for a `panelId`, 1000 for a description, an `explain` or a note. `optionCount`
+is capped at 1,000,000 and `maxPicks` at 1000, and a `range` that is not two
+real days with `min` first is left out.
 
 ## Calling functions, agents and workflows
 

@@ -161,7 +161,8 @@ export type Spec = {
 /** One parameter a declared query takes — see `compose/datasets.mjs`'s `render()`. */
 export type QueryParam = {
   readonly name: string
-  readonly type: 'string' | 'number' | 'boolean' | 'date'
+  /** `timestamp`: an ISO-8601 instant (`2026-09-01T00:00:00Z`). */
+  readonly type: 'string' | 'number' | 'boolean' | 'date' | 'timestamp'
   readonly required: boolean
   readonly default?: string | number | boolean
 }
@@ -249,6 +250,20 @@ export function control(spec: Spec, kind: ControlKind): ControlSpec | undefined 
  */
 export function filterControls(spec: Spec): readonly FilterControl[] {
   return (spec.controls ?? []).filter((control): control is FilterControl => control.kind === 'filter' && typeof control.dim === 'string')
+}
+
+/** The panels the page renders, in order: the composer's resolved `panels`, else one per question. */
+export function panelsOf(spec: Spec): readonly Panel[] {
+  return spec.panels ?? spec.questions.map((question) => ({ recipe: question.recipe, bind: question.bind ?? {}, say: question.say }))
+}
+
+/**
+ * `p3:ranking` — the resolved panel's position plus its recipe. Stable across
+ * a render, which is what the context reporter keys its registry on, and the
+ * id the page outline (`studio/outline.ts`) names the same panel by.
+ */
+export function panelId(index: number, recipe: string): string {
+  return `p${index}:${recipe}`
 }
 
 export function resolveTo(to: string): string {

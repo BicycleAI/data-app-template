@@ -30,11 +30,12 @@ import { Render as Verdict } from '../../recipes/verdict/Render.js'
 import { ExplorerChrome } from './chrome/Explorer.js'
 import { ReportChrome } from './chrome/Report.js'
 import { ControlsProvider } from './controls.js'
-import { type CoreData, type Dataset, useAbDataset, useCoreDataset } from './data.js'
+import { type CoreData, type Dataset, useAbDataset, useCoreDataset, useEntityList } from './data.js'
 import type { CoreProps, RecipeProps } from './parts.js'
-import { type AbFamily, isAb, type Panel, type Spec } from './spec.js'
-import { PanelMetaProvider } from './studio/contextRegistry.js'
+import { type AbFamily, isAb, type Panel, panelId, panelsOf, type Spec } from './spec.js'
+import { PanelMetaProvider, setPageOutline } from './studio/contextRegistry.js'
 import { applySnapshotClass, renderState } from './studio/hostState.js'
+import { pageOutline } from './studio/outline.js'
 import { UiProvider } from './ui.js'
 
 /** Exported for evals/loading.test.tsx, which renders every recipe with its datasets pending. */
@@ -77,12 +78,30 @@ export function App({ spec }: { spec: Spec }) {
   return (
     <UiProvider spec={spec}>
       <ControlsProvider spec={spec} entityId={entityId}>
+        <OutlineReporter spec={spec} />
         <Chrome spec={spec} entityId={entityId} onEntity={setEntityId}>
           {needsEntity && entityId === undefined ? null : isAb(spec) ? <AbBody spec={spec} entityId={entityId ?? ''} /> : <CoreBody spec={spec} entityId={entityId} />}
         </Chrome>
       </ControlsProvider>
     </UiProvider>
   )
+}
+
+/**
+ * The page outline for the host's chat (studio/outline.ts): what the page
+ * is, its controls and panels. Reported on mount and again whenever the spec
+ * or the loaded entity list changes; `setPageOutline` drops a rebuild that
+ * did not change. Inside `ControlsProvider` because the entity list reads the
+ * window. It is the chrome's own `useEntityList` query, under the same key,
+ * so it is one request for both, and none for a spec without an entity.
+ */
+function OutlineReporter({ spec }: { spec: Spec }) {
+  const { options, loading, error } = useEntityList(spec)
+  const loaded = spec.entity !== undefined && !loading && error === null
+  useEffect(() => {
+    setPageOutline(pageOutline({ spec, ...(loaded ? { entities: options } : {}) }))
+  }, [spec, loaded, options])
+  return null
 }
 
 /**
@@ -100,15 +119,6 @@ function CoreBody({ spec, entityId }: { spec: Spec; entityId: string | undefined
 function AbBody({ spec, entityId }: { spec: Spec & { family: AbFamily }; entityId: string }) {
   const data = useAbDataset(spec, entityId)
   return <Panels panels={panelsOf(spec)} render={(panel, index) => <AbPanel key={index} spec={spec} data={data} panel={panel} index={index} />} />
-}
-
-function panelsOf(spec: Spec): readonly Panel[] {
-  return spec.panels ?? spec.questions.map((question) => ({ recipe: question.recipe, bind: question.bind ?? {}, say: question.say }))
-}
-
-/** `p3:ranking` — the resolved panel's position plus its recipe. Stable across a render, which is what the context reporter keys its registry on. */
-function panelId(index: number, recipe: string): string {
-  return `p${index}:${recipe}`
 }
 
 function CorePanel({ spec, core, panel, index }: { spec: Spec; core: CoreData; panel: Panel; index: number }) {

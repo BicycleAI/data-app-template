@@ -44,7 +44,7 @@ The fields a coding agent uses most:
 
 | Field | What |
 |---|---|
-| `queries` | declared semantic SQL, at most 32 |
+| `queries` | declared queries, at most 32; each has `sqlVersion` (absent/`"v1"`: Studio SQL on bicycle query; `"v2"`: semantic SQL, tenants on the semantic layer only), and parameters typed `string`, `number`, `boolean`, `date` or `timestamp` (an ISO-8601 instant). A query reads the model its own `FROM` names, so v1 and v2 queries can sit in one app |
 | `functions` | imports: `{"<local_name>": {"ref": "fn:<tenant>/<name>@<n>"}}` or `{"ref": "wf:<tenant>/<slug>@<n>"}`; at most 16; `{ref}` only (no `description`) |
 | `chat` | `{enabled: true, anchors: [...]}`; chat is on by default and is drawn by the host, never by the app |
 | `views.tabs` | tabs a schedule or workflow snapshot can capture |
