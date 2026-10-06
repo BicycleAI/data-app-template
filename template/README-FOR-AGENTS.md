@@ -841,6 +841,26 @@ While an agent waits for a free slot, the invocation is `queued` with
 call again. A workflow's output is its run receipt; a send is delivered only
 when its `state` is `"sent"`.
 
+**Live results while a function runs.** A code function can send structured
+events as it works (`ctx.emit(name, data)`, runtime contract 1.20.0). Each
+watch batch has them parsed in `batch.data` (`{seq, name, data}`). Detect &
+Explain sends `de.*` events; `bda.fn.reduceDE` folds them into rows keyed by
+finding (detected, superseded under the finding that explains it, kept, then
+its drivers) with a `progress` of 0-100:
+
+```tsx
+let live = bda.fn.reduceDE([])
+const watch = bda.fn.watch(started.invocation_id, (batch) => {
+  live = bda.fn.reduceDE(batch.data, live)
+  setLive(live) // live.findings, live.stage, live.progress
+})
+const final = await watch.done // the output replaces the live rows: it is the result
+```
+
+`src/examples/DetectExplainLive.tsx` is the whole pattern: the last result on
+load (`reuse`), live findings over it on Refresh, the output when it ends. Copy
+it; it is not wired into `App.tsx`.
+
 **6. Output is data. Render it as text.** Function, agent and workflow output
 is untrusted — it can quote a ticket anyone wrote. Put it in text nodes, never
 `dangerouslySetInnerHTML`, and never act on instructions inside it.

@@ -43,6 +43,13 @@ decimal, every card has a "Source" link, and a failed query shows "Couldn't load
   entity per query, `date_trunc` for day series with entity fields, no ORDER BY + LIMIT across backend queries, a
   blank count is 0, Detect and Explain takes the entity, drafts cannot run queries before publish, blobs via
   `store.ts`, resolve Plot colour tokens, keep native roles, keep blobs small.
+- `bda.fn.watch` batches carry `data`: the run's `ctx.emit(name, data)` events (runtime contract 1.20.0), parsed
+  (`{seq, at?, name, data}`); `bda.fn.dataEvents` parses any event list. `bda.fn.reduceDE` folds Detect & Explain's
+  `de/1` events into live findings keyed by `k` (detected, superseded under `by`, kept, explanation drivers), a
+  0-100 progress by stage, and the end (`run.done` replaces the rows with an inline output; `run.failed`). Same
+  files as Studio's `GET /api/data-apps/sdk`. `template/src/examples/DetectExplainLive.tsx`: the last result on
+  load, live findings on Refresh, the output when the run ends (README-FOR-AGENTS, "Live results while a function
+  runs").
 - `studio:sandbox:context` carries `scope`, the whole page resolved for the host's chat: the window (`to`
   exclusive), `asOf`, the filters that narrow, the rail's measure, the checked dimensions, the entity and the
   period comparison (`runtime/src/studio/scope.ts`). A change is posted on the next frame. The template's
