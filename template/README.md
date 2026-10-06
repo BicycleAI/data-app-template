@@ -38,6 +38,13 @@ you are targeting:
 `README-FOR-AGENTS.md` documents the **semantic-SQL / MCP** path, because that
 is where metrics, models and availability windows live.
 
+## Query languages and parameter types
+
+A declared query's `sqlVersion` picks its language: absent or `"v1"` is Studio
+SQL on bicycle query, `"v2"` is semantic SQL on the semantic layer (tenants
+switched onto it only). Parameter types are `string`, `number`, `boolean`,
+`date` and `timestamp` (an ISO-8601 instant). Details: `README-FOR-AGENTS.md`.
+
 ## Constraints you cannot work around
 
 The embed page sets `script-src 'self'` and `connect-src 'self'`: no CDN

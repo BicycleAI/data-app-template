@@ -24,12 +24,26 @@ The kind cannot change after creation; a different kind is a new function. Full 
 | id | Lets the code | Config |
 |---|---|---|
 | `semantic.query` | run declared semantic queries | `queries` |
+| `semantic.read` | run its own semantic SQL, cache-only: `ctx.semantic.sql(model, sql, params)` (a typed `pyarrow.Table`) and `ctx.semantic.describe(model)` | `models` |
 | `cache.read` / `cache.write` | read / write its own cache | `names`, `ttl_max_s`, `max_value_bytes` |
 | `blob.read` / `blob.write` | read / write named blobs (a workflow's blobs when called from one) | `names` |
 | `llm.call` | call a model from the tenant allowlist | `models`, `max_calls`, `max_usd` |
 | `fn.call` | call other functions (depth <= 3) | `refs` |
 
 Sends are never a capability: they are workflow send steps.
+
+`semantic.read` example (a tenant on the semantic layer; parameters are typed):
+
+```python
+t = ctx.semantic.sql("quick_commerce",
+    "SELECT DATE_TRUNC('day', time) AS day, MEASURE(total_units_sold) AS units "
+    "FROM quick_commerce WHERE time >= :since AND time < :until GROUP BY ALL",
+    {"since": {"type": "timestamp", "value": "2026-09-01T00:00:00Z"},
+     "until": {"type": "timestamp", "value": "2026-09-08T00:00:00Z"}})
+```
+
+In a ref, `<tenant>` is the tenant slug: the tenant id lower-cased and cut to 40 characters (the ref grammar's
+limit). Copy refs from `function_get`; never build them from the tenant id.
 
 ### Visibility
 

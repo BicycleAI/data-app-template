@@ -150,7 +150,8 @@ export type Spec = {
 /** One parameter a declared query takes — see `compose/datasets.mjs`'s `render()`. */
 export type QueryParam = {
   readonly name: string
-  readonly type: 'string' | 'number' | 'boolean' | 'date'
+  /** `timestamp`: an ISO-8601 instant (`2026-09-01T00:00:00Z`). */
+  readonly type: 'string' | 'number' | 'boolean' | 'date' | 'timestamp'
   readonly required: boolean
   readonly default?: string | number | boolean
 }

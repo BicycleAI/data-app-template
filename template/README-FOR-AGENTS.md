@@ -117,7 +117,16 @@ In `bda.manifest.json`, `queries` is a list. Each entry:
 - `sql` — one `SELECT` or `WITH`, max 8000 chars. No semicolons. Parameters are
   `:name` or `$name` (both work).
 - `parameters` — every placeholder in the SQL must be declared. Types:
-  `string`, `number`, `boolean`, `date`. Max 16.
+  `string`, `number`, `boolean`, `date` (`2026-09-01`), `timestamp` (an
+  ISO-8601 instant, `2026-09-01T00:00:00Z`). Max 16. On semantic SQL (v2) a
+  `date` or `timestamp` reaches the layer typed (`{"type": "timestamp",
+  "value": ...}`); the app sends plain strings.
+- `sqlVersion` — the SQL's language. Absent or `"v1"`: Studio SQL on bicycle
+  query (metric columns). `"v2"`: semantic SQL (`MEASURE(metric)`,
+  `GROUP BY ALL`), only on a tenant switched onto the semantic layer.
+  `query_list_models` labels each model with its language. A query reads the
+  model its own `FROM` names (when you can see it), so v1 and v2 queries can
+  sit in one app.
 - `columns` — **the allow-list for filtering and sorting.** A filter or sort on
   a column you did not declare is refused. Types: `string`, `number`,
   `boolean`, `date`, `timestamp`. Max 64.
