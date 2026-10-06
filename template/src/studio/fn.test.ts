@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { bda } from './bda.js'
+import { DE_EMPTY, type DataEvent, reduceDE } from './fn.js'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -85,5 +86,92 @@ describe('bda.fn', () => {
     expect(sent[1]).not.toHaveProperty('reuse')
     await bda.fn.call('check_tickets', {})
     expect(sent[2]).not.toHaveProperty('reuse')
+  })
+
+  it('watch hands over the data events of each batch, parsed, beside the raw events', async () => {
+    const finding = { v: 'de/1', run: INV, t: 1200, k: 'a1', segment: { platform: 'web' }, pct: 41.5 }
+    framed((m) =>
+      m.type === 'studio:sandbox:fn-watch'
+        ? [
+            events({
+              events: [
+                { seq: 1, type: 'started', at: '2026-10-06T10:00:00Z' },
+                { seq: 2, type: 'data', at: '2026-10-06T10:00:01Z', name: 'de.finding.detected', data: finding },
+                { seq: 3, type: 'log', lines: [{ msg: 'x' }] },
+                { seq: 'x', type: 'data', name: 'bad-seq', data: 1 },
+                { seq: 4, type: 'data', data: 'no name' },
+              ],
+              final: false,
+            }),
+            events({ events: [{ seq: 5, type: 'data', name: 'tick', data: [1, 2] }], final: true, invocation: { ...running, status: 'succeeded', output: {} } }),
+          ]
+        : [],
+    )
+    const batches: DataEvent[][] = []
+    await bda.fn.watch(INV, (b) => batches.push([...b.data])).done
+    expect(batches).toEqual([[{ seq: 2, at: '2026-10-06T10:00:01Z', name: 'de.finding.detected', data: finding }], [{ seq: 5, name: 'tick', data: [1, 2] }]])
+    expect(bda.fn.dataEvents([{ seq: 9, type: 'progress', pct: 5 }])).toEqual([])
+  })
+
+  describe('reduceDE', () => {
+    const env = { v: 'de/1', run: INV }
+    let n = 0
+    const de = (name: string, data: Record<string, unknown>): DataEvent => ({ seq: (n += 1), name: `de.${name}`, data: { ...env, t: n * 10, ...data } })
+
+    it('folds detected, superseded, kept and explanation.ready by key, with stage progress', () => {
+      n = 0
+      const stream = [
+        de('run.started', { metric: 'units' }),
+        de('stage.started', { stage: 'detect' }),
+        de('stage.progress', { stage: 'detect', completed: 1, total: 2 }),
+        de('finding.detected', { k: 'a', segment: { platform: 'web' }, current: 120, baseline: 80, pct: 50, direction: 'up' }),
+        de('finding.detected', { k: 'b', segment: { platform: 'web', zone: 'north' }, current: 60, baseline: 30, pct: 100 }),
+        de('stage.finished', { stage: 'detect' }),
+        de('stage.started', { stage: 'supersede' }),
+        de('finding.superseded', { k: 'b', by: 'a', reason: 'explained by its parent' }),
+        de('finding.kept', { k: 'a', representative: true }),
+        de('stage.finished', { stage: 'supersede' }),
+        de('stage.progress', { stage: 'explain', completed: 1, total: 4 }),
+        de('explanation.ready', { finding: 'a', drivers: Array.from({ length: 12 }, (_, i) => ({ segment: { sku: `s${i}` }, contribution: 0.5 })), depth: 2 }),
+      ]
+      const half = reduceDE(stream.slice(0, 3))
+      expect(half).toMatchObject({ status: 'running', stage: 'detect', progress: 20, final: false, findings: [] })
+      const s = reduceDE(stream)
+      expect(s.status).toBe('running')
+      expect(s.progress).toBe(61) // explain 50-95, 1 of 4
+      expect(s.findings.map((f) => [f.k, f.status])).toEqual([
+        ['a', 'kept'],
+        ['b', 'superseded'],
+      ])
+      const [a, b] = s.findings
+      expect(a).toMatchObject({ segment: { platform: 'web' }, current: 120, pct: 50, direction: 'up', representative: true, supersedes: ['b'], depth: 2 })
+      expect(a?.drivers).toHaveLength(10)
+      expect(b).toMatchObject({ supersededBy: 'a', reason: 'explained by its parent', pct: 100 })
+      // incremental folding gives the same answer, and a replayed page changes nothing
+      const step = stream.reduce((st, e) => reduceDE([e], st), DE_EMPTY)
+      expect(step).toEqual(s)
+      expect(reduceDE(stream.slice(4, 8), s)).toEqual(s)
+    })
+
+    it('is replaced by the inline output on run.done, and keeps the rows when the output is by reference', () => {
+      n = 0
+      const live = reduceDE([de('finding.detected', { k: 'a', pct: 10 }), de('stage.progress', { stage: 'detect', completed: 1, total: 1 })])
+      const done = reduceDE([de('run.done', { status: 'partial', summary: { kept: 1 }, output: { findings: [{ k: 'a' }] }, cancel: { reason: 'TIMEOUT' } })], live)
+      expect(done).toMatchObject({ final: true, status: 'partial', progress: 100, findings: [], output: { findings: [{ k: 'a' }] }, summary: { kept: 1 } })
+      const byRef = reduceDE([de('run.done', { status: 'ok', output_ref: { blob_id: 'b1' } })], live)
+      expect(byRef).toMatchObject({ final: true, status: 'ok', outputRef: { blob_id: 'b1' } })
+      expect(byRef.findings.map((f) => f.k)).toEqual(['a'])
+      expect(byRef).not.toHaveProperty('output')
+    })
+
+    it('says a failed run in its words, and ignores events that are not de/1', () => {
+      n = 2
+      const s = reduceDE([
+        { seq: 1, name: 'other.thing', data: { k: 'x' } },
+        { seq: 2, name: 'de.finding.detected', data: { v: 'de/2', k: 'y' } },
+        de('run.failed', { code: 'deadline_exceeded', message: 'The run hit its time limit.' }),
+      ])
+      expect(s).toMatchObject({ status: 'failed', final: true, findings: [], error: { code: 'deadline_exceeded', message: 'The run hit its time limit.' } })
+    })
   })
 })
