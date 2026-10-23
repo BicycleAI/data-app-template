@@ -597,6 +597,10 @@ With that in place, and nothing else to write, a viewer can:
 - **follow a source chip** in an answer back to the card, which `<Panel>`
   scrolls into view and highlights (`.bda-card--highlight`).
 
+The hover controls can be switched off per app in its settings in Studio
+(*Ask on hover: Off*, `settings.chat.hover`); picking, shift-click and source
+chips still work, and nothing in your app changes either way.
+
 Selecting text needs nothing from your app at all: the host's bootstrap
 reports the selection itself, in every app.
 

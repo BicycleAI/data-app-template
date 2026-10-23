@@ -96,6 +96,10 @@ agents (`expose.agents`), as tools named `fn_<local>`, with the same invocation 
 admin switches it in the app's settings: *Functions in chat: Inherit / Off* (`settings.chat.functions`,
 `PATCH /api/data-apps/{id}`). There is no MCP tool for this setting yet.
 
+**Ask on hover.** Hovering a card offers the host's "Ask about this…" box and a + to add the card to the chat.
+It can be switched off per app in its settings: *Ask on hover: On / Off* (`settings.chat.hover`). The chat itself,
+text selection and *Pick from page* stay, and nothing in the app changes. `dataapp_describe` shows the setting.
+
 ## Branding
 
 - Every app shows the official Bicycle logo, small ("Built with Bicycle"), from the kit's bundled file. Composed
