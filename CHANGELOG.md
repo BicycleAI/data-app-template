@@ -6,6 +6,10 @@ hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MI
 
 ## Unreleased
 
+### Changed
+- `docs/agents/02-data-apps.md` and `template/README-FOR-AGENTS.md`: the host's hover toolbar ("Ask about this…")
+  can be switched off per app in Studio's settings (*Ask on hover*, `settings.chat.hover`). Docs only; no kit change.
+
 ## 1.2.0 (proposed tag `kit-v1.2.0`)
 
 Additive: four optional spec fields (`theme.builtWithBicycle` and `showSources` default `true`, `currency`
