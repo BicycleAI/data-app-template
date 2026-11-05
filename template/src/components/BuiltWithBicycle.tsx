@@ -8,15 +8,18 @@
  * both themes.
  *
  * The one config point is `BUILT_WITH_BICYCLE`: set it to false only when the
- * person asks for no branding.
+ * person asks for no branding. The host can also rule it out: a white-labelled
+ * tenant's apps carry no Bicycle branding (`context.brand`,
+ * `isWhiteLabelled()`), so it renders nothing there, whatever `show` says.
  */
 
 import logo from '../assets/bicycle-logo-green.png'
+import { isWhiteLabelled } from '../studio/context.js'
 
 export const BUILT_WITH_BICYCLE = true
 
 export function BuiltWithBicycle({ show = BUILT_WITH_BICYCLE }: { show?: boolean }) {
-  if (!show) return null
+  if (!show || isWhiteLabelled()) return null
   return (
     <span className="bda-builtwith">
       <span className="bda-builtwith__text">Built with</span>

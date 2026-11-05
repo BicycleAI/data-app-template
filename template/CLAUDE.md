@@ -18,8 +18,9 @@ guide; `../docs/agents/` is the offline copy.
 ## Branding and lessons
 
 - Keep `<BuiltWithBicycle />` (`src/components/BuiltWithBicycle.tsx`): the bundled official logo, small. Never
-  recreate, recolour or hotlink it; `BUILT_WITH_BICYCLE = false` only if the person asks. Never use a customer's
-  logo unless the customer provided it.
+  recreate, recolour or hotlink it; `BUILT_WITH_BICYCLE = false` only if the person asks. It renders nothing
+  for a white-labelled tenant (the host's `context.brand`) on its own. Never use a customer's logo unless the
+  customer provided it.
 - Every number shows its source, and a failed query is never a zero ("Couldn't load" + Retry; an empty answer
   says "No data for this window"). See Lessons.
 - Read "Lessons from real apps" in `../CLAUDE.md` before you build: each gotcha has its workaround (quoting a

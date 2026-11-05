@@ -76,6 +76,20 @@ export async function initContext(): Promise<BdaContext> {
   return current
 }
 
+/**
+ * Whether the host framed this app for a white-labelled tenant
+ * (`context.brand`). Such an app carries no Bicycle branding, so the kit
+ * leaves out "Built with Bicycle", whatever the app itself asks for.
+ *
+ * Reads the injected context directly as well, so it answers before
+ * `initContext()` has run; outside a host page it is false.
+ */
+export function isWhiteLabelled(): boolean {
+  const injected = current ?? (typeof window === 'undefined' ? undefined : window.__BDA_CONTEXT)
+  const name = injected?.brand?.productName
+  return typeof name === 'string' && name.trim().length > 0
+}
+
 export function context(): BdaContext {
   if (current === undefined) throw new Error('initContext() has not completed yet.')
   return current

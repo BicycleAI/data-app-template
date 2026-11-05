@@ -7,14 +7,17 @@
  * its wordmark is white, so it always sits on its own dark chip
  * (`--bda-brand-chip`), the same in both themes.
  *
- * One config point: `spec.theme.builtWithBicycle` (default true).
+ * One config point: `spec.theme.builtWithBicycle` (default true). The host
+ * can also rule it out: a white-labelled tenant's apps carry no Bicycle
+ * branding (`context.brand`, `isWhiteLabelled()`), whatever the spec says.
  */
 
 import logo from '../assets/bicycle-logo-green.png'
 import type { Spec } from '../spec.js'
+import { isWhiteLabelled } from '../studio/context.js'
 
 export function showBuiltWith(spec: Spec): boolean {
-  return spec.theme?.builtWithBicycle !== false
+  return spec.theme?.builtWithBicycle !== false && !isWhiteLabelled()
 }
 
 export function BuiltWithBicycle() {
