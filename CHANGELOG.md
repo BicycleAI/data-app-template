@@ -4,7 +4,7 @@ All notable changes to the data-app kit (this repository: spec, recipes, runtime
 hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MINOR.PATCH`, and the version in
 `package.json` and `template/package.json` matches the tag.
 
-## Unreleased
+## 1.3.0 (proposed tag `kit-v1.3.0`)
 
 Additive: one optional field on the host's context (`brand`); no spec, manifest or host-message change.
 
