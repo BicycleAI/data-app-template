@@ -1,6 +1,7 @@
 /**
  * Branding: every composed app shows the bundled official Bicycle logo, small,
- * unless the spec turns it off (`theme.builtWithBicycle: false`). The logo is
+ * unless the spec turns it off (`theme.builtWithBicycle: false`) or the host
+ * framed it for a white-labelled tenant (`context.brand`). The logo is
  * a bundled file, never a URL, and never a redrawn or recoloured copy: its
  * bytes are pinned here, and the template's copy must be the same file.
  */
@@ -12,8 +13,24 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { BuiltWithBicycle, showBuiltWith } from '../runtime/src/chrome/BuiltWith.js'
 import type { Spec } from '../runtime/src/spec.js'
+import type { BdaContext } from '../runtime/src/studio/types.js'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  delete window.__BDA_CONTEXT
+})
+
+/** What the host injects; `brand` only for a white-labelled tenant. */
+const framed = (brand?: BdaContext['brand']): BdaContext => ({
+  v: 1,
+  appId: 'app_demo',
+  version: 1,
+  apiBase: '/api',
+  token: 't',
+  expiresAt: '2026-01-01T00:00:00Z',
+  theme: 'light',
+  ...(brand === undefined ? {} : { brand }),
+})
 
 /** sha256 of the official "Bicycle Logo Green.png" (253x48). Change it only when brand ships a new file. */
 const OFFICIAL_LOGO_SHA256 = 'cedeef6e5b74e3ced9efaaffd7291609baef026a95d25af27a823101aa14954c'
@@ -39,6 +56,19 @@ describe('Built with Bicycle', () => {
     expect(showBuiltWith(spec({ accent: 'teal' }))).toBe(true)
     expect(showBuiltWith(spec({ builtWithBicycle: true }))).toBe(true)
     expect(showBuiltWith(spec({ builtWithBicycle: false }))).toBe(false)
+  })
+
+  it('is off for a white-labelled tenant, whatever the spec says', () => {
+    window.__BDA_CONTEXT = framed({ productName: 'Acme Insights' })
+    expect(showBuiltWith(spec())).toBe(false)
+    expect(showBuiltWith(spec({ builtWithBicycle: true }))).toBe(false)
+  })
+
+  it('stays on when the host names no product', () => {
+    window.__BDA_CONTEXT = framed()
+    expect(showBuiltWith(spec())).toBe(true)
+    window.__BDA_CONTEXT = framed({ productName: '  ' })
+    expect(showBuiltWith(spec())).toBe(true)
   })
 
   it('renders the bundled logo, not a URL', () => {

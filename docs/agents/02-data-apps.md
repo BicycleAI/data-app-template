@@ -104,7 +104,8 @@ text selection and *Pick from page* stay, and nothing in the app changes. `dataa
 
 - Every app shows the official Bicycle logo, small ("Built with Bicycle"), from the kit's bundled file. Composed
   apps draw it (`theme.builtWithBicycle: false` hides it, only if the person asks); hand-built apps keep the
-  template's `<BuiltWithBicycle />`. Never recreate, recolour or hotlink it.
+  template's `<BuiltWithBicycle />`. Never recreate, recolour or hotlink it. For a white-labelled tenant the host
+  sets `context.brand` and the kit leaves the logo out itself; never draw another brand in its place.
 - Never put a customer's logo in an app unless the customer provided the file for it.
 - Every number shows its source: keep the "Source" link on every card.
 

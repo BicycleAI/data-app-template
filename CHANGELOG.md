@@ -6,6 +6,16 @@ hand-build `template/`). Versions follow `RELEASING.md`: tags are `kit-vMAJOR.MI
 
 ## Unreleased
 
+Additive: one optional field on the host's context (`brand`); no spec, manifest or host-message change.
+
+### Added
+- White-label: the host sets `context.brand` (`{ productName }`) only for a white-labelled tenant, and the kit then
+  leaves out "Built with Bicycle": `showBuiltWith` in the runtime and the template's `<BuiltWithBicycle />` render
+  nothing there, whatever `theme.builtWithBicycle` or `BUILT_WITH_BICYCLE` say. `isWhiteLabelled()` in
+  `studio/context.ts` (runtime and template) answers it. A bundle framed by an older host reads no brand and shows
+  the logo as before. Composed apps change once composed on this kit; a hand-built app once its copy of the
+  component is updated. `evals/brand.test.tsx` and the template's test cover it.
+
 ### Changed
 - `docs/agents/02-data-apps.md` and `template/README-FOR-AGENTS.md`: the host's hover toolbar ("Ask about this…")
   can be switched off per app in Studio's settings (*Ask on hover*, `settings.chat.hover`). Docs only; no kit change.

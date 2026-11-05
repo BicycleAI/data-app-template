@@ -26,7 +26,8 @@ The people asking for apps are usually not engineers. Hold their hand:
 
 - Every app shows the official Bicycle logo, small: "Built with Bicycle". Use the bundled file. Composed apps draw
   it by default (`theme.builtWithBicycle: false` hides it, only if the person asks); hand-built apps keep
-  `<BuiltWithBicycle />` (`template/src/components/`).
+  `<BuiltWithBicycle />` (`template/src/components/`). For a white-labelled tenant the host says so in
+  `context.brand` and the kit leaves the logo out itself: keep the component, and never draw another brand in its place.
 - Never recreate, redraw, recolour, stretch or hotlink the logo. Its wordmark is white, so it sits on its own dark
   chip in both themes.
 - Never put a customer's logo in an app unless the customer provided the file for it.

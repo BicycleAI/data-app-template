@@ -422,6 +422,8 @@ Keep `<BuiltWithBicycle />` (`src/components/BuiltWithBicycle.tsx`) when you
 replace the sample app: the official logo, bundled into `app.js`, small, on its
 own dark chip because its wordmark is white. Never recreate, recolour, stretch
 or hotlink it. `BUILT_WITH_BICYCLE = false` hides it, only if the person asks.
+For a white-labelled tenant the host sets `context.brand`, and the component
+renders nothing on its own (`isWhiteLabelled()` in `src/studio/context.ts`).
 Never use a customer's logo unless the customer provided the file.
 
 ### How much of the look can you change?

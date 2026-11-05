@@ -28,6 +28,16 @@ export type BdaContext = {
    * `undefined` and falls back to following the system.
    */
   readonly themePreference?: 'system' | 'light' | 'dark'
+  /**
+   * The tenant's own product, set by the host only when the tenant is
+   * white-labelled. Its apps then carry no Bicycle branding: the kit leaves
+   * out "Built with Bicycle" (`isWhiteLabelled()` in `studio/context.ts`).
+   *
+   * Optional, like `themePreference`: a bundle built against this field and
+   * framed by an older embed page reads `undefined` and shows the logo as
+   * before.
+   */
+  readonly brand?: { readonly productName: string }
 }
 
 export type FilterOp = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains'

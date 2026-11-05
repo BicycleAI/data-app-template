@@ -39,6 +39,16 @@ export type BdaContext = {
    * spec's own defaults.
    */
   readonly state?: RenderState
+  /**
+   * The tenant's own product, set by the host only when the tenant is
+   * white-labelled. Its apps then carry no Bicycle branding: the kit leaves
+   * out "Built with Bicycle" (`isWhiteLabelled()` in `studio/context.ts`).
+   *
+   * Optional, like `themePreference`: a bundle built against this field and
+   * framed by an older embed page reads `undefined` and shows the logo as
+   * before.
+   */
+  readonly brand?: { readonly productName: string }
 }
 
 /* -------------------------------------------------- deep link / readiness */
